@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button";
 
 interface Props {
   children: ReactNode;
+  /** Rendered instead of the full-screen panel — for overlays, which must not
+   *  replace the page they sit on when they fail. */
+  fallback?: ReactNode;
 }
 
 interface State {
@@ -27,6 +30,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   override render(): ReactNode {
     if (this.state.error) {
+      if (this.props.fallback !== undefined) return this.props.fallback;
       return (
         <div className="flex h-screen flex-col items-center justify-center gap-4 p-8 text-center">
           <AlertTriangle className="h-10 w-10 text-destructive" />

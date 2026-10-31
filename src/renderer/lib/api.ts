@@ -34,6 +34,7 @@ import type {
   AiModelInfo,
 } from "@shared/ipc-types";
 import { isUserFacingError, type UserFacingError } from "@shared/errors";
+import type { QuitSummary } from "@shared/quit";
 
 export type {
   SetupStatus,
@@ -609,6 +610,11 @@ export interface RendererApi {
   windowMinimize(): Promise<void>;
   windowMaximize(): Promise<void>;
   windowClose(): Promise<void>;
+  // Quit confirmation — main asks, the renderer shows the themed dialog
+  onQuitRequested(callback: (summary: QuitSummary) => void): () => void;
+  /** False when main already answered with its native fallback — don't show. */
+  quitShown(): Promise<boolean>;
+  answerQuit(quit: boolean): Promise<void>;
 }
 
 export function isError<T>(r: Result<T>): r is UserFacingError {

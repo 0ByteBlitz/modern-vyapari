@@ -127,6 +127,41 @@
 
   /* Uppercase micro-label tracking */
   --tracking-label: 0.09em;
+
+  /* ── Motion ──────────────────────────────────────────────────────────
+     Four durations and two curves. Motion here says "this appeared" or
+     "this changed", never decorates: a price ticking or a state flipping is
+     information, and an animation that delays it is a defect. Anything new
+     uses these rather than a literal; existing literals move over as they
+     are touched. Reduced motion is honoured globally, below. */
+  --dur-instant: 90ms;   /* hover, press */
+  --dur-fast: 140ms;     /* small state changes, exits */
+  --dur-base: 200ms;     /* overlays entering */
+  --dur-slow: 320ms;     /* large surfaces, drawers */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);   /* entering: fast start, soft landing */
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);       /* leaving: gets out of the way */
+}
+
+/* One focus ring for every control. Without this each control fell back to
+   Chromium's default, which differs by element and reads amber on this
+   palette — the caution colour, on a ring that means "you are here".
+   Cyan is the interactive colour (see the semantic rules above). Components
+   with their own :focus-visible rule still win by specificity. */
+:where(button, a, summary, [role="button"], [role="tab"], [tabindex]:not([tabindex="-1"])):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Reduced motion: durations collapse rather than animations being removed, so
+   `animationend` / `transitionend` still fire and nothing waits on an event
+   that never comes. Infinite pulses run once. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* ── Density variants ─────────────────────────────────────────────────
@@ -2659,8 +2694,29 @@ ol.md-list li { list-style: decimal; }
   place-items: center;
   padding: 24px;
   background: rgba(3, 5, 8, 0.72);
-  backdrop-filter: blur(2px);
+  backdrop-filter: blur(3px);
+  animation: backdrop-in var(--dur-base) var(--ease-out) both;
 }
+
+.modal-backdrop > .modal { animation: modal-in var(--dur-base) var(--ease-out) both; }
+
+/* Exit: add .is-closing to the backdrop and unmount on its animationend. */
+.modal-backdrop.is-closing { animation: backdrop-out var(--dur-fast) var(--ease-in) both; }
+.modal-backdrop.is-closing > .modal { animation: modal-out var(--dur-fast) var(--ease-in) both; }
+
+@keyframes backdrop-in  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes backdrop-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes modal-out {
+  from { opacity: 1; transform: none; }
+  to   { opacity: 0; transform: translateY(4px) scale(0.985); }
+}
+
+/* Short confirmations: one question, two buttons. */
+.modal.modal-sm { width: min(400px, 100%); }
 
 .modal {
   width: min(560px, 100%);
@@ -2790,6 +2846,42 @@ ol.md-list li { list-style: decimal; }
   font-size: var(--text-sm);
   line-height: 1.5;
 }
+
+/* ── Quit confirmation (quit-dialog.tsx) ── */
+.quit-dialog { border-color: var(--border-strong); }
+.quit-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 18px 18px 4px;
+}
+.quit-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: var(--radius-pill);
+  background: rgba(34, 211, 238, 0.1);
+  color: var(--accent);
+}
+/* Quitting stops something: caution, not danger — nothing is lost. */
+.quit-icon-guarded { background: rgba(255, 138, 61, 0.12); color: var(--caution); }
+.quit-heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 32px;
+}
+.quit-heading .mode-badge { margin-left: 0; }
+.quit-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 2px 18px 18px 62px;
+}
+.quit-list { margin: 0; }
 
 .modal-foot {
   display: flex;

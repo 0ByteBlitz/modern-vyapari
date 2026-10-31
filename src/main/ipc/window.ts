@@ -7,6 +7,7 @@
  * pulls in every subsystem in the app.
  */
 import { ipcMain } from "electron";
+import { answerQuit, quitShown } from "../services/quit-guard";
 
 
 export function registerWindow(): void {
@@ -25,5 +26,12 @@ ipcMain.handle("window:maximize", () => {
 ipcMain.handle("window:close", () => {
     const { mainWindow } = require("../main");
     mainWindow?.close();
+  });
+
+  /* ── Quit confirmation (services/quit-guard.ts) ─────────────── */
+ipcMain.handle("app:quitShown", () => quitShown());
+
+ipcMain.handle("app:quitAnswer", (_e, quit: unknown) => {
+    answerQuit(quit === true);
   });
 }
