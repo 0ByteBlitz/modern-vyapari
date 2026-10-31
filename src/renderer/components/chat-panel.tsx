@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api, isError, type ChatMessage, errorText } from "@/lib/api";
-import { Send, Bot, User, Loader2, Terminal, AlertTriangle, Trash2, BookmarkPlus, Wrench } from "lucide-react";
+import { Send, Bot, User, Loader2, Terminal, AlertTriangle, Trash2, BookmarkPlus, Wrench, RotateCw } from "lucide-react";
 import { ToolsMenu } from "@/components/tools-menu";
 import { renderMarkdown } from "@/lib/markdown";
 
@@ -74,20 +74,37 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   const [toolsOpen, setToolsOpen] = useState(false);
   
   const [availableModels, setAvailableModels] = useState<any[]>([]);
+  /* "loading" and "failed" are different facts. An expired key used to come
+     back as an empty list, which this panel rendered as "Loading models..."
+     for ever. */
+  const [modelsError, setModelsError] = useState<string | null>(null);
   const [model, setModel] = useState("claude-opus-4-8"); // Fallback default
   const [effort, setEffort] = useState("high");
   const [attachedImage, setAttachedImage] = useState<{ data: string; type: string } | null>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Fetch available models
-  useEffect(() => {
-    api.getAnthropicModels().then((res) => {
-      if (!isError(res) && res.length > 0) {
-        setAvailableModels(res);
-      }
-    });
+  // Fetch available models — on open, on Retry, and whenever the key is saved
+  const loadModels = useCallback(async () => {
+    setModelsError(null);
+    const res = await api.getAnthropicModels();
+    if (isError(res)) {
+      setAvailableModels([]);
+      setModelsError(errorText(res));
+    } else if (res.length === 0) {
+      setAvailableModels([]);
+      setModelsError("This Anthropic key has no models available.");
+    } else {
+      setAvailableModels(res);
+    }
   }, []);
+
+  useEffect(() => {
+    void loadModels();
+    return api.onDataUpdated(({ kind }) => {
+      if (kind === "credentials") void loadModels();
+    });
+  }, [loadModels]);
 
   // Set model/effort based on saved session state or defaults
   useEffect(() => {
@@ -332,7 +349,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
               title={isStreaming ? "Wait for the current reply to finish" : "Model for your next message"}
             >
               {availableModels.length === 0 ? (
-                <option value={model}>Loading models...</option>
+                <option value={model}>{modelsError ? "Models unavailable" : "Loading models..."}</option>
               ) : (
                 availableModels.map((m) => (
                   <option key={m.id} value={m.id}>
@@ -388,6 +405,18 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
               <Trash2 size={13} />
             </button>
           </div>
+          {modelsError && (
+            <div className="flex items-center gap-2 text-xs text-destructive" role="alert">
+              <AlertTriangle size={12} className="shrink-0" />
+              <span className="flex-1">{modelsError}</span>
+              <button
+                onClick={() => void loadModels()}
+                className="flex items-center gap-1 rounded border border-border bg-secondary px-2 py-0.5 text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                <RotateCw size={11} /> Retry
+              </button>
+            </div>
+          )}
       </div>
 
       {/* Messages */}
