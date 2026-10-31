@@ -46,6 +46,11 @@ never the body.
 locked — J0.** Lands: show the error on the lock screen, or a button that opens the
 log folder.
 
+**5 · The chat's effort picker truncates its label ("High Effor") — U-3.** The
+select is narrower than its longest option in both the drawer and the floating
+window. Cosmetic, and exactly what one component set fixes. Found while taking the
+README screenshots.
+
 **4 · The agent reported indicator values timestamped July 2026 while the candles
 were current — J1.** Reported by the agent itself during a demo run (visible in
 the README's research screenshot); **not yet investigated or confirmed**. If true,

@@ -32,6 +32,8 @@ should take.
 > - **AI provider port** (`src/main/ai/`, 31 October): the agent loop, compaction
 >   and reviews talk to a port; Anthropic is one adapter. Setup no longer needs an
 >   exchange in simulated mode. See §11.
+> - **Two conversations** (31 October): a global agent and per-session agents,
+>   and the app opens with no session selected. See §12.
 
 ---
 
@@ -500,6 +502,49 @@ A-1 adapter, A-2 provider choice in Settings, A-3 app-side web search, A-5
 per-provider cost; on the venue side V-1 connection forms rendered from the
 declared auth spec, and V-2 venue choice in onboarding once a second adapter
 exists. All in ROADMAP › *Vendor neutrality*. The feed port (§4) is unchanged.
+
+---
+
+## 12. Two conversations — the global agent and the session agent
+
+**Journeys: J0 (the daily loop) and J1 (hunch → thesis).** The moment of truth:
+the owner opens the app, asks the agent something, and never has to wonder which
+pair it thinks they are talking about. Before 31 October the app restored the
+last session on launch, so the agent drawer showed one pair's conversation
+beside a Home page that said nothing was selected — the *armed vs. idle* kind of
+ambiguity, applied to *which conversation am I in*.
+
+**The rule: a session's chat exists only on that session's own surfaces**
+(Dashboard, Orders, Plans, Journal, Research, Alerts — `shared/surfaces.ts`, one
+definition for both bundles). Everywhere else the agent is the **general
+conversation**. The rail and the toolbar's session figures follow the same rule.
+
+| | Global agent | Session agent |
+|---|---|---|
+| Where | The mascot, lower-right, every surface (`agent-mascot.tsx`) | The drawer, on its session's surfaces (`chat-drawer.tsx`) |
+| History | `general_chat_messages` (schema v21) | `chat_messages` for that session |
+| Context | The sessions, with armed plans and open positions (`buildGeneralContext`) | The session's pair, plans, positions, journal, lessons |
+| Tools | Only those that need no session; `SESSION_SCOPED_TOOLS` are not offered and are refused if called | The full catalogue |
+| Navigation | May move the screen only between global surfaces | Only within its session's surfaces |
+
+- **The selection is cleared at launch** (`clearSelectionForLaunch`); the previous
+  one is kept as *last* and offered as one click back. Nothing in the runtime
+  depends on the selection, so clearing it stops nothing.
+- **Every chat event carries its conversation** (`ChatConversation`: a session
+  id or `"general"`), and each panel ignores the others'. Two panels can be on
+  screen at once, and a reply can outlive a session switch; before this, its tail
+  landed in the next session's transcript.
+- **The agent never switches what the owner is looking at between
+  conversations.** It may suggest a session; opening one is the owner's click.
+- **Neither form gains a tool.** The general conversation has fewer tools than a
+  session's, not more; no order, arming or venue tool exists in either.
+
+**Closing the app stops all of this.** A plan can only trigger while the app is
+running, so the quit confirmation (`services/quit-guard.ts`, copy in
+`shared/quit.ts`) says which armed plans and open positions stop being watched.
+It is the app's own themed dialog, with the native box as a fallback whenever
+the renderer is loading, crashed or slow to acknowledge — the window must always
+be closable.
 
 ---
 

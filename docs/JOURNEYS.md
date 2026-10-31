@@ -14,8 +14,8 @@ below has its own step table; this is the summary.
 
 | Journey | State |
 |---|---|
-| J0 · Daily loop | ✅ Built — Home, *while you were away*, plan distances |
-| J1 · Hunch → thesis | ✅ Built — Research, order flow, agent with web search and fetch |
+| J0 · Daily loop | ✅ Built — Home with no session selected, *while you were away*, plan distances, the global agent |
+| J1 · Hunch → thesis | ✅ Built — Research, order flow, a global and a per-session agent with web search and fetch |
 | J2 · Thesis → plan | ✅ Built — falsifiability gate; the agent drafts, never arms |
 | J3 · Plan executes while away | 🟡 **Paper only** — monitor, execution and notifications built; proven on seeded bars, not yet driven by a live stream; the app must be running |
 | J4 · Structure moved → critique | 🟡 Drift measured and acted on; the agent's critique and the reconfirm queue (J-4) are not built |
@@ -117,7 +117,9 @@ what needs them — without opening a session.
 
 | Step | Built? |
 |---|---|
-| Home opens first, not the last session | ✅ `home-page.tsx` |
+| Home opens first, not the last session | ✅ `home-page.tsx`; no session is selected at launch (2026-10-31) — the last one is offered as one click back |
+| Session cards say *armed*, *in position* or *idle* — never idle while a plan is armed or a position open | ✅ 2026-10-31 (it counted frozen strategies, so it read *idle*) |
+| Ask the agent anything without opening a session | ✅ the global agent, `agent-mascot.tsx` (2026-10-31) |
 | "Needs your attention", derived not stored, disappears when empty | ✅ |
 | "While you were away" from the audit log | ✅ |
 | Per session: how far price sits from each armed plan's levels | ✅ `plan-watch-panel.tsx` (2026-08-01) |
@@ -145,7 +147,7 @@ they had not seen, **anchored to a level the engine can resolve later.**
 
 | Step | Built? |
 |---|---|
-| Ask the agent about a pair, in chat, from any surface | ✅ `chat-drawer.tsx` |
+| Ask the agent about a pair, in chat | ✅ the session agent, `chat-drawer.tsx`, on that session's surfaces; the global agent everywhere else |
 | Agent reads the real chart the owner is looking at | ✅ `research-view.ts` |
 | Agent reads order flow — CVD, volume profile, derivatives, basis | ✅ |
 | Agent searches and reads the web | ✅ `web_search` + `fetch_url` |
