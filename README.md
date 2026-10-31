@@ -29,35 +29,59 @@ code executes exactly what you signed — and nothing else.**
 
 ## A quick tour
 
-**1. First launch.** Generate a signing keypair, connect the venue, add your Anthropic key.
-Every key is encrypted with your OS keychain before it touches disk.
+*Screenshots are from simulated mode with demo plans, taken offline — which is why the market
+panels are empty.*
+
+**1. First launch.** Connect an AI provider and you're in. An exchange account is optional
+while you trade in simulated mode. Every key is encrypted with your OS keychain before it
+touches disk.
 
 <p align="center">
-  <img src="docs/images/onboarding.png" width="820" alt="Onboarding screen: generate signing keys, then enter API credentials" />
+  <img src="docs/images/onboarding.png" width="820" alt="Onboarding: the AI provider comes first; the trading venue is marked optional in simulated mode" />
 </p>
 
-**2. Locked until you unlock.** An optional Windows Hello gate. *While you were away* shows
-what the engine did — and, in red, any window when nothing was watching, because a plan
-cannot trigger while the app is closed.
+**2. Home, and the global agent.** The app opens on Home with no session selected: paper
+performance, *while you were away*, and your sessions, each badged *armed*, *in position* or
+*idle*. The mascot in the corner is the **global agent** — ask it anything that isn't about
+one pair, and it offers your sessions as one-click ways in.
 
 <p align="center">
-  <img src="docs/images/lock-screen.png" width="820" alt="Lock screen with a Windows Hello unlock button and a 'while you were away' activity feed" />
+  <img src="docs/images/home.png" width="820" alt="Home with three sessions, one armed, and the global agent's floating chat window open from the mascot in the lower-right corner" />
 </p>
 
-**3. Home.** Paper performance across sessions, engine activity, and the day's biggest movers.
-The agent sits in a drawer on every screen — and corrects itself when its data doesn't add up.
+**3. A session, and its own agent.** Inside a session the agent drawer belongs to that pair —
+its plans, journal and memory. The global agent moves aside but stays one click away. Two
+agents, never ambiguous which: the drawer is bounded by its session, the mascot is global.
 
 <p align="center">
-  <img src="docs/images/home.png" width="820" alt="Home screen with paper performance, recent engine activity and the agent chat drawer" />
+  <img src="docs/images/session.png" width="820" alt="BTC-USD session dashboard: an armed plan with entry, stop and target, engine activity, the BTC-USD agent drawer, and the mascot docked at its edge" />
 </p>
 
-**4. Research.** Charting on the analysis feed, with the agent reading the chart, searching the
+**4. Plans.** A thesis you can be wrong about, written down before the market can talk you out
+of it. Drafts can't be armed until they state assumptions, an invalidation, an expiry and a
+budget — and only you can arm one.
+
+<p align="center">
+  <img src="docs/images/plans.png" width="820" alt="Plans page with one armed plan and one draft, each showing its thesis, branches, assumptions, budget and expiry" />
+</p>
+
+**5. Research.** Charting on the analysis feed, with the agent reading the chart, searching the
 web and fetching pages through its tools. It can research, journal and draft a plan —
 it has no tool that can place, size or price an order.
 
 <p align="center">
   <img src="docs/images/research.png" width="820" alt="Research screen with a BTC-USD candlestick chart and the agent calling web_search, read_candles and fetch_url" />
 </p>
+
+**6. Quitting says what stops.** A plan can only execute while the app is running, so closing
+it tells you exactly what won't be watched.
+
+<p align="center">
+  <img src="docs/images/quit-dialog.png" width="480" alt="Quit dialog: while the app is closed, 1 armed plan can't trigger. Cancel is the default." />
+</p>
+
+There's also an optional **Windows Hello** gate at launch, with its own *while you were away*
+feed — including, in red, any window when nothing was watching.
 
 ## How it works
 
@@ -118,12 +142,19 @@ being structurally unable to lose your money on its own.
 - **Level references** — named price levels (static or derived) the engine resolves every
   bar, point-in-time, so a chart and the engine never disagree.
 - **Plan authoring + falsifiability gate** — refusals tell you exactly what's missing.
-- **Plan monitor** — each armed plan is evaluated every closed bar for expiry, invalidation,
-  drift and triggers; protective stops/targets are managed intrabar.
-- **Agentic chat (Claude)** — session-scoped tools, switchable tool catalogue, cost tracking,
-  post-trade reviews and conditional lessons.
+- **Plan monitor and paper execution** — each armed plan is evaluated every closed bar for
+  expiry, invalidation, drift and triggers. A trigger opens a paper position with the branch's
+  stop and target, managed intrabar, and the close is reviewed.
+- **Two agents** — a **global agent** (the mascot, on every screen) for anything not tied to one
+  pair, and a **session agent** (the drawer) bounded by its session's plans, journal and
+  memory. Switchable tool catalogue, cost tracking, post-trade reviews and conditional lessons.
+- **Any AI provider (in progress)** — the agent loop is the app's, behind a provider port.
+  Anthropic is the first adapter; OpenAI, OpenRouter, Gemini and local models (Ollama,
+  LM Studio) are next.
 - **Simulated and live modes** — separate databases, never blended; simulated by default.
 - **Kill switch** — blocks new entries, never blocks exits.
+- **Honest quitting** — closing the app says which armed plans and open positions stop being
+  watched, with a native fallback so the window can always close.
 - **Telegram notifications** — via a transactional outbox, so a message can't claim
   something the database didn't commit.
 - **Security-first Electron** — sandboxed renderer, strict CSP, secrets encrypted with the OS
@@ -133,8 +164,10 @@ being structurally unable to lose your money on its own.
 
 | Area | State |
 |---|---|
-| Sessions, chat, research charting, level references | ✅ Working |
+| Sessions, research charting, level references | ✅ Working |
+| Global agent (mascot) and session agents | ✅ Working |
 | Plan authoring, arming, monitoring, paper execution | ✅ Working (proven on seeded bars; live-stream verification wanted) |
+| AI providers beyond Anthropic | 🟡 Port built; OpenAI-compatible and local adapters next |
 | Calibration record | 🟡 Recording, few entries |
 | Live order placement on a venue | ❌ Not built — adapter reports `canPlaceOrders: false` |
 | Venue-side protective orders, startup reconciliation, approvals queue | ❌ Not built |
@@ -177,15 +210,17 @@ analysis comes from Binance's **public** endpoints — no Binance account needed
 | `npm test` | Run the test suite (Node's native runner, no network) |
 | `npm run typecheck` | Typecheck all TypeScript projects |
 | `npm run package:win` | Windows NSIS installer (unsigned) via `electron-builder` |
+| `npm run package:linux` / `package:mac` | AppImage / dmg — built in CI, not yet run on real machines |
 | `npm run inspect-db` | Read-only look at your local database |
 
 ## Architecture
 
 Electron + TypeScript · React + Vite + Tailwind v4 + shadcn/ui · `node:sqlite` (zero native
-dependencies) · KLineChart · `@anthropic-ai/sdk`
+dependencies) · KLineChart · an AI provider port (Anthropic adapter today)
 
-The venue and data feed sit behind a port (`src/main/integrations/`), so **adding an exchange
-is an adapter, not a rewrite.** Start with [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+The venue, the data feed and the AI provider each sit behind a port (`src/main/integrations/`,
+`src/main/ai/`), so **adding an exchange or a model provider is an adapter, not a rewrite.**
+Start with [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 Start with **[`docs/README.md`](docs/README.md)** — a map of the docs and a glossary of the project's terms.
 
@@ -207,7 +242,9 @@ to start:
 - **AI provider adapters** — one OpenAI-compatible adapter covers OpenAI, OpenRouter, Ollama
   and LM Studio (and Gemini, via its compatible endpoint). Implement `src/main/ai/port.ts`.
 - **Venue adapters** — Kraken, Coinbase, Bybit, Binance spot… implement the venue port.
-- **macOS / Linux** — packaging targets and a test run.
+- **UI and UX** — the current focus: one vocabulary per state, a motion system, one component
+  set. See *Current focus* in [`docs/ROADMAP.md`](docs/ROADMAP.md).
+- **macOS / Linux** — the installers build in CI; run one on a real machine and report back.
 - **Live-stream verification** — arm a paper plan on a USD pair and report what happens.
 - Anything in [`docs/FRICTION.md`](docs/FRICTION.md).
 

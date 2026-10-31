@@ -196,11 +196,10 @@ export function listWatchedPlans(): StoredPlan[] {
 /**
  * Record that a branch fired, and cancel its OCO siblings.
  *
- * `positionId` is null while plan execution is not wired (S3-3's applying
- * half). That is a real state, not a placeholder: the branch genuinely fired
- * and genuinely opened nothing, and the UI says so. Recording it anyway is what
- * lets the calibration record (S3-6) measure trigger rate before a single
- * position has ever been opened.
+ * `positionId` is the paper position the trigger opened (S3-3), or null when
+ * none opened — e.g. refused for want of paper cash, which is audited. Null is
+ * a real state, not a placeholder: the branch genuinely fired, and recording
+ * it is what lets the calibration record (S3-6) count the trigger either way.
  */
 export function recordBranchTrigger(
   planId: number,

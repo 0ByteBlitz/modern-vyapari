@@ -108,6 +108,9 @@ outranks almost any feature.
 - **Any new main→renderer channel sanitises errors** — use `emitError`; raw API
   errors must never reach the transcript.
 - **The renderer describes, main constructs.** Never build engine JSON in the renderer.
+- **Every chat event names its conversation** (a session id, or `"general"`), and
+  every chat panel ignores the others'. Two conversations can be on screen at once,
+  and a reply can outlive a session switch.
 - **The credential vault is async** (`security/credentials.ts` and
   `integration-secrets.ts`, both through `security/cipher.ts`). Await every read
   and save: an un-awaited key in `if (!key)` is a Promise, always truthy, and
@@ -115,7 +118,7 @@ outranks almost any feature.
   write. Presence checks (`has*`) are synchronous and decrypt nothing — use them
   to ask *whether* a key exists, never a getter.
 - DB: `node:sqlite` (`DatabaseSync`), WAL, FTS5 for journal search. Schema in
-  `src/main/db/schema.ts` (**v20**), hand-rolled migrations in `db/database.ts`.
+  `src/main/db/schema.ts` (**v21**), hand-rolled migrations in `db/database.ts`.
 - **`SCHEMA_SQL` re-runs on every startup**, including against an old database.
   An index on a column introduced by a migration belongs in the migration block.
   Test migrations against a real on-disk DB of the previous version.
@@ -136,7 +139,7 @@ outranks almost any feature.
 
 | Area | Where | Notes |
 |---|---|---|
-| Entry | `src/main/main.ts` | Hardening: navigation/window-open guards, permission handler denies all |
+| Entry | `src/main/main.ts` | Hardening: navigation/window-open guards, permission handler denies all. Clears the session selection at launch; `services/quit-guard.ts` asks before closing (themed, with a native fallback) |
 | IPC | `src/main/ipc/` | One module per domain; `index.ts` registers; `safe.ts` is the internal↔user boundary |
 | Preload | `src/preload/preload.ts` | The bridge — separate trust boundary |
 | Plans (the product) | `src/main/plans/` | `trade-plan.ts` (falsifiability gate), `plan-service.ts` (arming), `plan-monitor.ts` (per-bar decision), `level-reference.ts` |
@@ -145,7 +148,8 @@ outranks almost any feature.
 | Venue seam | `src/main/integrations/venue/` | Port, adapters (`revolutx`, `paper`), registry, declared capabilities, `isConfigured()` |
 | AI provider seam | `src/main/ai/` | `port.ts`, `registry.ts`, `anthropic.ts` — the only place a model vendor's SDK is imported |
 | Paper engine | `src/main/paper/` | Backtester's fill model against the live stream; protective levels intrabar |
-| Agent | `src/main/agent/` | `chat.ts` (provider-neutral agent loop), `tools.ts` + `tool-registry.ts`, `context.ts`, `review.ts` |
+| Agent | `src/main/agent/` | `chat.ts` (provider-neutral agent loop; a session conversation or the *general* one), `tools.ts` + `tool-registry.ts` (`SESSION_SCOPED_TOOLS`), `context.ts`, `review.ts` |
+| Agent UI | `src/renderer/components/` | `agent-mascot.tsx` — the global agent, every surface; `chat-drawer.tsx` — the session agent, only on that session's surfaces (`shared/surfaces.ts`) |
 | Risk | `src/main/risk/` | Pure 8-gate `risk-engine.ts`; `kill-switch.ts` blocks entries, never exits |
 | Security | `src/main/security/` | `safeStorage` credential vault, Windows Hello gate |
 | Notifications | `src/main/notify/` | Transactional outbox → Telegram |

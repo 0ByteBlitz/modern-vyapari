@@ -168,7 +168,7 @@ export function PlanDetail({
       {(plan.state === "planned" || plan.state === "triggered") && (
         <p className={`detail-watch ${monitored ? "" : "detail-watch-off"}`}>
           {monitored
-            ? "Watched on every closed bar. Expiry and invalidation act; entries don't open positions yet."
+            ? "Watched on every closed bar. A trigger opens a paper position with the branch's stop and target."
             : "Not being watched — the session is paused or archived."}
         </p>
       )}
