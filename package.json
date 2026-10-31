@@ -42,7 +42,7 @@
     "package:win": "npm run build && electron-builder --win"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.112.3",
+    "@anthropic-ai/sdk": "^1.3.0",
     "@radix-ui/react-select": "^2.4.1",
     "@radix-ui/react-slot": "^1.1.1",
     "class-variance-authority": "^0.7.1",
