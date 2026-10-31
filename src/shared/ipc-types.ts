@@ -491,3 +491,25 @@ export interface StrategyRow {
   last_evaluated_at: number | null;
   created_at: number;
 }
+
+/* ── AI models ──────────────────────────────────────────────────────── */
+
+/**
+ * A model the active AI provider offers, in the app's own shape — not any one
+ * vendor's. The field names match what the chat panel has always read, so the
+ * Anthropic adapter maps 1:1 and other adapters map into it.
+ */
+export interface AiModelInfo {
+  id: string;
+  display_name: string;
+  /** Which provider offers it (`"anthropic"`, …). */
+  provider: string;
+  capabilities: {
+    /** Adaptive reasoning controlled by an effort level. */
+    effort: { supported: boolean };
+    /** Extended thinking controlled by a token budget. */
+    thinking: { supported: boolean };
+  };
+  /** The adapter's suggested default — its cheapest capable model. */
+  recommended?: boolean;
+}

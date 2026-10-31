@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, isError, type ChatMessage, errorText } from "@/lib/api";
+import { api, isError, type ChatMessage, type AiModelInfo, errorText } from "@/lib/api";
 import { Send, Bot, User, Loader2, Terminal, AlertTriangle, Trash2, BookmarkPlus, Wrench, RotateCw } from "lucide-react";
 import { ToolsMenu } from "@/components/tools-menu";
 import { renderMarkdown } from "@/lib/markdown";
@@ -73,7 +73,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   const [notice, setNotice] = useState<string | null>(null);
   const [toolsOpen, setToolsOpen] = useState(false);
   
-  const [availableModels, setAvailableModels] = useState<any[]>([]);
+  const [availableModels, setAvailableModels] = useState<AiModelInfo[]>([]);
   /* "loading" and "failed" are different facts. An expired key used to come
      back as an empty list, which this panel rendered as "Loading models..."
      for ever. */
@@ -87,7 +87,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   // Fetch available models — on open, on Retry, and whenever the key is saved
   const loadModels = useCallback(async () => {
     setModelsError(null);
-    const res = await api.getAnthropicModels();
+    const res = await api.getAiModels();
     if (isError(res)) {
       setAvailableModels([]);
       setModelsError(errorText(res));
@@ -116,10 +116,9 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
     if (savedModel && availableModels.find(m => m.id === savedModel)) {
       setModel(savedModel);
     } else {
-      // Default to the most cost-efficient model (Haiku) if available
-      const haikuModel = availableModels.find((m: any) => m.id.includes("haiku"));
-      if (haikuModel) setModel(haikuModel.id);
-      else setModel(availableModels[0].id);
+      // Default to the provider's recommended (most cost-efficient) model.
+      const recommended = availableModels.find((m) => m.recommended);
+      setModel((recommended ?? availableModels[0])!.id);
     }
 
     if (savedEffort) setEffort(savedEffort);
@@ -211,9 +210,8 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
     setIsStreaming(true);
 
     const selectedModel = availableModels.find(m => m.id === model);
-    const capabilities = selectedModel?.capabilities || {};
-    const adaptive = capabilities.effort?.supported ?? false;
-    const extended = capabilities.thinking?.supported ?? false;
+    const adaptive = selectedModel?.capabilities.effort.supported ?? false;
+    const extended = selectedModel?.capabilities.thinking.supported ?? false;
 
     api.sendChatMessage(
       sessionId, 

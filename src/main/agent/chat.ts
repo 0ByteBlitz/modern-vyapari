@@ -1,8 +1,6 @@
 import { WebContents } from "electron";
-import Anthropic from "@anthropic-ai/sdk";
 import { getDb } from "../db/database";
 import { recordUsage } from "./usage";
-import * as credentials from "../security/credentials";
 import * as derivatives from "../data/derivatives";
 import * as embeddedBrowser from "../browser/embedded-browser";
 import * as agentFetch from "../browser/agent-fetch";
@@ -16,6 +14,8 @@ import { getSessionById } from "../sessions/service";
 import { buildSessionContext } from "./context";
 import { SESSION_TOOLS, PHASE2_TOOLS, PLAN_TOOLS, CONTEXT_TOOLS, executeSessionTool } from "./tools";
 import { disabledToolIds } from "./tool-registry";
+import { aiProvider } from "../ai/registry";
+import type { AiMessage, AiModelInfo, AiToolResult, AiToolSpec } from "../ai/port";
 
 export interface ChatMessage {
   id?: number;
@@ -24,15 +24,9 @@ export interface ChatMessage {
   timestamp: number;
 }
 
-/** Anthropic message content blocks — kept loose since the SDK's own types
- *  are broader than we need here; we only ever build/read the shapes below. */
-type ApiMessage = { role: "user" | "assistant"; content: unknown };
-
-/** tool_result content is normally a JSON string, except for screenshot_browser
- *  which needs an actual image content block for the vision API to see it. */
-type ToolResultContent =
-  | string
-  | Array<{ type: "text"; text: string } | { type: "image"; source: { type: "base64"; media_type: string; data: string } }>;
+/** The conversation in the app's own message format. Whatever the provider's
+ *  wire format is, the adapter translates (see `src/main/ai/port.ts`). */
+type ApiMessage = AiMessage;
 
 const log = createLogger("chat");
 
@@ -57,14 +51,14 @@ export async function compactChatHistory(sessionId: number): Promise<{ ok: boole
     return { ok: false, error: "Not enough messages to compact yet (needs at least 5 messages)." };
   }
 
-  const apiKey = (await credentials.getAnthropicApiKey());
-  if (!apiKey) {
-    return { ok: false, error: "Anthropic API key is not configured. Please set your API key in Settings." };
+  const provider = aiProvider();
+  if (!provider.isConfigured()) {
+    return { ok: false, error: `${provider.info.displayName} isn't configured. Add the key in Settings › Integrations.` };
   }
 
   const model = await resolveFastModel();
   if (!model) {
-    return { ok: false, error: "Could not resolve an active model from Anthropic API. Please check your internet connection or API key in Settings." };
+    return { ok: false, error: `Could not get a model from ${provider.info.displayName}. Check your connection or the key in Settings › Integrations.` };
   }
 
   // Keep last 4 messages active, compact the older ones
@@ -77,18 +71,14 @@ export async function compactChatHistory(sessionId: number): Promise<{ ok: boole
 
   let summaryText = "";
   try {
-    const anthropic = new Anthropic({ apiKey });
-    const response = await anthropic.messages.create({
+    const res = await provider.complete({
       model,
-      max_tokens: 1024,
+      maxTokens: 1024,
       system: "You are a concise technical summarizer for a crypto trading bot session. Summarize the key strategy ideas, indicator parameters, trade decisions, and open questions discussed in this conversation snippet into a clean, structured bulleted summary. Focus on facts, specs, and user preferences.",
-      messages: [{ role: "user", content: transcriptText }],
+      prompt: transcriptText,
     });
-    recordUsage(model, "other", response.usage, sessionId);
-    const textBlock = response.content.find((b) => b.type === "text");
-    if (textBlock && textBlock.type === "text") {
-      summaryText = textBlock.text;
-    }
+    recordUsage(model, "other", res.usage, sessionId);
+    summaryText = res.textParts[0] ?? "";
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     log.warn("Compaction LLM call failed:", msg);
@@ -126,41 +116,26 @@ export async function compactChatHistory(sessionId: number): Promise<{ ok: boole
 }
 
 /**
- * List the models this API key can actually use.
+ * The models the active AI provider offers, for the model picker.
  *
- * Was a hand-rolled `fetch` against /v1/models with no `limit`, so it returned
- * the API's default page (20) and silently dropped the rest — and it pinned
- * `anthropic-version` by hand, which will drift from whatever the SDK sends on
- * every other call. The SDK's own client paginates and keeps the version
- * header in one place, and it returns `capabilities` typed, which is what the
- * renderer switches effort/thinking on.
+ * Throws on failure. The picker used to receive an empty list for an expired
+ * key and render it as "Loading models..." for ever; a failure must cross
+ * `safe()` as a classified error instead (a rejected key reads as CREDENTIALS).
  */
-export async function listAnthropicModels(): Promise<Anthropic.ModelInfo[]> {
-  const apiKey = (await credentials.getAnthropicApiKey());
-  if (!apiKey) throw new AppError("CREDENTIALS", "Add your Anthropic key to use the agent.");
-
-  const anthropic = new Anthropic({ apiKey });
-  const models: Anthropic.ModelInfo[] = [];
-  for await (const model of anthropic.models.list({ limit: 100 })) {
-    models.push(model);
+export async function listAiModels(): Promise<AiModelInfo[]> {
+  const provider = aiProvider();
+  if (!provider.isConfigured()) {
+    throw new AppError("CREDENTIALS", `Add your ${provider.info.displayName} key to use the agent.`);
   }
-  return models;
+  return provider.listModels();
 }
 
-/**
- * Non-throwing variant for background jobs (compaction, review), which degrade
- * rather than fail when no model can be listed.
- *
- * The model PICKER must not use this. It used to: an expired key came back as
- * an empty list, which the picker cannot tell apart from "still loading", so it
- * showed "Loading models..." for ever while chat quietly fell back to a
- * hard-coded model. The picker calls `listAnthropicModels`, whose failure
- * crosses `safe()` as a classified error — a rejected key reads as CREDENTIALS.
- */
-export async function getAnthropicModels(): Promise<Anthropic.ModelInfo[]> {
-  if (!(await credentials.getAnthropicApiKey())) return [];
+/** Non-throwing variant for background jobs (compaction, review), which degrade
+ *  rather than fail when no model can be listed. The picker must not use it. */
+export async function getAiModels(): Promise<AiModelInfo[]> {
+  if (!aiProvider().isConfigured()) return [];
   try {
-    return await listAnthropicModels();
+    return await listAiModels();
   } catch (err) {
     log.error("Error fetching models", err);
     return [];
@@ -168,20 +143,15 @@ export async function getAnthropicModels(): Promise<Anthropic.ModelInfo[]> {
 }
 
 /**
- * Dynamically resolves the best fast model for background tasks (compaction, review)
- * from the live models returned by the Anthropic API. Returns null if no model could
- * be fetched from the API, warning the caller instead of using a hardcoded fallback string.
+ * The model for background tasks (compaction, review): the provider's
+ * recommended — cheapest capable — model, else its first. Null when nothing can
+ * be listed; callers skip the task rather than guess a model id.
  */
 export async function resolveFastModel(): Promise<string | null> {
-  const models = await getAnthropicModels();
-  if (models.length > 0) {
-    const haiku = models.find((m) => m.id.includes("haiku"));
-    if (haiku) return haiku.id;
-    const sonnet = models.find((m) => m.id.includes("sonnet"));
-    if (sonnet) return sonnet.id;
-    return models[0]?.id ?? null;
-  }
-  log.warn("Could not retrieve models from Anthropic API. Task skipped/degraded because model could not be found.");
+  const models = await getAiModels();
+  const pick = models.find((m) => m.recommended) ?? models[0];
+  if (pick) return pick.id;
+  log.warn("Could not retrieve models from the AI provider. Task skipped because no model could be found.");
   return null;
 }
 
@@ -248,73 +218,11 @@ const FETCH_URL_TOOL = {
   },
 };
 
-/**
- * Anthropic's server-side web search.
- *
- * Added because the agent had no search primitive at all: asked for "ARB news",
- * it had to invent a URL like `duckduckgo.com/html/?q=…` and feed it to
- * `fetch_url`. Search-results pages are exactly the kind that return a JS shell
- * or a block page, which then triggered the Browserbase fallback — burning
- * cloud-browser minutes on a *search* rather than on a hard page.
- *
- * This runs on Anthropic's side and returns results with citations. It does NOT
- * replace `fetch_url`: that still reads specific pages in an isolated,
- * cookie-less session the user's browsing can't leak into. Search to find,
- * fetch to read.
- *
- * `max_uses` is a cost cap — each search is billed on top of tokens, and an
- * agentic loop with 15 tool rounds could otherwise run a lot of them per turn.
- */
-const WEB_SEARCH_TOOL = {
-  type: "web_search_20260318" as const,
-  name: "web_search" as const,
-  max_uses: 5,
-  /**
-   * `allowed_callers: ["direct"]` — the model calls search itself.
-   *
-   * Recent `web_search` versions default to allowing the **code-execution**
-   * caller as well, so the model can filter results in code before they reach
-   * its context ("dynamic filtering"). That requires *programmatic tool
-   * calling*, which Haiku 4.5 does not support — and the API rejects the whole
-   * request rather than degrading:
-   *
-   *   'claude-haiku-4-5-…' does not support programmatic tool calling. The
-   *   following tools have `allowed_callers` that require it: web_search.
-   *
-   * The 400 named the fix, and it is the one taken here. Set unconditionally
-   * rather than per model, for the same reason `noWebSearch` exists: `/v1/models`
-   * publishes no capability flag for this, so support cannot be checked up
-   * front — and the failure mode is a dead request, not a missing feature.
-   *
-   * **The cost is real and accepted:** on models that *do* support it, results
-   * now arrive unfiltered and spend more context. Worth it for search that
-   * works on every model the owner might pick, including the cheap one the
-   * review agent runs on.
-   */
-  allowed_callers: ["direct"] as const,
-};
-
-/**
- * Models that rejected the server-side search tool.
- *
- * There is no capability flag for server tools in `/v1/models` (the response
- * covers effort, thinking, citations, images, PDFs, batch, structured outputs —
- * not this), so support can't be checked up front. If a model refuses the tool
- * the whole request 400s, which would take chat down completely rather than
- * degrading. Remember the refusal and drop the tool for that model from then
- * on; the user's next message just works, without search.
- */
-const noWebSearch = new Set<string>();
-
 /** Tools this model has refused, so the UI can say "unavailable" rather than
- *  showing them as something the owner switched off. */
+ *  showing them as something the owner switched off. Provider-specific — e.g. a
+ *  model that rejected Anthropic's server-side web search. */
 export function unsupportedToolsFor(model: string): string[] {
-  return noWebSearch.has(model) ? ["web_search"] : [];
-}
-
-function rejectedWebSearch(err: unknown): boolean {
-  const text = (err instanceof Error ? err.message : String(err)).toLowerCase();
-  return text.includes("web_search") || (text.includes("tools") && text.includes("type"));
+  return aiProvider().unsupportedTools(model);
 }
 
 const BROWSER_NAVIGATE_TOOL = {
@@ -646,56 +554,25 @@ export async function sendChatMessage(
     );
   }
 
-  // 2. Initialize Anthropic client with Prompt Caching header (90% input token discount)
-  const apiKey = (await credentials.getAnthropicApiKey());
-  if (!apiKey) {
+  // 2. The active AI provider. Its key, wire format and caching are its own.
+  const provider = aiProvider();
+  if (!provider.isConfigured()) {
     emitError(
       sender,
       "chat:error",
       new AppError("CREDENTIALS", "The AI isn't configured yet.", {
-        hint: "Add your Anthropic key in Settings › Integrations.",
+        hint: `Add your ${provider.info.displayName} key in Settings › Integrations.`,
       })
     );
     return;
   }
 
-  /* Prompt caching is GA — the `prompt-caching-2024-07-25` beta header is a
-     leftover from when it wasn't, and pinning a stale beta on every request is
-     a slow-acting trap. `cache_control` on the system block is all it needs. */
-  const anthropic = new Anthropic({ apiKey });
-
-  /* Two blocks, not one concatenated string, and the split is the whole point.
-     Caching is a PREFIX match in render order tools -> system -> messages, so a
-     `cache_control` breakpoint on a system block caches the tool definitions
-     with it — and any byte that changes before that breakpoint invalidates the
-     lot.
-
-     `buildSessionContext` changes on almost every call: it recomputes
-     `expires_at - Date.now()` per armed plan and the session's age in days, on
-     top of trade stats and the latest journal lines. Concatenated ahead of the
-     breakpoint, that volatile tail was invalidating the tools and the base
-     prompt on every message — a cold prefix every turn, with nothing anywhere
-     reporting it.
-
-     Split, the stable half carries the breakpoint and the volatile half sits
-     after it. The cached prefix is then identical for EVERY session, so it is
-     shared across them rather than being one entry per session. */
+  /* The system prompt in two parts, and the split is the point: the stable half
+     is identical for every session, the volatile half (`buildSessionContext`,
+     which recomputes plan expiries and session age on every call) is not. A
+     provider with prompt caching puts its breakpoint between them, so the
+     volatile tail cannot invalidate the cached tools and base prompt. */
   const sessionContext = buildSessionContext(sessionId);
-
-  /* Thinking budget, used only on the `thinking` path. The API requires
-     budget_tokens >= 1024 AND strictly less than max_tokens — the old code
-     computed `max_tokens = min(budget + 2048, 8192)`, which at effort "high"
-     gave budget 8192 and max_tokens 8192 and was rejected outright. */
-  let budgetTokens = 0;
-  if (params.effort === "low") budgetTokens = 1024;
-  else if (params.effort === "medium") budgetTokens = 4096;
-  else if (params.effort === "high") budgetTokens = 8192;
-
-  const EFFORT_LEVELS = ["low", "medium", "high", "xhigh", "max"] as const;
-  type EffortLevel = (typeof EFFORT_LEVELS)[number];
-  const effort: EffortLevel | null = (EFFORT_LEVELS as readonly string[]).includes(params.effort)
-    ? (params.effort as EffortLevel)
-    : null;
 
   // Sliding context window: keep the most recent MAX_CONTEXT_MESSAGES (20)
   const MAX_CONTEXT_MESSAGES = 20;
@@ -738,6 +615,10 @@ export async function sendChatMessage(
     return;
   }
 
+  /* Created once, before any retry: a rejected web search fails before any
+     content streams or any tool round runs, so the conversation is unchanged. */
+  const conv = provider.createConversation(apiMessages);
+
   let fullAssistantResponse = "";
   /* Set when a rejected web_search sends us round again, so the retry does not
      re-emit the notice and cannot loop. */
@@ -746,87 +627,56 @@ export async function sendChatMessage(
   attempt: for (;;) {
   try {
     for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
-      /* Typed, not `any`. The previous `requestParams: any` is precisely why a
-         parameter that does not exist on this endpoint shipped and 400'd at
-         runtime instead of failing the build. */
-      const requestParams: Anthropic.MessageStreamParams = {
+      /* Filtered by the owner's choices (`tool-registry`). Read per request
+         rather than cached, so toggling a tool takes effect on the next message
+         instead of the next restart. */
+      const disabled = disabledToolIds();
+      const tools = ([
+        ...SESSION_TOOLS,
+        ...PLAN_TOOLS,
+        ...CONTEXT_TOOLS,
+        ...PHASE2_TOOLS,
+        DERIVATIVES_TOOL,
+        FETCH_URL_TOOL,
+        BROWSER_READ_TOOL,
+        BROWSER_SCREENSHOT_TOOL,
+        BROWSER_NAVIGATE_TOOL,
+        RESEARCH_SCREENSHOT_TOOL,
+        RESEARCH_READ_TOOL,
+      ] as AiToolSpec[]).filter((t) => !disabled.has(t.name));
+
+      const step = await provider.step(conv, {
         model: params.model,
-        /* With extended thinking, max_tokens is the budget PLUS room for the
-           visible answer, and must be strictly greater than budget_tokens. */
-        max_tokens: params.capabilities?.extended && budgetTokens > 0 ? budgetTokens + 4096 : 4096,
-        system: [
-          { type: "text", text: BASE_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } },
-          /* No breakpoint: this is the volatile half, and it is small. */
-          { type: "text", text: sessionContext },
-        ],
-        messages: apiMessages as Anthropic.MessageParam[],
-        /* Filtered by the owner's choices (`tool-registry`) and by what this
-           model will accept. Read per request rather than cached, so toggling a
-           tool takes effect on the next message instead of the next restart. */
-        tools: [
-          ...SESSION_TOOLS,
-          ...PLAN_TOOLS,
-          ...CONTEXT_TOOLS,
-          ...PHASE2_TOOLS,
-          DERIVATIVES_TOOL,
-          ...(noWebSearch.has(params.model) ? [] : [WEB_SEARCH_TOOL]),
-          FETCH_URL_TOOL,
-          BROWSER_READ_TOOL,
-          BROWSER_SCREENSHOT_TOOL,
-          BROWSER_NAVIGATE_TOOL,
-          RESEARCH_SCREENSHOT_TOOL,
-          RESEARCH_READ_TOOL,
-        ].filter((t) => !disabledToolIds().has((t as { name?: string }).name ?? "")) as Anthropic.ToolUnion[],
-      };
-
-      /* Effort and extended thinking are alternative ways to spend reasoning
-         tokens, never both. Effort is NOT a top-level parameter — it lives in
-         `output_config`, which is what the old `requestParams.effort = …` line
-         got wrong: the SDK forwarded an unknown field and the API rejected the
-         whole request. */
-      if (params.capabilities?.adaptive && effort) {
-        requestParams.output_config = { effort };
-      } else if (params.capabilities?.extended && budgetTokens > 0) {
-        requestParams.thinking = { type: "enabled", budget_tokens: budgetTokens };
-      }
-
-      const stream = anthropic.messages.stream(requestParams);
-
-      for await (const chunk of stream) {
-        if (chunk.type === "content_block_delta" && chunk.delta.type === "text_delta") {
-          fullAssistantResponse += chunk.delta.text;
-          emitTo(sender, "chat:chunk", { text: chunk.delta.text });
-        }
-        /* Server-side tools (web_search) execute on Anthropic's side, so they
-           never reach `dispatchTool` and would otherwise be completely
-           invisible — the user sees a pause, then an answer citing sources
-           that appeared from nowhere. Emit the same tool marker the local
-           tools use so the transcript shows the search happening. */
-        if (chunk.type === "content_block_start" && chunk.content_block.type === "server_tool_use") {
-          const marker = `\n\n[[tool:${chunk.content_block.name}]]\n\n`;
+        system: { stable: BASE_SYSTEM_PROMPT, volatile: sessionContext },
+        tools,
+        webSearch: !disabled.has("web_search"),
+        effort: params.effort ?? null,
+        reasoning: {
+          adaptive: Boolean(params.capabilities?.adaptive),
+          extended: Boolean(params.capabilities?.extended),
+        },
+        onText: (text) => {
+          fullAssistantResponse += text;
+          emitTo(sender, "chat:chunk", { text });
+        },
+        /* Provider-side tools (web search) never reach `dispatchTool`; emit the
+           same marker the local tools use so the transcript shows them. */
+        onServerTool: (name) => {
+          const marker = `\n\n[[tool:${name}]]\n\n`;
           fullAssistantResponse += marker;
           emitTo(sender, "chat:chunk", { text: marker });
-        }
-      }
-
-      const finalMessage = await stream.finalMessage();
+        },
+      });
       /* Recorded per ITERATION, not per turn. The agentic loop can run many
          requests behind one visible answer, and counting only the last would
          understate a tool-heavy turn by most of its cost. */
-      recordUsage(params.model, "chat", finalMessage.usage, sessionId);
+      recordUsage(params.model, "chat", step.usage, sessionId);
 
-      if (finalMessage.stop_reason !== "tool_use") {
-        break; // done — no more tool calls requested
-      }
-
-      // Inline discriminant check — TS narrows this to the tool_use member of
-      // the SDK's ContentBlock union automatically (no custom type needed).
-      const toolUseBlocks = finalMessage.content.filter((b) => b.type === "tool_use");
-
-      if (toolUseBlocks.length === 0) break; // defensive: shouldn't happen if stop_reason is tool_use
+      const toolUseBlocks = step.toolCalls;
+      if (toolUseBlocks.length === 0) break; // done — no more tool calls requested
 
       // Execute every requested tool call, in order, before continuing.
-      const toolResultBlocks: { type: "tool_result"; tool_use_id: string; content: ToolResultContent; is_error?: boolean }[] = [];
+      const toolResultBlocks: AiToolResult[] = [];
       setAgentActing(true);
       try {
         for (const toolUse of toolUseBlocks) {
@@ -865,8 +715,7 @@ export async function sendChatMessage(
             ) {
               const shot = result as { url: string; title: string; base64: string; mediaType: string };
               toolResultBlocks.push({
-                type: "tool_result",
-                tool_use_id: toolUse.id,
+                callId: toolUse.id,
                 content: [
                   { type: "text", text: `Screenshot of "${shot.title}" (${shot.url})` },
                   { type: "image", source: { type: "base64", media_type: shot.mediaType, data: shot.base64 } },
@@ -875,11 +724,7 @@ export async function sendChatMessage(
               continue;
             }
 
-            toolResultBlocks.push({
-              type: "tool_result",
-              tool_use_id: toolUse.id,
-              content: JSON.stringify(result),
-            });
+            toolResultBlocks.push({ callId: toolUse.id, content: JSON.stringify(result) });
           } catch (e) {
             const message = e instanceof Error ? e.message : String(e);
             log.error(`Tool "${toolUse.name}" failed:`, message);
@@ -887,22 +732,16 @@ export async function sendChatMessage(
             const errMarker = `\n\n[[toolerror:${toolUse.name}:${message.replace(/[\r\n]+/g, " ").slice(0, 200)}]]\n\n`;
             fullAssistantResponse += errMarker;
             emitTo(sender, "chat:chunk", { text: errMarker });
-            toolResultBlocks.push({
-              type: "tool_result",
-              tool_use_id: toolUse.id,
-              content: `Error: ${message}`,
-              is_error: true,
-            });
+            toolResultBlocks.push({ callId: toolUse.id, content: `Error: ${message}`, isError: true });
           }
         }
       } finally {
         setAgentActing(false);
       }
 
-      // Persist both sides of the tool exchange into the working conversation
-      // so the next iteration (and Claude) sees its own prior tool calls.
-      apiMessages.push({ role: "assistant", content: finalMessage.content });
-      apiMessages.push({ role: "user", content: toolResultBlocks });
+      // Append the results so the next iteration sees its own prior tool calls.
+      // (The provider already appended the assistant turn in `step`.)
+      provider.addToolResults(conv, toolResultBlocks);
 
       if (iteration === MAX_TOOL_ITERATIONS - 1) {
         const stopMessage = `\n\n*[Stopped after ${MAX_TOOL_ITERATIONS} tool-call rounds to avoid a runaway loop. Ask me to continue if needed.]*\n`;
@@ -945,9 +784,8 @@ export async function sendChatMessage(
        streams: `fullAssistantResponse` is empty and no tool round has run, so
        nothing is duplicated. Guarded by `retriedWithoutSearch` so one refusal
        can never become a loop. */
-    if (rejectedWebSearch(err) && !retriedWithoutSearch) {
+    if (!retriedWithoutSearch && provider.rejectedWebSearch(err, params.model)) {
       retriedWithoutSearch = true;
-      noWebSearch.add(params.model);
       log.warn(`Model ${params.model} rejected web_search — retrying without it.`);
       /* A notice, not an error: the turn has not failed, it is proceeding with
          one capability fewer. */
