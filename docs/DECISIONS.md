@@ -71,6 +71,7 @@ plan path and these are still the fastest way in. Do not build on them.
 - [The first position this app has ever opened (S1-2, 2026-08-05)](#the-first-position-this-app-has-ever-opened-s1-2-2026-08-05)
 - [Simulated and live are app modes, not per-plan flags (owner decision, 2026-08-05)](#simulated-and-live-are-app-modes-not-per-plan-flags-owner-decision-2026-08-05)
 - [Going public (2026-10-31) — the kill switch that threw, and four more](#going-public-2026-10-31--the-kill-switch-that-threw-and-four-more)
+- [Which session am I in? (2026-10-31) — "idle" plans, a borrowed chat, and a quit box](#which-session-am-i-in-2026-10-31--idle-plans-a-borrowed-chat-and-a-quit-box)
 
 ---
 
@@ -710,4 +711,39 @@ reports success first — `setup:saveAnthropicApiKey` would have told the chat p
 to reload with the key being replaced. Every call site was audited, not just the
 ones TypeScript flagged; the main vault got its first tests (mutation-checked);
 and `CLAUDE.md` now carries the rule.
+
+## Which session am I in? (2026-10-31) — "idle" plans, a borrowed chat, and a quit box
+
+Three defects of one shape, found in one evening by looking at the UI rather
+than the code: **the screen answered a question about state with a value from
+somewhere else.**
+
+**"Armed" counted strategies.** Home and Portfolio read the armed count from the
+`strategies` table, frozen since 30 July, so it was always 0. A session with two
+armed plans and an open position was badged **IDLE**, and Home said "0 armed
+strategies" — the armed-vs-idle ambiguity, in the direction that hides risk. It
+now counts plans in `planned`, and the card says *in position*, *armed*, both, or
+*idle* — never idle while either exists. The same pass found "nothing open" on
+Portfolio inferred from zero unrealised P&L, so an unpriced position read as
+nothing open beside a Cash cell saying the opposite; and a titlebar version
+hard-coded to "0.1.0" on an alpha.5 build.
+
+**The agent borrowed the last session's chat.** The selection was persisted and
+restored, so the app opened on Home with the agent drawer showing a pair's
+conversation; going back to Home or Portfolio from a session kept it there too.
+Now the selection is cleared at launch, a session's chat lives only on its own
+surfaces, and everything else talks to the **global agent** — its own history,
+its own context, and only the tools that need no session (a session tool called
+from it would have written a journal row against session 0). Chat events gained a
+conversation id on the way: a reply streaming across a session switch had been
+landing in the next session's transcript. Design: `ARCHITECTURE.md` §12.
+
+**The quit box was true of no phase.** The native dialog said *"In later phases,
+open positions will remain on the exchange…"* — on a build where nothing reaches
+an exchange and an armed plan simply stops being watched. It is now the app's own
+dialog and says what actually stops, with counts read at the moment of asking;
+unreadable counts say so rather than "nothing". **A themed dialog that fails to
+appear would be a close button that does nothing**, so main falls back to the
+native box when the renderer is loading, crashed, or silent for 1.5 s, and the
+dialog acknowledges only after it has rendered.
 
