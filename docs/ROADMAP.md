@@ -41,16 +41,70 @@ Anthropic SDK 1.x · `@types/node` 24 · CodeRabbit review rules · **AI provide
 - **S2-4 Ichimoku offsets test** — pin all five lines against a known reference.
 - **L-1 packaging for macOS and Linux** — `package:linux` / `package:mac` build in CI; the installers have not been run on a real machine.
 
-**Vendor neutrality** — no feature locked to one vendor (design: `ARCHITECTURE.md`, *Vendor neutrality*)
+**Current focus: UI and UX** — modern, consistent, calm. Every item names the
+journey step it serves; a screen that *looks* finished but states the wrong thing
+is still the first thing to fix. Theming and light mode stay deferred (§1): this
+work is what settles the surfaces they would theme.
+
+- **Landing now:** themed quit dialog that says what quitting stops (J3 — *armed
+  plans can't trigger while the app is closed*), with a native fallback so the
+  window is always closable · "armed" counts plans, so a session with armed plans
+  no longer reads *idle* (J0) · titlebar version from `package.json` · motion
+  tokens, reduced-motion support, one focus ring · the app opens on Home with
+  no session, and the agent is a **general conversation** until one is opened
+  (J0, J1).
+- **U-1 One word per state** (J0, J6) — the mode reads *simulated* in the
+  titlebar, *PAPER* in the toolbar and *paper mode* on Home. Pick one vocabulary
+  and use it everywhere; live stays loud. Remaining *strategy* wording on screen
+  goes with it — that path is frozen.
+- **U-2 Motion system** (all journeys) — `--dur-*` / `--ease-*` tokens exist;
+  move the ~10 literal durations and the chat drawer, surface switches, list
+  inserts and price ticks onto them. Motion says *appeared* or *changed*, never
+  decorates, and never delays a number.
+- **U-3 One component set** (all journeys) — two button systems (`.btn` classes
+  and the shadcn `Button` in 8 files), ~340 inline `style={{}}` props, six
+  empty-state variants and three loading treatments. Converge on one Button,
+  Dialog, EmptyState and Skeleton, built on the tokens in `index.css`.
+- **U-4 No native dialogs** (J2, J3) — `alerts-page.tsx` still uses
+  `confirm()`. A themed confirm built on the quit dialog's modal replaces it.
+  *Good first contribution.*
+- **U-5 Layout gaps** (J0, J1) — the Home sessions grid and the Portfolio stat
+  grid leave lighter dead cells; *Needs your attention* shows scroll arrows for a
+  single item; the two chart defects in `FRICTION.md`.
+- **U-6 Keyboard first** (J0, J2) — a command palette (Ctrl/⌘+K) for surfaces,
+  sessions and plans; documented shortcuts; a contrast pass on `--text-faint` and
+  `--text-ghost` against the surfaces (WCAG AA).
+- **U-7 Loading and feedback** (J0, J3) — skeletons instead of *Loading…*, one
+  toast system for alerts and confirmations, and an honest *stale* state on any
+  number whose feed has stopped.
+- **U-8 The global agent as a mascot** (J0, J1) — on Home, with no session
+  open, the agent is a small mascot that opens a floating chat window: the
+  *general* conversation. Inside a session the session's chat opens in the
+  drawer and the mascot docks to the side, still one click from the general
+  conversation. Two agents, never ambiguous which: the session chat is bounded
+  by its session, the mascot is global. The plumbing is in (a general
+  conversation with its own history and tools; every chat event names its
+  conversation, so two can be on screen at once). Open: the character itself —
+  original, not a known mascot — the floating window, where it docks, and its
+  motion, which must never sit on top of a number.
+
+**Harness compatibility: any LLM provider, or a local model** (J7) — Anthropic is
+the only adapter today and the default everywhere. The agent loop is already the
+app's, behind a port (design: `ARCHITECTURE.md`, *Vendor neutrality*); what is
+left is adapters, the choice, and removing the defaults.
 - **A-1 OpenAI-compatible adapter** — one adapter, configurable base URL: OpenAI, OpenRouter, Ollama, LM Studio, and Gemini through its OpenAI-compatible endpoint. Must pass `agent-loop.test.ts`.
-- **A-2 Provider choice in Settings › Integrations** — per-provider keys in `integration-secrets`, a base URL for local servers, the choice persisted and read by `ai/registry.ts`.
+- **A-2 Provider choice, and no default provider** — first launch asks which provider (or a local server, which needs no key); Settings › Integrations switches it, with per-provider keys in `integration-secrets` and a base URL for local servers, persisted and read by `ai/registry.ts`. Remove the Anthropic defaults that remain: the registry's fallback, `chat:send`'s default model, the chat panel's fallback model id, and the review model named in Settings.
+- **A-6 Local models first-class** — Ollama and LM Studio detected on their default ports; their models listed with honest capabilities (`toolCalling: "basic"` for most); cost a true zero; works with the network off.
 - **A-3 App-side web search** — for providers without a server-side search tool, so search is not an Anthropic-only feature.
 - **A-5 Cost per provider** — price tables per adapter; local models declare zero cost; unknown stays *unknown*, never $0.
+- **H-2 Model compatibility matrix** (J7) — every adapter and model the app offers is run against `agent-loop.test.ts`'s contract with a recorded transport, and Settings shows what each model can actually do (tool calling, vision, search, cost known or *unknown*). A model that fails tool calls is listed as chat-only, not hidden.
+
+**Exchange venues** (J6, J7) — Revolut X is the only live venue adapter; simulated mode needs none.
+- **V-3 More venues, one at a time** (J6, J7) — Kraken, Coinbase Advanced Trade, Binance spot as an *execution* venue (kept separate from its role as the analysis feed), Bybit. Each declares its capabilities honestly — above all whether a stop can rest on the exchange, which decides whether it may ever go live. Swappable, not concurrent: multi-venue stays deferred (`ARCHITECTURE.md` §3). Use the *venue adapter* issue template.
 - **V-1 Connection forms from the auth spec** — render a venue's setup form from its declared `IntegrationAuthSpec`, so a new venue needs no hand-built form.
 - **V-2 Venue choice in onboarding** — once a second adapter exists.
 
 **Larger pieces**
-- **Venue adapters** (Kraken, Coinbase, …) behind `integrations/venue/port.ts` — declare capabilities honestly.
 - **S2-9 feed half** — a feed port, and the last two `source = 'binance'` predicates (down from 18).
 - **S2-8 single runtime owner** — six timers across four files today; design in `ARCHITECTURE.md`.
 - **S2-1 Fibonacci as data · S2-3 anchored VWAP/profile tools · S2-5 base-rate check · S3-4 Elliott rule-checker.**
