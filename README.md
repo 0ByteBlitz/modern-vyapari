@@ -27,6 +27,38 @@ code executes exactly what you signed — and nothing else.**
 > ⚠️ **Alpha. Nothing in this app can place a real order yet.** Live execution is not built;
 > all positions today are simulated (paper). See [Status](#status) and the [Disclaimer](#disclaimer).
 
+## A quick tour
+
+**1. First launch.** Generate a signing keypair, connect the venue, add your Anthropic key.
+Every key is encrypted with your OS keychain before it touches disk.
+
+<p align="center">
+  <img src="docs/images/onboarding.png" width="820" alt="Onboarding screen: generate signing keys, then enter API credentials" />
+</p>
+
+**2. Locked until you unlock.** An optional Windows Hello gate. *While you were away* shows
+what the engine did — and, in red, any window when nothing was watching, because a plan
+cannot trigger while the app is closed.
+
+<p align="center">
+  <img src="docs/images/lock-screen.png" width="820" alt="Lock screen with a Windows Hello unlock button and a 'while you were away' activity feed" />
+</p>
+
+**3. Home.** Paper performance across sessions, engine activity, and the day's biggest movers.
+The agent sits in a drawer on every screen — and corrects itself when its data doesn't add up.
+
+<p align="center">
+  <img src="docs/images/home.png" width="820" alt="Home screen with paper performance, recent engine activity and the agent chat drawer" />
+</p>
+
+**4. Research.** Charting on the analysis feed, with the agent reading the chart, searching the
+web and fetching pages through its tools. It can research, journal and draft a plan —
+it has no tool that can place, size or price an order.
+
+<p align="center">
+  <img src="docs/images/research.png" width="820" alt="Research screen with a BTC-USD candlestick chart and the agent calling web_search, read_candles and fetch_url" />
+</p>
+
 ## How it works
 
 ```mermaid
