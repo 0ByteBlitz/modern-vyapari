@@ -227,6 +227,13 @@ const api = {
   windowMinimize: () => ipcRenderer.invoke("window:minimize"),
   windowMaximize: () => ipcRenderer.invoke("window:maximize"),
   windowClose: () => ipcRenderer.invoke("window:close"),
+  onQuitRequested: (callback: (summary: any) => void) => {
+    const handler = (_event: any, summary: any) => callback(summary);
+    ipcRenderer.on("app:quitRequested", handler);
+    return () => ipcRenderer.removeListener("app:quitRequested", handler);
+  },
+  quitShown: () => ipcRenderer.invoke("app:quitShown"),
+  answerQuit: (quit: boolean) => ipcRenderer.invoke("app:quitAnswer", quit),
 };
 
 export type RendererApi = typeof api;

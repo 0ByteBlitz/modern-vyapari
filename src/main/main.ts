@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, Menu, session } from "electron";
+import { app, BrowserWindow, Menu, session } from "electron";
 import * as path from "path";
 import { registerIpcHandlers } from "./ipc";
 import { initDatabase, getDb, auditLog } from "./db/database";
@@ -6,6 +6,7 @@ import { initSharedStore, adoptLegacyLessons, adoptLegacyUsage } from "./db/shar
 import { readMode, lockMode, appMode } from "./modes/app-mode";
 import { initLogger, createLogger } from "./logger";
 import { isResearchBrowserWebContents } from "./browser/embedded-browser";
+import { attachQuitGuard } from "./services/quit-guard";
 
 const log = createLogger("main");
 
@@ -70,14 +71,14 @@ function createWindow(): void {
     minHeight: 600,
     title: "Modern Vyapari",
     icon: ICON_PATH,
-    backgroundColor: "#0f1419",
+    backgroundColor: "#080B10", // --background, so the first frame is not a flash of another colour
     // NOTE: no `frame: false` — it disables titleBarOverlay on Windows entirely.
     // titleBarStyle "hidden" + overlay gives the custom titlebar WITH native
     // min/max/close buttons (and Windows snap layouts) on the right.
     titleBarStyle: "hidden",
     titleBarOverlay: {
-      color: "#131b24",       // matches --card hsl(210,26%,12%) ≈ #131b24
-      symbolColor: "#8a95a5", // matches --muted-foreground
+      color: "#05070a",       // --bg-void: the .titlebar background, so the native buttons sit on the same colour
+      symbolColor: "#9AA7B8", // --muted-foreground
       height: 40,
     },
     webPreferences: {
@@ -95,23 +96,9 @@ function createWindow(): void {
 
   mainWindow = win;
 
-  // Confirm before closing — prevents accidental closure (critical in later phases with live trades)
-  win.on("close", (e) => {
-    e.preventDefault();
-    const choice = dialog.showMessageBoxSync(win, {
-      type: "question",
-      buttons: ["Quit", "Cancel"],
-      defaultId: 1,
-      cancelId: 1,
-      title: "Quit Modern Vyapari?",
-      message: "Are you sure you want to quit?",
-      detail: "In later phases, open positions will remain on the exchange but local monitoring will stop.",
-    });
-    if (choice === 0) {
-      win.removeAllListeners("close");
-      win.close();
-    }
-  });
+  /* Confirm before closing, in the app's theme — with a native fallback so the
+     window is always closable. See services/quit-guard.ts. */
+  attachQuitGuard(win);
 
   win.on("closed", () => { mainWindow = null; });
 
