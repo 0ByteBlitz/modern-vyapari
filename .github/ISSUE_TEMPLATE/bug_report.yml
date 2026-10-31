@@ -1,0 +1,44 @@
+name: Bug report
+description: Something is wrong or behaves differently from what it claims
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Never paste API keys, private keys, account IDs or balances.** Security issues → see SECURITY.md, not here.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you saw, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open session on BTC-USD
+        2. Arm a plan with …
+        3. …
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: App mode
+      options: [Simulated, Live]
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: OS, Node version, app version / commit
+      placeholder: Windows 11, Node 22.13, 0.1.0 @ abc1234
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Redact anything sensitive first.

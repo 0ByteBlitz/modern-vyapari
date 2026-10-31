@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/0ByteBlitz/modern-vyapari/security/advisories/new
+    about: Report privately — please don't open a public issue.
+  - name: Questions and ideas
+    url: https://github.com/0ByteBlitz/modern-vyapari/discussions
+    about: Ask questions and discuss ideas in Discussions.

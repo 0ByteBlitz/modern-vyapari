@@ -1,0 +1,27 @@
+name: Feature request
+description: Propose an improvement or new capability
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What can't you do today, or what goes wrong? Describe the moment it matters.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+    validations:
+      required: true
+  - type: input
+    id: journey
+    attributes:
+      label: Journey and step (docs/JOURNEYS.md)
+      placeholder: e.g. J3 — trigger lands while the app is minimised
+  - type: textarea
+    id: roadmap
+    attributes:
+      label: Roadmap check
+      description: If this was deferred in docs/ROADMAP.md, which reason are you engaging with?

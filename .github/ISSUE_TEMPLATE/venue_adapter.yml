@@ -1,0 +1,23 @@
+name: Venue / exchange adapter
+description: Request or volunteer to build support for an exchange
+labels: [venue-adapter, enhancement]
+body:
+  - type: input
+    id: venue
+    attributes:
+      label: Exchange
+      placeholder: e.g. Kraken spot
+    validations:
+      required: true
+  - type: dropdown
+    id: building
+    attributes:
+      label: Are you planning to build it?
+      options: ["Yes, I'll open a PR", "I'd like to help", "No, just requesting"]
+    validations:
+      required: true
+  - type: textarea
+    id: api
+    attributes:
+      label: API notes
+      description: Auth scheme, rate limits, whether it supports venue-side stop/TP orders, API docs link.
