@@ -20,6 +20,7 @@ who authors and signs plans. See [`docs/README.md`](README.md) for the glossary.
 | Plans (the product) | S3-1 lifecycle · S3-2 authoring + falsifiability gate · **S3-3 plan monitor, both halves** — a trigger opens, manages and closes a paper position · S3-5 structural dry-run · S3-6 calibration record |
 | Agent | J-1 plan tools (drafts, never arms) · J-2 plan-aware review · J-3 armed plan on the chart and as distances |
 | Platform | S2-7 typed event plumbing · S2-8 transactions, frontend glue, `ipc/` split · S2-9 venue layer · N-1 Telegram outbox · simulated/live app modes · conditional lessons |
+| Vendor neutrality | **AI provider port** (`src/main/ai/`, Anthropic adapter) · venue `isConfigured()` · **onboarding needs no exchange account in simulated mode** |
 
 ### Since going public (31 Oct)
 
@@ -28,16 +29,25 @@ vault on async `safeStorage`, with its first tests · fixed: lazy `require` path
 that left the **kill switch** and the Windows Hello unlock throwing at runtime ·
 model picker shows key errors instead of loading for ever · Electron download
 race in CI · fresh-install startup error · window icon on Linux/macOS ·
-Anthropic SDK 1.x · `@types/node` 24 · CodeRabbit review rules.
+Anthropic SDK 1.x · `@types/node` 24 · CodeRabbit review rules · **AI provider port** and
+**venue-neutral onboarding** · release builds no longer try to self-publish.
 
 ### Open — where contributions help most
 
 **Good first contributions**
-- **Simulated-only onboarding** — try the app with an Anthropic key alone; today a Revolut X key is required to get past setup.
+- **A-4 Read web-search support up front** — Anthropic's models API now reports `capabilities.server_tools`; replace the reject-and-retry in `ai/anthropic.ts`.
 - **Clearer Telegram errors** — surface Telegram's own short reason ("chat not found") without ever echoing the token.
 - **Lock-screen error detail** — a failed unlock points at Settings › Diagnostics, which is unreachable while locked.
 - **S2-4 Ichimoku offsets test** — pin all five lines against a known reference.
-- **L-1 packaging for macOS and Linux** — only `package:win` exists.
+- **L-1 packaging for macOS and Linux** — `package:linux` / `package:mac` build in CI; the installers have not been run on a real machine.
+
+**Vendor neutrality** — no feature locked to one vendor (design: `ARCHITECTURE.md`, *Vendor neutrality*)
+- **A-1 OpenAI-compatible adapter** — one adapter, configurable base URL: OpenAI, OpenRouter, Ollama, LM Studio, and Gemini through its OpenAI-compatible endpoint. Must pass `agent-loop.test.ts`.
+- **A-2 Provider choice in Settings › Integrations** — per-provider keys in `integration-secrets`, a base URL for local servers, the choice persisted and read by `ai/registry.ts`.
+- **A-3 App-side web search** — for providers without a server-side search tool, so search is not an Anthropic-only feature.
+- **A-5 Cost per provider** — price tables per adapter; local models declare zero cost; unknown stays *unknown*, never $0.
+- **V-1 Connection forms from the auth spec** — render a venue's setup form from its declared `IntegrationAuthSpec`, so a new venue needs no hand-built form.
+- **V-2 Venue choice in onboarding** — once a second adapter exists.
 
 **Larger pieces**
 - **Venue adapters** (Kraken, Coinbase, …) behind `integrations/venue/port.ts` — declare capabilities honestly.
