@@ -130,7 +130,9 @@ reviews:
         third-party actions not pinned to a commit SHA.
 
 chat:
-  auto_reply: true
+  # Replies only when someone @mentions coderabbitai, so strangers' comments
+  # can't drive the bot on a public repo. Reviews still run automatically.
+  auto_reply: false
 
 knowledge_base:
   code_guidelines:
