@@ -58,13 +58,13 @@ class RevXError extends Error {
 async function request<T>(method: "GET", pathAfterPrefix: string, query = ""): Promise<T> {
   const timestamp = Date.now().toString();
   const apiPath = `${API_PREFIX}${pathAfterPrefix}`;
-  const signature = signRequest(getPrivateKeyPem(), timestamp, method, apiPath, query, "");
+  const signature = signRequest(await getPrivateKeyPem(), timestamp, method, apiPath, query, "");
   const url = `${BASE}${apiPath}${query ? `?${query}` : ""}`;
 
   const res = await fetch(url, {
     method,
     headers: {
-      "X-Revx-API-Key": getApiKey(),
+      "X-Revx-API-Key": await getApiKey(),
       "X-Revx-Timestamp": timestamp,
       "X-Revx-Signature": signature,
     },

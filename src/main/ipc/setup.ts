@@ -32,24 +32,26 @@ ipcMain.handle("setup:status", () =>
   );
 
 ipcMain.handle("setup:generateKeys", () =>
-    safe(() => {
-      const publicKeyPem = credentials.ensureKeyPair();
+    safe(async () => {
+      const publicKeyPem = await credentials.ensureKeyPair();
       auditLog("keypair_generated", {});
       return { publicKeyPem };
     }, "setup:generateKeys")
   );
 
 ipcMain.handle("setup:saveApiKey", (_e, apiKey: string) =>
-    safe(() => {
-      credentials.saveApiKey(apiKey);
+    safe(async () => {
+      await credentials.saveApiKey(apiKey);
       auditLog("api_key_saved", {});
       return { ok: true };
     }, "setup:saveApiKey")
   );
 
 ipcMain.handle("setup:saveAnthropicApiKey", (_e, apiKey: string) =>
-    safe(() => {
-      credentials.saveAnthropicApiKey(apiKey);
+    safe(async () => {
+      /* Awaited before the broadcast: announcing the change first would make
+         the chat panel re-fetch models with the key that is being replaced. */
+      await credentials.saveAnthropicApiKey(apiKey);
       auditLog("anthropic_api_key_saved", {});
       /* The chat panel fetched its model list with the OLD key; without this it
          keeps showing that result until a restart. */
@@ -59,8 +61,8 @@ ipcMain.handle("setup:saveAnthropicApiKey", (_e, apiKey: string) =>
   );
 
 ipcMain.handle("setup:saveBrowserbaseKey", (_e, apiKey: string) =>
-    safe(() => {
-      credentials.saveBrowserbaseKey(apiKey);
+    safe(async () => {
+      await credentials.saveBrowserbaseKey(apiKey);
       // The key itself never enters the audit log, only the fact it changed.
       auditLog("browserbase_key_saved", {});
       return { ok: true };

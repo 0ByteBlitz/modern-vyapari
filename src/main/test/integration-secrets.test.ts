@@ -39,9 +39,9 @@ import { REVOLUTX_AUTH } from "../integrations/venue/revolutx";
  *  only job is to prove the *rules* around the cipher, not the cipher. */
 function fakeCipher(available = true): SecretCipher {
   return {
-    isAvailable: () => available,
-    encrypt: (plain) => Buffer.from(`enc:${plain}`, "utf8"),
-    decrypt: (buf) => buf.toString("utf8").replace(/^enc:/, ""),
+    isAvailable: async () => available,
+    encrypt: async (plain) => Buffer.from(`enc:${plain}`, "utf8"),
+    decrypt: async (buf) => ({ result: buf.toString("utf8").replace(/^enc:/, ""), shouldReEncrypt: false }),
   };
 }
 
@@ -63,10 +63,10 @@ describe("integration secrets", () => {
   });
   afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
 
-  test("a saved secret round-trips, and the write goes through the cipher", () => {
-    saveSecret("somevenue", "secret", "hunter2");
+  test("a saved secret round-trips, and the write goes through the cipher", async () => {
+    await saveSecret("somevenue", "secret", "hunter2");
     assert.equal(hasSecret("somevenue", "secret"), true);
-    assert.equal(getSecret("somevenue", "secret"), "hunter2");
+    assert.equal(await getSecret("somevenue", "secret"), "hunter2");
 
     /* The double is not encryption, so "the file does not contain the value"
        is not a claim this test can honestly make — asserting it would certify
@@ -77,16 +77,16 @@ describe("integration secrets", () => {
     assert.equal(onDisk, "enc:hunter2");
   });
 
-  test("a missing secret reads as null, not as an empty string", () => {
+  test("a missing secret reads as null, not as an empty string", async () => {
     /* null means "absent"; "" would be a value the caller might send as a
        header. Unknown must never become a usable-looking value. */
-    assert.equal(getSecret("somevenue", "secret"), null);
+    assert.equal(await getSecret("somevenue", "secret"), null);
     assert.equal(hasSecret("somevenue", "secret"), false);
   });
 
-  test("writing is REFUSED when OS encryption is unavailable", () => {
+  test("writing is REFUSED when OS encryption is unavailable", async () => {
     configureForTesting(dir, fakeCipher(false));
-    assert.throws(() => saveSecret("somevenue", "secret", "hunter2"), /refusing to store a secret in plaintext/i);
+    await assert.rejects(saveSecret("somevenue", "secret", "hunter2"), /refusing to store a secret in plaintext/i);
     assert.equal(
       fs.existsSync(path.join(dir, "somevenue.secret.bin")),
       false,
@@ -94,23 +94,23 @@ describe("integration secrets", () => {
     );
   });
 
-  test("clearing removes the file", () => {
-    saveSecret("somevenue", "secret", "x");
+  test("clearing removes the file", async () => {
+    await saveSecret("somevenue", "secret", "x");
     clearSecret("somevenue", "secret");
     assert.equal(hasSecret("somevenue", "secret"), false);
     // Clearing something absent is not an error.
     assert.doesNotThrow(() => clearSecret("somevenue", "secret"));
   });
 
-  test("path traversal in an id or field is refused before touching the disk", () => {
+  test("path traversal in an id or field is refused before touching the disk", async () => {
     for (const bad of ["../evil", "a/b", "..", "UPPER", "with space", "dot.dot"]) {
-      assert.throws(() => saveSecret(bad, "secret", "x"), /Invalid integration id/, `id: ${bad}`);
-      assert.throws(() => saveSecret("somevenue", bad, "x"), /Invalid secret field/, `field: ${bad}`);
+      await assert.rejects(saveSecret(bad, "secret", "x"), /Invalid integration id/, `id: ${bad}`);
+      await assert.rejects(saveSecret("somevenue", bad, "x"), /Invalid secret field/, `field: ${bad}`);
     }
   });
 
-  test("status reports presence only, and never a value", () => {
-    saveSecret("somevenue", "key_id", "public-id");
+  test("status reports presence only, and never a value", async () => {
+    await saveSecret("somevenue", "key_id", "public-id");
     const status = secretStatus(SPEC);
 
     assert.deepEqual(
@@ -127,14 +127,14 @@ describe("integration secrets", () => {
     );
   });
 
-  test("complete tracks the SENSITIVE fields only", () => {
+  test("complete tracks the SENSITIVE fields only", async () => {
     /* key_id is not sensitive and not required for completeness — an
        integration is usable once its secrets are present. */
-    saveSecret("somevenue", "secret", "s");
+    await saveSecret("somevenue", "secret", "s");
     assert.equal(secretStatus(SPEC).complete, true);
 
     clearSecret("somevenue", "secret");
-    saveSecret("somevenue", "key_id", "k");
+    await saveSecret("somevenue", "key_id", "k");
     assert.equal(secretStatus(SPEC).complete, false);
   });
 });
