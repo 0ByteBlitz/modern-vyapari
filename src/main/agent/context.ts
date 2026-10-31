@@ -242,13 +242,15 @@ export function buildSessionContext(sessionId: number): string {
       lines.push(`- "${p.slug}" [${p.state}] — ${p.thesis} (${expiry})`);
     }
     /* State the boundary here rather than leaving the model to infer it from
-       the word "armed": expiry, invalidation and drift act; a trigger records
-       and opens nothing. Getting this wrong is what made the agent offer to
-       build a strategy instead. */
+       the word "armed". This said "a triggered branch does NOT open a position"
+       until 31 Oct 2026 — true before S3-3's applying half landed, false after,
+       and nothing noticed: the agent was told its owner's plans could not do
+       the one thing they now do. */
     lines.push(
       `Use get_plan for the assumptions, invalidation and branch levels. The engine evaluates these every ` +
-        `closed bar — expiry, thesis invalidation and drift all act — but a triggered branch does NOT open a ` +
-        `position yet. You cannot create or arm a plan; only the owner can.`
+        `closed bar — expiry, thesis invalidation and drift all act — and a triggered branch opens a PAPER ` +
+        `position carrying that branch's stop and target. There is no real-money order path. You cannot ` +
+        `create or arm a plan; only the owner can.`
     );
   }
 
