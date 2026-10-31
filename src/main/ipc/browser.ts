@@ -14,7 +14,7 @@ export function registerBrowser(): void {
   /* ── Embedded browser (Phase 1 surface 3) ────────────────────── */
 ipcMain.handle("browser:show", () =>
     safe(() => {
-      const { mainWindow } = require("./main");
+      const { mainWindow } = require("../main");
       if (!mainWindow) throw new Error("Main window not ready");
       embeddedBrowser.showBrowser(mainWindow);
       return { ok: true };

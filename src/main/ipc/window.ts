@@ -12,18 +12,18 @@ import { ipcMain } from "electron";
 export function registerWindow(): void {
   /* ── Window controls (custom titlebar) ──────────────────────── */
 ipcMain.handle("window:minimize", () => {
-    const { mainWindow } = require("./main");
+    const { mainWindow } = require("../main");
     mainWindow?.minimize();
   });
 
 ipcMain.handle("window:maximize", () => {
-    const { mainWindow } = require("./main");
+    const { mainWindow } = require("../main");
     if (mainWindow?.isMaximized()) mainWindow.unmaximize();
     else mainWindow?.maximize();
   });
 
 ipcMain.handle("window:close", () => {
-    const { mainWindow } = require("./main");
+    const { mainWindow } = require("../main");
     mainWindow?.close();
   });
 }
