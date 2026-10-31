@@ -29,8 +29,8 @@ function fakeTarget(destroyed = false) {
 describe("emitTo", () => {
   test("delivers channel and payload unchanged", () => {
     const t = fakeTarget();
-    emitTo(t as never, "chat:chunk", { text: "hello" });
-    assert.deepEqual(t.sent, [{ channel: "chat:chunk", payload: { text: "hello" } }]);
+    emitTo(t as never, "chat:chunk", { text: "hello", conversation: 1 });
+    assert.deepEqual(t.sent, [{ channel: "chat:chunk", payload: { text: "hello", conversation: 1 } }]);
   });
 
   test("a destroyed target is skipped, not thrown at", () => {
@@ -38,7 +38,7 @@ describe("emitTo", () => {
        call site had to remember its own isDestroyed check; a background writer
        is exactly the one that forgets. */
     const t = fakeTarget(true);
-    assert.doesNotThrow(() => emitTo(t as never, "chat:chunk", { text: "x" }));
+    assert.doesNotThrow(() => emitTo(t as never, "chat:chunk", { text: "x", conversation: "general" }));
     assert.equal(t.sent.length, 0);
   });
 

@@ -151,7 +151,9 @@ export default function App() {
 
   /* Paper stats drive the toolbar's risk chips. */
   useEffect(() => {
-    if (!activeSession) {
+    /* Same rule as the chat and the rail: the toolbar's "session pnl" belongs
+       to a session only while you are on one of its surfaces. */
+    if (!activeSession || !isSessionSurface(surface)) {
       setStats(null);
       return;
     }
@@ -337,7 +339,18 @@ export default function App() {
             from it. Hidden on the embedded browser, which owns its own
             WebContentsView bounds and would be overlapped. */}
         {surface !== "browser" && (
-          <ChatDrawer session={activeSession} open={chatOpen} onToggle={() => setChatOpen((v) => !v)} />
+          <ChatDrawer
+            /* The chat follows the same rule as the rail: a session is only
+               "open" on one of its own surfaces. On Home, Portfolio, Markets,
+               Settings… the agent is the general one, even with a session
+               still selected — otherwise Portfolio would sit beside one
+               pair's conversation as if it were about that pair. */
+            session={activeSession && isSessionSurface(surface) ? activeSession : null}
+            selectedSession={activeSession}
+            open={chatOpen}
+            onToggle={() => setChatOpen((v) => !v)}
+            onOpenSession={(s) => void selectSession(s)}
+          />
         )}
       </main>
     </div>

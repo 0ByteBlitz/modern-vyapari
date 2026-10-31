@@ -6,13 +6,14 @@ import * as embeddedBrowser from "../browser/embedded-browser";
 import * as agentFetch from "../browser/agent-fetch";
 import { getResearchView } from "./research-view";
 import { createLogger } from "../logger";
-import { emitTo, emitError } from "../events/outbound";
+import { emitTo, emitError, type ChatConversation } from "../events/outbound";
 import { AppError, toUserFacing } from "../../shared/errors";
+import { isSessionSurfaceId } from "../../shared/surfaces";
 import { getAnalysisCandles } from "../data/analysis-candles";
 import { computeIndicatorBatch } from "../insights/indicators";
 import { getSessionById } from "../sessions/service";
-import { buildSessionContext } from "./context";
-import { SESSION_TOOLS, PHASE2_TOOLS, PLAN_TOOLS, CONTEXT_TOOLS, executeSessionTool } from "./tools";
+import { buildGeneralContext, buildSessionContext } from "./context";
+import { SESSION_TOOLS, PHASE2_TOOLS, PLAN_TOOLS, CONTEXT_TOOLS, SESSION_SCOPED_TOOLS, executeSessionTool } from "./tools";
 import { disabledToolIds } from "./tool-registry";
 import { aiProvider } from "../ai/registry";
 import type { AiMessage, AiModelInfo, AiToolResult, AiToolSpec } from "../ai/port";
@@ -32,19 +33,47 @@ const log = createLogger("chat");
 
 const MAX_TOOL_ITERATIONS = 15;
 
-export function getChatHistory(sessionId: number): ChatMessage[] {
+/* A null (or 0) session id is the GENERAL conversation: the agent with no
+   session open, which is how the app starts. It has its own table (schema v21)
+   because `chat_messages.session_id` is NOT NULL. These helpers are the only
+   place that knows which table a conversation lives in. */
+function isGeneral(sessionId: number | null | undefined): boolean {
+  return !sessionId;
+}
+
+function appendChatMessage(sessionId: number | null, role: "user" | "assistant", content: string, at: number): void {
   const db = getDb();
+  if (isGeneral(sessionId)) {
+    db.prepare("INSERT INTO general_chat_messages (role, content, timestamp) VALUES (?, ?, ?)").run(role, content, at);
+  } else {
+    db.prepare("INSERT INTO chat_messages (session_id, role, content, timestamp) VALUES (?, ?, ?, ?)").run(
+      sessionId,
+      role,
+      content,
+      at
+    );
+  }
+}
+
+export function getChatHistory(sessionId: number | null): ChatMessage[] {
+  const db = getDb();
+  if (isGeneral(sessionId)) {
+    return db
+      .prepare("SELECT id, role, content, timestamp FROM general_chat_messages ORDER BY timestamp ASC, id ASC")
+      .all() as unknown as ChatMessage[];
+  }
   return db
     .prepare("SELECT id, role, content, timestamp FROM chat_messages WHERE session_id = ? ORDER BY timestamp ASC")
     .all(sessionId) as unknown as ChatMessage[];
 }
 
-export function clearChatHistory(sessionId: number): void {
+export function clearChatHistory(sessionId: number | null): void {
   const db = getDb();
-  db.prepare("DELETE FROM chat_messages WHERE session_id = ?").run(sessionId);
+  if (isGeneral(sessionId)) db.prepare("DELETE FROM general_chat_messages").run();
+  else db.prepare("DELETE FROM chat_messages WHERE session_id = ?").run(sessionId);
 }
 
-export async function compactChatHistory(sessionId: number): Promise<{ ok: boolean; summary?: string; error?: string }> {
+export async function compactChatHistory(sessionId: number | null): Promise<{ ok: boolean; summary?: string; error?: string }> {
   const db = getDb();
   const allMessages = getChatHistory(sessionId);
   if (allMessages.length <= 4) {
@@ -89,26 +118,33 @@ export async function compactChatHistory(sessionId: number): Promise<{ ok: boole
     return { ok: false, error: "Compaction returned empty summary text." };
   }
 
-  // Save checkpoint into SQLite journal as strategy_note
   const now = Date.now();
-  db.prepare(`INSERT INTO journal (session_id, kind, content, tags, created_at) VALUES (?, ?, ?, ?, ?)`).run(
-    sessionId,
-    "strategy_note",
-    `[Compacted Conversation Memory]\n${summaryText}`,
-    "checkpoint,compacted",
-    now
-  );
-
-  // Replace older chat_messages rows in SQLite with one summary checkpoint message
-  const idsToDelete = olderMessages.map((m) => m.id).filter((id): id is number => typeof id === "number");
-  if (idsToDelete.length > 0) {
-    db.prepare(`DELETE FROM chat_messages WHERE id IN (${idsToDelete.map(() => "?").join(",")})`).run(...idsToDelete);
+  const general = isGeneral(sessionId);
+  // A session's checkpoint also goes into its journal. The general thread has
+  // no journal (a journal belongs to a pair), so its summary lives in the chat.
+  if (!general) {
+    db.prepare(`INSERT INTO journal (session_id, kind, content, tags, created_at) VALUES (?, ?, ?, ?, ?)`).run(
+      sessionId,
+      "strategy_note",
+      `[Compacted Conversation Memory]\n${summaryText}`,
+      "checkpoint,compacted",
+      now
+    );
   }
 
-  db.prepare("INSERT INTO chat_messages (session_id, role, content, timestamp) VALUES (?, ?, ?, ?)").run(
+  // Replace the older rows with one summary checkpoint message
+  const idsToDelete = olderMessages.map((m) => m.id).filter((id): id is number => typeof id === "number");
+  if (idsToDelete.length > 0) {
+    const table = general ? "general_chat_messages" : "chat_messages";
+    db.prepare(`DELETE FROM ${table} WHERE id IN (${idsToDelete.map(() => "?").join(",")})`).run(...idsToDelete);
+  }
+
+  appendChatMessage(
     sessionId,
     "assistant",
-    `📌 **Conversation Checkpoint (Memory Saved)**\n\n*The earlier ${olderMessages.length} messages have been summarized and saved into your session journal memory:*\n\n${summaryText}`,
+    general
+      ? `📌 **Conversation Checkpoint**\n\n*The earlier ${olderMessages.length} messages were summarized:*\n\n${summaryText}`
+      : `📌 **Conversation Checkpoint (Memory Saved)**\n\n*The earlier ${olderMessages.length} messages have been summarized and saved into your session journal memory:*\n\n${summaryText}`,
     now
   );
 
@@ -345,6 +381,16 @@ function notifyDataUpdated(kind: string): void {
   }
 }
 
+/* The renderer shows a session's chat only on that session's own surfaces, and
+   the general chat everywhere else. So an agent that navigates must stay on its
+   own side: a session conversation jumping to Markets, or the general one
+   jumping to Research, would swap the transcript out from under the reply it is
+   still writing. The Browser tab is allowed from both — its tools need it open. */
+function surfaceKeepsConversation(surface: string, general: boolean): boolean {
+  if (surface === "browser") return true;
+  return general ? !isSessionSurfaceId(surface) : isSessionSurfaceId(surface);
+}
+
 /** Short pause to let React re-render after a navigation event. */
 const waitForRender = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
@@ -394,6 +440,13 @@ const TOOL_SURFACE_MAP: Record<string, string> = {
 };
 
 async function dispatchTool(name: string, input: Record<string, unknown>, sessionId: number): Promise<unknown> {
+  /* Backstop for the filter in sendChatMessage: a session tool called from the
+     general conversation would read or write against session 0. */
+  if (isGeneral(sessionId) && (SESSION_SCOPED_TOOLS.has(name) || name === "read_research_chart")) {
+    return {
+      error: "No session is open. Ask the owner which session this is about; they can open it from the buttons above the chat.",
+    };
+  }
   if (name === "get_derivatives_metrics") {
     const symbol = typeof input.symbol === "string" ? input.symbol : "";
     return derivatives.getCombinedDerivativesMetrics(symbol);
@@ -526,12 +579,14 @@ async function dispatchTool(name: string, input: Record<string, unknown>, sessio
 }
 
 export async function sendChatMessage(
-  sessionId: number,
+  /** null or 0 = the general conversation (no session open). */
+  sessionId: number | null,
   messages: { role: "user" | "assistant"; content: string | any[] }[],
   params: { model: string; effort: string; capabilities?: { adaptive: boolean; extended: boolean } },
   sender: WebContents
 ): Promise<void> {
-  const db = getDb();
+  /* Tags every event this turn emits (see ChatConversation). */
+  const conversation: ChatConversation = sessionId ? sessionId : "general";
 
   // 1. Persist the human's message.
   const userMsg = messages[messages.length - 1];
@@ -545,14 +600,7 @@ export async function sendChatMessage(
     }
   }
 
-  if (sessionId) {
-    db.prepare("INSERT INTO chat_messages (session_id, role, content, timestamp) VALUES (?, ?, ?, ?)").run(
-      sessionId,
-      "user",
-      dbUserContent,
-      Date.now()
-    );
-  }
+  appendChatMessage(sessionId, "user", dbUserContent, Date.now());
 
   // 2. The active AI provider. Its key, wire format and caching are its own.
   const provider = aiProvider();
@@ -562,7 +610,8 @@ export async function sendChatMessage(
       "chat:error",
       new AppError("CREDENTIALS", "The AI isn't configured yet.", {
         hint: `Add your ${provider.info.displayName} key in Settings › Integrations.`,
-      })
+      }),
+      { conversation }
     );
     return;
   }
@@ -572,7 +621,8 @@ export async function sendChatMessage(
      which recomputes plan expiries and session age on every call) is not. A
      provider with prompt caching puts its breakpoint between them, so the
      volatile tail cannot invalidate the cached tools and base prompt. */
-  const sessionContext = buildSessionContext(sessionId);
+  const general = isGeneral(sessionId);
+  const sessionContext = general ? buildGeneralContext() : buildSessionContext(sessionId as number);
 
   // Sliding context window: keep the most recent MAX_CONTEXT_MESSAGES (20)
   const MAX_CONTEXT_MESSAGES = 20;
@@ -610,7 +660,8 @@ export async function sendChatMessage(
       "chat:error",
       new AppError("VALIDATION", "That conversation can't be sent as-is.", {
         hint: "Clearing the chat for this session will reset it.",
-      })
+      }),
+      { conversation }
     );
     return;
   }
@@ -643,7 +694,9 @@ export async function sendChatMessage(
         BROWSER_NAVIGATE_TOOL,
         RESEARCH_SCREENSHOT_TOOL,
         RESEARCH_READ_TOOL,
-      ] as AiToolSpec[]).filter((t) => !disabled.has(t.name));
+      ] as AiToolSpec[]).filter(
+        (t) => !disabled.has(t.name) && !(general && (SESSION_SCOPED_TOOLS.has(t.name) || t.name === "read_research_chart"))
+      );
 
       const step = await provider.step(conv, {
         model: params.model,
@@ -657,14 +710,14 @@ export async function sendChatMessage(
         },
         onText: (text) => {
           fullAssistantResponse += text;
-          emitTo(sender, "chat:chunk", { text });
+          emitTo(sender, "chat:chunk", { text, conversation });
         },
         /* Provider-side tools (web search) never reach `dispatchTool`; emit the
            same marker the local tools use so the transcript shows them. */
         onServerTool: (name) => {
           const marker = `\n\n[[tool:${name}]]\n\n`;
           fullAssistantResponse += marker;
-          emitTo(sender, "chat:chunk", { text: marker });
+          emitTo(sender, "chat:chunk", { text: marker, conversation });
         },
       });
       /* Recorded per ITERATION, not per turn. The agentic loop can run many
@@ -681,7 +734,7 @@ export async function sendChatMessage(
       try {
         for (const toolUse of toolUseBlocks) {
           const targetSurface = TOOL_SURFACE_MAP[toolUse.name];
-          if (targetSurface) {
+          if (targetSurface && surfaceKeepsConversation(targetSurface, general)) {
             navigateAgent(targetSurface);
             // Deliberate pause so the user visually sees the page switch and purple active glow
             await waitForRender(800);
@@ -694,9 +747,9 @@ export async function sendChatMessage(
           // together into one unreadable paragraph.
           const marker = `\n\n[[tool:${toolUse.name}]]\n\n`;
           fullAssistantResponse += marker;
-          emitTo(sender, "chat:chunk", { text: marker });
+          emitTo(sender, "chat:chunk", { text: marker, conversation });
           try {
-            const result = await dispatchTool(toolUse.name, (toolUse.input as Record<string, unknown>) ?? {}, sessionId);
+            const result = await dispatchTool(toolUse.name, (toolUse.input as Record<string, unknown>) ?? {}, sessionId ?? 0);
 
             if (toolUse.name === "write_journal") notifyDataUpdated("journal");
             /* Every tool that writes must broadcast, or the surface it wrote to
@@ -731,7 +784,7 @@ export async function sendChatMessage(
             if (e instanceof Error && e.stack) log.error(e.stack);
             const errMarker = `\n\n[[toolerror:${toolUse.name}:${message.replace(/[\r\n]+/g, " ").slice(0, 200)}]]\n\n`;
             fullAssistantResponse += errMarker;
-            emitTo(sender, "chat:chunk", { text: errMarker });
+            emitTo(sender, "chat:chunk", { text: errMarker, conversation });
             toolResultBlocks.push({ callId: toolUse.id, content: `Error: ${message}`, isError: true });
           }
         }
@@ -746,7 +799,7 @@ export async function sendChatMessage(
       if (iteration === MAX_TOOL_ITERATIONS - 1) {
         const stopMessage = `\n\n*[Stopped after ${MAX_TOOL_ITERATIONS} tool-call rounds to avoid a runaway loop. Ask me to continue if needed.]*\n`;
         fullAssistantResponse += stopMessage;
-        emitTo(sender, "chat:chunk", { text: stopMessage });
+        emitTo(sender, "chat:chunk", { text: stopMessage, conversation });
       }
     }
 
@@ -754,15 +807,10 @@ export async function sendChatMessage(
     // Never write an empty one: the API rejects empty content, so an empty row
     // here breaks every subsequent turn in the session, not just this one.
     if (fullAssistantResponse.trim()) {
-      db.prepare("INSERT INTO chat_messages (session_id, role, content, timestamp) VALUES (?, ?, ?, ?)").run(
-        sessionId,
-        "assistant",
-        fullAssistantResponse,
-        Date.now()
-      );
+      appendChatMessage(sessionId, "assistant", fullAssistantResponse, Date.now());
     }
 
-    emitTo(sender, "chat:complete", {});
+    emitTo(sender, "chat:complete", { conversation });
     break attempt;
   } catch (err) {
     // Chat streams over its own channel, so it never passed through `safe()`
@@ -791,13 +839,14 @@ export async function sendChatMessage(
          one capability fewer. */
       emitTo(sender, "chat:notice", {
         text: "This model can't search the web, so I've answered without it.",
+        conversation,
       });
       continue attempt;
     }
 
     /* The catch-all. `emitError` classifies and strips — this is the site that
        once rendered raw Anthropic API errors into the transcript. */
-    emitError(sender, "chat:error", err);
+    emitError(sender, "chat:error", err, { conversation });
     break attempt;
   } finally {
     setAgentActing(false);

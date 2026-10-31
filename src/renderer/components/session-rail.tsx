@@ -25,6 +25,7 @@ import { ArchiveSessionDialog } from "@/components/archive-session-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatUsd } from "@/lib/format";
 import { Input } from "@/components/ui/input";
+import { isSessionSurfaceId, type SessionSurface } from "@shared/surfaces";
 
 /**
  * Session-first navigation rail.
@@ -37,12 +38,12 @@ import { Input } from "@/components/ui/input";
  * Cross-session surfaces (portfolio, markets, approvals, settings) sit in the
  * footer, visually separated, because they are the exception.
  */
-export type SessionSurface = "dashboard" | "orders" | "plans" | "journal" | "research" | "alerts";
+export type { SessionSurface };
 export type GlobalSurface = "home" | "portfolio" | "markets" | "approvals" | "settings" | "browser";
 export type Surface = SessionSurface | GlobalSurface;
 
 export function isSessionSurface(s: Surface): s is SessionSurface {
-  return ["dashboard", "orders", "plans", "journal", "research", "alerts"].includes(s);
+  return isSessionSurfaceId(s);
 }
 
 const SESSION_SURFACES: { id: SessionSurface; label: string; icon: typeof Gauge }[] = [

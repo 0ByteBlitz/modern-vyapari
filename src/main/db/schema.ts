@@ -69,7 +69,12 @@
  *     engine resolves from it rather than each holding its own idea of the
  *     same level.
  */
-export const SCHEMA_VERSION = 20;
+/* v21: general_chat_messages — the conversation with the agent when no session
+ *     is open. `chat_messages.session_id` is NOT NULL (and SQLite cannot relax
+ *     that without a table rebuild), so the general thread gets its own table
+ *     rather than a sentinel session id that a JOIN would one day trip over.
+ *     Plain CREATE TABLE IF NOT EXISTS: no data moves, nothing to migrate. */
+export const SCHEMA_VERSION = 21;
 
 export const SCHEMA_SQL = `
 PRAGMA journal_mode = WAL;
@@ -340,6 +345,13 @@ CREATE TABLE IF NOT EXISTS audit_log (
   action     TEXT NOT NULL,                      -- e.g. order_proposed, order_submitted, kill_switch
   detail     TEXT NOT NULL,                      -- JSON
   created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS general_chat_messages (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  role        TEXT NOT NULL,                     -- user | assistant
+  content     TEXT NOT NULL,
+  timestamp   INTEGER NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS chat_messages (

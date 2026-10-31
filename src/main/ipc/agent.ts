@@ -27,11 +27,11 @@ ipcMain.on("research:view", (_e, v: { symbol: string; intervalMin: number; bound
 ipcMain.on("research:closed", () => clearResearchView());
 
   /* ── Chat (Phase 1) ─────────────────────────────────────────────── */
-ipcMain.handle("chat:history", (_e, sessionId: number) => safe(() => chat.getChatHistory(sessionId), "chat:history"));
+ipcMain.handle("chat:history", (_e, sessionId: number | null) => safe(() => chat.getChatHistory(sessionId), "chat:history"));
 
-ipcMain.handle("chat:clear", (_e, sessionId: number) => safe(() => chat.clearChatHistory(sessionId), "chat:clear"));
+ipcMain.handle("chat:clear", (_e, sessionId: number | null) => safe(() => chat.clearChatHistory(sessionId), "chat:clear"));
 
-ipcMain.handle("chat:compact", (_e, sessionId: number) => safe(() => chat.compactChatHistory(sessionId), "chat:compact"));
+ipcMain.handle("chat:compact", (_e, sessionId: number | null) => safe(() => chat.compactChatHistory(sessionId), "chat:compact"));
 
 ipcMain.handle("chat:models", () => safe(() => chat.listAiModels(), "chat:models"));
 
@@ -57,7 +57,7 @@ ipcMain.handle("agent:resetTools", () =>
 
 ipcMain.handle("usage:report", () => safe(() => buildUsageReport(), "usage:report"));
 
-ipcMain.on("chat:send", (e, sessionId: number, messages: any[], params?: { model: string; effort: string; capabilities?: { adaptive: boolean; extended: boolean } }) => {
+ipcMain.on("chat:send", (e, sessionId: number | null, messages: any[], params?: { model: string; effort: string; capabilities?: { adaptive: boolean; extended: boolean } }) => {
     /* Fire and forget over `on`, not `handle` — the reply streams back on its
        own channels rather than resolving this call.
        
@@ -71,7 +71,7 @@ ipcMain.on("chat:send", (e, sessionId: number, messages: any[], params?: { model
       .sendChatMessage(sessionId, messages, params || { model: "claude-3-5-sonnet-latest", effort: "high" }, e.sender)
       .catch((err) => {
         ipcLog.error("chat:send failed", err);
-        emitError(e.sender, "chat:error", err);
+        emitError(e.sender, "chat:error", err, { conversation: sessionId ? sessionId : "general" });
       });
   });
 }
