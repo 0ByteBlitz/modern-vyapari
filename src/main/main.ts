@@ -55,6 +55,13 @@ app.on("web-contents-created", (_event, contents) => {
 /** Shared reference so IPC handlers can access the window. */
 export let mainWindow: BrowserWindow | null = null;
 
+/* Windows loads .ico (multi-size, crisp in the taskbar); Linux cannot read .ico
+   at all, so the window had no icon there. macOS ignores the window icon and
+   shows the dock icon instead, which in an unpackaged dev run is Electron's
+   own — set from the same PNG below. Packaged builds take their icons from
+   electron-builder, not from here. */
+const ICON_PATH = path.join(__dirname, "..", "..", "assets", process.platform === "win32" ? "icon.ico" : "icon.png");
+
 function createWindow(): void {
   const win = new BrowserWindow({
     width: 1280,
@@ -62,7 +69,7 @@ function createWindow(): void {
     minWidth: 800,
     minHeight: 600,
     title: "Modern Vyapari",
-    icon: path.join(__dirname, "..", "..", "assets", "icon.ico"),
+    icon: ICON_PATH,
     backgroundColor: "#0f1419",
     // NOTE: no `frame: false` — it disables titleBarOverlay on Windows entirely.
     // titleBarStyle "hidden" + overlay gives the custom titlebar WITH native
@@ -117,6 +124,7 @@ function createWindow(): void {
 
 app.whenReady().then(() => {
   Menu.setApplicationMenu(null);   // hide native menu — app uses custom titlebar
+  if (process.platform === "darwin" && !app.isPackaged) app.dock?.setIcon(ICON_PATH);
 
   // Security: deny every permission request (camera/mic/geolocation/notifications/...)
   // — the app has no legitimate use for any of them.
