@@ -1,6 +1,6 @@
 {
   "name": "modern-vyapari",
-  "version": "0.1.0-alpha.4",
+  "version": "0.1.0-alpha.5",
   "description": "Open-source AI trading partner for crypto: you author the thesis, the agent monitors it, deterministic code executes. Electron desktop app.",
   "author": "0ByteBlitz",
   "license": "MIT",
@@ -39,7 +39,9 @@
     "inspect-db": "node --experimental-sqlite scripts/inspect-db.mjs",
     "test": "npm run build:main && node scripts/ensure-electron.mjs && node --test dist/main/test/**/*.test.js",
     "start": "npm run build && electron .",
-    "package:win": "npm run build && electron-builder --win"
+    "package:win": "npm run build && electron-builder --win --publish never",
+    "package:linux": "npm run build && electron-builder --linux --publish never",
+    "package:mac": "npm run build && electron-builder --mac --publish never"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.3.0",
@@ -90,6 +92,20 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "icon": "assets/icon.png",
+      "category": "Finance"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "icon": "assets/icon.png",
+      "category": "public.app-category.finance"
     },
     "electronFuses": {
       "runAsNode": false,
