@@ -1,0 +1,160 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+#
+# CodeRabbit review configuration for Modern Vyapari.
+# CLAUDE.md is picked up automatically as a code guideline (the hard rules);
+# the path instructions below make the safety-critical ones concrete per area.
+# CodeRabbit is advisory: a human maintainer approves every merge.
+
+language: en-GB
+
+reviews:
+  profile: assertive
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+
+  auto_review:
+    enabled: true
+    drafts: false
+
+  path_filters:
+    - "!package-lock.json"
+    - "!dist/**"
+    - "!release/**"
+    - "!assets/icons/**"
+    - "!**/*.ico"
+    - "!**/*.png"
+    - "!.env"
+    - "!.env*"
+    - "!**/.env"
+    - "!**/.env*"
+    - "!credentials/**"
+    - "!**/credentials/**"
+    - "!secrets/**"
+    - "!**/secrets/**"
+    - "!**/*.pem"
+    - "!**/*.key"
+    - "!**/*.p12"
+    - "!**/*.pfx"
+    - "!**/*.jks"
+    - "!**/*.keystore"
+    - "!**/*secret*"
+    - "!**/*secrets*"
+    - "!**/*credential*"
+    - "!**/*credentials*"
+    - "!**/*token*"
+    - "!**/*apikey*"
+    - "!**/*api_key*"
+
+  path_instructions:
+    - path: "src/main/agent/**"
+      instructions: |
+        This is the AI agent. Its hard boundary: the agent may research, create level
+        references and DRAFT plans, but must never arm a plan, place/modify/cancel an
+        order, or choose the venue. Flag as critical:
+        - any new tool, or a change to an existing tool, that reaches plan arming,
+          order placement, the order pipeline, the execution engine or venue selection,
+          even indirectly through a service call;
+        - web/page content (fetch_url, read_browser_page, screenshots) passed to the
+          model without the `untrusted_web_content` envelope, or used as a trigger source;
+        - any secret (API key, private key, token) placed in a prompt, tool result or log.
+        Also check that a tool writing to the DB broadcasts `data:updated`.
+
+    - path: "src/main/risk/**"
+      instructions: &order_path |
+        Order path and money. Flag as critical:
+        - float arithmetic (Number, parseFloat, +, *, Math.*) on prices, quantities or
+          balances outside display-only code — money is a string end-to-end;
+        - any loosened, bypassed or removed risk gate, kill-switch check, or
+          falsifiability check in plan arming;
+        - a kill-switch change that blocks EXITS (it must only block new entries);
+        - an AI/LLM call anywhere in the path OrderIntent -> risk engine -> execution;
+        - a venue adapter that returns plausible success instead of failing loudly, or
+          that declares a capability (e.g. canPlaceOrders) it does not really have;
+        - a missing or unknown value silently substituted with 0 or a default.
+        New logic here should come with a test that does not touch the network.
+    - path: "src/main/paper/**"
+      instructions: *order_path
+    - path: "src/main/plans/**"
+      instructions: *order_path
+    - path: "src/main/exchange/**"
+      instructions: *order_path
+    - path: "src/main/integrations/**"
+      instructions: *order_path
+
+    - path: "src/main/ipc/**"
+      instructions: &trust_boundary |
+        Trust boundary. Flag as critical: a secret or key crossing IPC (credential state
+        may cross only as booleans), secrets in logs or error messages, and raw errors
+        sent to the renderer without `safe()` / `emitError`. A new IPC channel must have
+        its preload method added in the same PR (ipc-surface.test.ts enforces this).
+    - path: "src/main/security/**"
+      instructions: *trust_boundary
+
+    - path: "src/preload/**"
+      instructions: |
+        The preload bridge is a separate trust boundary. Flag anything exposing Node,
+        Electron or ipcRenderer directly to the renderer, and any channel without a
+        matching main-process handler.
+
+    - path: "src/main/main.ts"
+      instructions: |
+        Electron hardening. Flag any weakening of contextIsolation, sandbox,
+        nodeIntegration:false, webSecurity, the navigation/window-open guards, the
+        permission handler, or the CSP. Do not accept `frame: false` on the main window.
+    - path: "src/main/browser/**"
+      instructions: |
+        Windows here load untrusted external pages. Flag any weakening of
+        sandbox, contextIsolation, nodeIntegration:false or webSecurity, and any preload
+        attached to these windows. agent-fetch must keep a NON-persistent partition (no
+        `persist:` prefix), accept only http(s) URLs, keep its timeout and size caps, and
+        return text wrapped as `untrusted_web_content`. The agent's fetch must never share
+        a session with the user's embedded browser. Browserbase sessions must keep
+        solveCaptchas false and recording off.
+
+    - path: "src/main/data/**"
+      instructions: &feeds |
+        Binance is the analysis feed; the venue is execution truth. Flag any computation
+        that mixes the two sources, any FX conversion, any new inline symbol translation
+        (use integrations/feed/symbols.ts) and any new `source = 'binance'` predicate.
+    - path: "src/main/integrations/feed/**"
+      instructions: *feeds
+
+    - path: "src/main/db/**"
+      instructions: |
+        Schema changes need a migration in db/database.ts and a SCHEMA_VERSION bump.
+        SCHEMA_SQL re-runs on every startup against old databases: flag an index or
+        constraint in SCHEMA_SQL over a column that only a migration introduces.
+
+    - path: "src/shared/**"
+      instructions: |
+        Compiles into both the main and renderer bundles: must stay type-only with zero
+        imports. Money types stay `string`. Never model a secret here.
+
+    - path: "src/renderer/**"
+      instructions: |
+        The renderer must not import from src/main, must not build engine JSON by hand,
+        and must not hide or blur live vs. paper state. User-facing strings say what is
+        true and what to do in one sentence — no roadmap or internal vocabulary.
+
+    - path: "package.json"
+      instructions: |
+        New dependencies need justification (the project prefers zero-dependency
+        solutions). Inside `build`, no comment keys — electronFuses rejects unknown keys.
+        Flag any change that weakens the electronFuses settings.
+
+    - path: ".github/workflows/**"
+      instructions: |
+        Workflows must keep `permissions: contents: read` (or narrower) unless a job
+        clearly needs more. Flag `pull_request_target`, secrets exposed to fork PRs, and
+        third-party actions not pinned to a commit SHA.
+
+chat:
+  # Replies only when someone @mentions coderabbitai, so strangers' comments
+  # can't drive the bot on a public repo. Reviews still run automatically.
+  auto_reply: false
+
+knowledge_base:
+  code_guidelines:
+    enabled: true
