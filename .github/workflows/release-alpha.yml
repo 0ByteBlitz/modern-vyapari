@@ -12,19 +12,51 @@ permissions:
   contents: read
 
 jobs:
+  # Runs once, before any build. A release must come from reviewed code: the
+  # tagged commit has to be on main (merged through a PR, CI and review), and its
+  # package.json version must match the tag.
+  verify:
+    name: Verify tag
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Tag must point at a commit on main
+        shell: bash
+        run: |
+          git fetch --no-tags origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::$GITHUB_REF_NAME points at $GITHUB_SHA, which is not on main. Merge through a PR first, then tag the merge commit." >&2
+            exit 1
+          fi
+
+      - name: Tag must match package.json version
+        shell: bash
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $PKG_VERSION" >&2
+            exit 1
+          fi
+
   build:
     name: Build – ${{ matrix.os }}
+    needs: verify
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: windows-latest
-            args: --win
+            script: package:win
           - os: ubuntu-latest
-            args: --linux
+            script: package:linux
           - os: macos-latest
-            args: --mac
+            script: package:mac
 
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -36,29 +68,17 @@ jobs:
           node-version: 22
           cache: npm
 
-      # Fail fast if the tag doesn't match package.json version
-      - name: Verify tag matches package.json version
-        shell: bash
-        run: |
-          TAG_VERSION="${GITHUB_REF_NAME#v}"
-          PKG_VERSION="$(node -p "require('./package.json').version")"
-          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
-            echo "Tag $GITHUB_REF_NAME does not match package.json version $PKG_VERSION" >&2
-            exit 1
-          fi
-
       - run: npm ci
 
       # Run the full test suite before packaging
       - run: npm run typecheck
       - run: npm test
 
-      - run: npm run package:win
-        if: matrix.os == 'windows-latest'
-
-      # Build for Linux/macOS if you add those targets later
-      - run: npm run build && npx electron-builder ${{ matrix.args }}
-        if: matrix.os != 'windows-latest'
+      # The package:* scripts pass --publish never. Without it electron-builder
+      # sees the tag and tries to publish to GitHub Releases itself, with no
+      # token — the "GitHub Personal Access Token is not set" failure. Publishing
+      # is the release job's job, below.
+      - run: npm run ${{ matrix.script }}
 
       # Upload installers as artifacts
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -68,9 +88,7 @@ jobs:
             release/*.exe
             release/*.dmg
             release/*.AppImage
-            release/*.deb
-            release/*.snap
-          if-no-files-found: ignore
+          if-no-files-found: error
 
   release:
     name: Publish Release
@@ -83,7 +101,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v4.1.7
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           path: dist-artifacts
           pattern: installer-*
