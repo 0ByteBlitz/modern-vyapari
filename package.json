@@ -37,7 +37,7 @@
     "clean": "tsc -b --clean && node -e \"fs.rmSync('dist',{recursive:true,force:true})\"",
     "generate-icons": "node scripts/generate-icons.mjs",
     "inspect-db": "node --experimental-sqlite scripts/inspect-db.mjs",
-    "test": "npm run build:main && node --test dist/main/test/**/*.test.js",
+    "test": "npm run build:main && node scripts/ensure-electron.mjs && node --test dist/main/test/**/*.test.js",
     "start": "npm run build && electron .",
     "package:win": "npm run build && electron-builder --win"
   },
