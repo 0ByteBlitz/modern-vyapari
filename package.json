@@ -52,7 +52,7 @@
     "klinecharts": "^9.8.11",
     "lucide-react": "^1.63.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "react-dom": "^19.3.1",
     "recharts": "^3.10.1",
     "tailwind-merge": "^3.7.0",
     "technicalindicators": "^3.1.0"
@@ -61,7 +61,7 @@
     "@tailwindcss/vite": "^4.0.0",
     "@types/node": "^24.19.2",
     "@types/react": "^18.3.18",
-    "@types/react-dom": "^18.3.5",
+    "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^4.3.4",
     "electron": "^45.2.1",
     "electron-builder": "^26.18.0",
