@@ -35,6 +35,7 @@ passed. Each file opens with its current status.
 | **Owner** | The person using the app — the human who authors and signs plans. Not a GitHub role. |
 | **Plan** | The product's one object: a falsifiable thesis with stated assumptions, a thesis invalidation separate from the stop, a hard expiry and its own risk budget. |
 | **Arm / armed** | Signing a plan. The signature is given at arming, not at the fill; the engine then executes the signed terms. |
+| **Global agent / session agent** | The two forms of the agent. The **global** one is the mascot in the corner, on every surface, holding the *general conversation* — not tied to a pair, so it has no session tools. The **session** one is the drawer on a session's own surfaces, bounded by that session's plans, journal and memory. Every chat event names which conversation it belongs to. |
 | **Level reference** | A named price level (static or derived) the engine resolves every bar — what a plan's triggers and stops are written in. |
 | **Port / adapter** | A port is the interface the app needs from an outside service (venue, feed, AI provider); an adapter implements it for one vendor. Nothing outside an adapter imports that vendor's SDK. |
 | **Analysis feed / venue** | Binance public data for charts, indicators and paper fills / the exchange for balances, orders and fills. Never mixed in one computation. |

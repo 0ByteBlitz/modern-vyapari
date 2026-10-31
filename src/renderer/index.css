@@ -1657,6 +1657,122 @@ ol.md-list li { list-style: decimal; }
 
 .chat-drawer-close:hover { color: var(--foreground); }
 
+/* ── The global agent: mascot + floating window (agent-mascot.tsx) ──
+   Anchored to .app-main's lower-right corner. Its only movement is sideways:
+   when a session drawer is on screen it slides left and straddles the drawer's
+   edge at the very bottom, half over the drawer footer (padded for it) — so it
+   never parks over a page's numbers. */
+.mascot,
+.mascot-window {
+  --mascot-gap: 18px;
+  --mascot-size: 52px;
+  --mascot-right: var(--mascot-gap);
+  --mascot-bottom: var(--mascot-gap);
+}
+.mascot-dock-drawer,
+.mascot-dock-rail { --mascot-size: 40px; --mascot-bottom: 4px; }
+.mascot-dock-drawer { --mascot-right: calc(var(--chat-w) - 20px); }
+.mascot-dock-rail { --mascot-right: calc(36px - 20px); }
+
+.mascot {
+  position: absolute;
+  right: var(--mascot-right);
+  bottom: var(--mascot-bottom);
+  z-index: 150;
+  width: var(--mascot-size);
+  height: var(--mascot-size);
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-pill); /* focus ring shape only */
+  background: transparent;
+  cursor: pointer;
+  /* The shape is a blob, so the shadow follows it rather than a box. */
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.55));
+  transition:
+    right var(--dur-slow) var(--ease-out),
+    bottom var(--dur-slow) var(--ease-out),
+    width var(--dur-slow) var(--ease-out),
+    height var(--dur-slow) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out),
+    filter var(--dur-fast) var(--ease-out);
+  animation: mascot-in var(--dur-slow) var(--ease-out) both;
+}
+.mascot:hover { transform: translateY(-2px) scale(1.05); filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 6px rgba(167, 139, 250, 0.45)); }
+.mascot:active { transform: scale(0.97); }
+.mascot.is-open { filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 5px var(--ai-bright)); }
+.mascot .mascot-face { display: block; width: 100%; height: 100%; }
+
+/* Replying: a violet glow breathes around the blob's own outline. Reduced
+   motion collapses this to one still glowing frame (global rule), so the state
+   still reads. */
+.mascot.is-thinking .mascot-face { animation: mascot-think 1.4s ease-in-out infinite; }
+.mascot-unread {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  width: 12px;
+  height: 12px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--background);
+}
+
+@keyframes mascot-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.9); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes mascot-think {
+  0%, 100% { filter: drop-shadow(0 0 2px rgba(167, 139, 250, 0.35)); }
+  50%      { filter: drop-shadow(0 0 9px rgba(167, 139, 250, 0.95)); }
+}
+
+.mascot-window {
+  position: absolute;
+  right: var(--mascot-right);
+  bottom: calc(var(--mascot-bottom) + var(--mascot-size) + 12px);
+  z-index: 151;
+  width: min(380px, calc(100% - 2 * var(--mascot-gap)));
+  height: min(560px, calc(100% - var(--mascot-size) - var(--mascot-bottom) - 2 * var(--mascot-gap)));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--card);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.6);
+  transform-origin: bottom right;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(8px) scale(0.96);
+  transition:
+    opacity var(--dur-fast) var(--ease-in),
+    transform var(--dur-fast) var(--ease-in),
+    right var(--dur-slow) var(--ease-out),
+    visibility 0s linear var(--dur-fast);
+}
+.mascot-window.is-open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: none;
+  transition:
+    opacity var(--dur-base) var(--ease-out),
+    transform var(--dur-base) var(--ease-out),
+    right var(--dur-slow) var(--ease-out),
+    visibility 0s;
+}
+.mascot-window-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.mascot-window-title { font-size: var(--text-base); font-weight: 600; }
+.mascot-window-scope { font-size: var(--text-2xs); color: var(--text-faint); }
+
 /* ── General conversation (no session open) ── */
 .chat-session-picker {
   flex-shrink: 0;
@@ -1716,6 +1832,8 @@ ol.md-list li { list-style: decimal; }
   color: var(--text-faint);
   line-height: 1.5;
 }
+/* Room for the global agent's mascot, which docks over this corner. */
+.chat-drawer > .chat-drawer-foot { padding-left: 28px; }
 
 /* Collapsed: a 36px vertical rail, so the agent is never more than one click
    away from any surface. */

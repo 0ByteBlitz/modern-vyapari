@@ -677,7 +677,7 @@ function toolListPlans(sessionId: number, input: Record<string, unknown>): unkno
        distinction decides what the honest answer to "paper trade this" is. */
     watched_states_note:
       "'planned' means ARMED: the engine evaluates expiry, thesis invalidation and drift on every closed bar. " +
-      "A triggered branch is recorded but does not open a position yet.",
+      "A triggered branch opens a paper position with that branch's stop and target; there is no real-money order path.",
     plans: plans.map((p) => ({
       plan_id: p.rowId,
       name: p.slug,
@@ -733,8 +733,9 @@ function toolGetPlan(sessionId: number, input: Record<string, unknown>): unknown
       label: b.label,
       status: b.status,
       triggered_at: b.triggeredAt ?? null,
-      /* Null on a fired branch is a real state, not missing data: plan
-         execution is not wired, so a trigger is recorded and opens nothing. */
+      /* Null on a fired branch is a real state, not missing data: the
+         trigger fired but no position opened (refused — e.g. not enough
+         paper cash — and audited as a refusal). */
       position_id: b.positionId ?? null,
       budget_share_pct: b.budgetSharePct,
       trigger: describeThreshold(triggerValueOf(b.trigger)),
@@ -1080,9 +1081,10 @@ function toolGetAppCapabilities(): unknown {
        and stating them wrongly is what produced the strategy answer. */
     plan_execution:
       "Armed plans ARE monitored every closed bar — expiry, thesis invalidation and drift all act and " +
-      "transition the plan. A triggered branch is recorded but does NOT open a position yet.",
+      "transition the plan. A triggered branch opens a PAPER position carrying that branch's stop and target; " +
+      "stops and targets are managed intrabar and the close is reviewed. There is no real-money order path.",
     paper_trading:
-      "The paper engine exists and shares one fill model with the backtester, but has not yet executed a position.",
+      "The paper engine executes plan positions with one fill model (shared with the frozen backtester). Paper only.",
     you_cannot:
       "Place, amend or cancel any order; arm a plan; choose the venue. Those are the owner's signature or pure code, by design.",
     never_mix:

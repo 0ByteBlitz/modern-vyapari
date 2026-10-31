@@ -108,7 +108,7 @@ describe("the agent's plan tools", () => {
     /* The note is the fix for the actual failure: "planned" alone left the
        model to guess whether anything was running, and it guessed wrong. */
     assert.match(res.watched_states_note, /ARMED/);
-    assert.match(res.watched_states_note, /does not open a position/i);
+    assert.match(res.watched_states_note, /opens a paper position/i);
   });
 
   test("get_plan returns the assumptions and the invalidation, not just prices", async () => {
@@ -158,9 +158,10 @@ describe("the session context names armed plans unprompted", () => {
     assert.match(ctx, /Armed plans/);
     assert.match(ctx, /range-break/);
     assert.match(ctx, /gap to 130/);
-    /* Without this line the model reads "armed" and infers execution. That
-       inference is exactly what produced the wrong answer. */
-    assert.match(ctx, /does NOT open a\s+position yet|does NOT open a position yet/);
+    /* The line that states what a trigger actually does. It used to assert
+       the opposite ("does NOT open a position yet") and kept passing after
+       S3-3 made it false — a test certifying a stale fact. */
+    assert.match(ctx, /opens a PAPER\s+position/);
     assert.match(ctx, /cannot create or arm a plan/i);
   });
 

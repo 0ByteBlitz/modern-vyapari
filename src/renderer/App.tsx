@@ -19,6 +19,7 @@ import { ApprovalsPage } from "@/components/pages/approvals-page";
 import { ResearchPage } from "@/components/pages/research-page";
 import { AlertsPage } from "@/components/pages/alerts-page";
 import { ChatDrawer } from "@/components/chat-drawer";
+import { AgentMascot } from "@/components/agent-mascot";
 import { AlertToastHost } from "@/components/alert-toast";
 import { formatUsd, formatPct } from "@/lib/format";
 
@@ -264,6 +265,8 @@ export default function App() {
   ];
 
   const meta = surfaceMeta(surface, activeSession);
+  /** The session whose agent drawer is on screen: only on its own surfaces. */
+  const sessionChat = activeSession && isSessionSurface(surface) ? activeSession : null;
   const mode: TradingMode = "paper";
 
   return (
@@ -338,17 +341,19 @@ export default function App() {
             asking the bot about a backtest shouldn't mean navigating away
             from it. Hidden on the embedded browser, which owns its own
             WebContentsView bounds and would be overlapped. */}
+        {/* Two agents (31 Oct 2026). The SESSION agent is the drawer, and it
+            follows the rail's rule: a session is only "open" on one of its own
+            surfaces. The GLOBAL agent is the mascot, on every surface, in the
+            lower-right corner — moving left only to sit beside the drawer.
+            Both hidden on the embedded browser, which owns its own
+            WebContentsView bounds and would be overlapped. */}
+        {surface !== "browser" && sessionChat && (
+          <ChatDrawer session={sessionChat} open={chatOpen} onToggle={() => setChatOpen((v) => !v)} />
+        )}
         {surface !== "browser" && (
-          <ChatDrawer
-            /* The chat follows the same rule as the rail: a session is only
-               "open" on one of its own surfaces. On Home, Portfolio, Markets,
-               Settings… the agent is the general one, even with a session
-               still selected — otherwise Portfolio would sit beside one
-               pair's conversation as if it were about that pair. */
-            session={activeSession && isSessionSurface(surface) ? activeSession : null}
+          <AgentMascot
+            dock={!sessionChat ? "corner" : chatOpen ? "drawer" : "rail"}
             selectedSession={activeSession}
-            open={chatOpen}
-            onToggle={() => setChatOpen((v) => !v)}
             onOpenSession={(s) => void selectSession(s)}
           />
         )}

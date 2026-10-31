@@ -51,10 +51,10 @@ work is what settles the surfaces they would theme.
   window is always closable · "armed" counts plans, so a session with armed plans
   no longer reads *idle* (J0) · titlebar version from `package.json` · motion
   tokens, reduced-motion support, one focus ring · the app opens on Home with
-  no session, and the agent is a **general conversation** until one is opened
-  (J0, J1).
+  no session, and the agent is a **general conversation** until one is opened;
+  the session chat appears only on that session's own surfaces (J0, J1).
 - **U-1 One word per state** (J0, J6) — the mode reads *simulated* in the
-  titlebar, *PAPER* in the toolbar and *paper mode* on Home. Pick one vocabulary
+  titlebar and on Home but *PAPER* in the toolbar. Pick one vocabulary
   and use it everywhere; live stays loud. Remaining *strategy* wording on screen
   goes with it — that path is frozen.
 - **U-2 Motion system** (all journeys) — `--dur-*` / `--ease-*` tokens exist;
@@ -77,16 +77,16 @@ work is what settles the surfaces they would theme.
 - **U-7 Loading and feedback** (J0, J3) — skeletons instead of *Loading…*, one
   toast system for alerts and confirmations, and an honest *stale* state on any
   number whose feed has stopped.
-- **U-8 The global agent as a mascot** (J0, J1) — on Home, with no session
-  open, the agent is a small mascot that opens a floating chat window: the
-  *general* conversation. Inside a session the session's chat opens in the
-  drawer and the mascot docks to the side, still one click from the general
-  conversation. Two agents, never ambiguous which: the session chat is bounded
-  by its session, the mascot is global. The plumbing is in (a general
-  conversation with its own history and tools; every chat event names its
-  conversation, so two can be on screen at once). Open: the character itself —
-  original, not a known mascot — the floating window, where it docks, and its
-  motion, which must never sit on top of a number.
+- **U-8 The global agent as a mascot** (J0, J1) — *first version landing.* The
+  agent has two forms, never ambiguous which: the **session** agent is the drawer
+  on a session's own surfaces, bounded by that session; the **global** agent is
+  an original mascot (a happy face on a violet blob, its smile a rising chart line) in the lower-right
+  corner, opening a floating window for the general conversation. When a session
+  drawer is on screen the mascot slides left to straddle its edge, so it never
+  parks over a page's numbers; that is its only movement. It shows when it is
+  replying, and a dot marks a reply that finished while the window was closed.
+  Next: dragging it, and whether it should speak up unasked (JOURNEYS' partner
+  bar) — which waits on the calibration record having entries.
 
 **Harness compatibility: any LLM provider, or a local model** (J7) — Anthropic is
 the only adapter today and the default everywhere. The agent loop is already the
