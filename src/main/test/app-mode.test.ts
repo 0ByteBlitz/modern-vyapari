@@ -14,7 +14,8 @@
  */
 import { test, describe, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setupTestDb, cleanupTestDb } from "./test-helper";
 import {
@@ -31,7 +32,10 @@ import { venue, venueCapabilities, listVenues, activeVenueId } from "../integrat
 import { paperVenue } from "../integrations/venue/paper";
 import { replaceLessonsForPair, getLessonsForPair } from "../db/shared-store";
 
-const SCRATCH = process.env.TEMP || process.env.TMPDIR || ".";
+/* os.tmpdir(), never ".": with TEMP and TMPDIR unset (most Linux shells and CI
+   runners) the old fallback wrote a scratch folder into the repo root on every
+   run, untracked and never removed. */
+const SCRATCH = tmpdir();
 
 describe("simulated mode has no route to a real order", () => {
   beforeEach(() => setupTestDb());
@@ -108,11 +112,15 @@ describe("the mode is unambiguous and safe by default", () => {
   });
 
   test("a written mode round-trips", () => {
-    const dir = join(SCRATCH, `vyapari-mode-${Date.now()}`);
-    writeMode(dir, "live");
-    assert.equal(readMode(dir), "live");
-    writeMode(dir, "simulated");
-    assert.equal(readMode(dir), "simulated");
+    const dir = mkdtempSync(join(SCRATCH, "vyapari-mode-"));
+    try {
+      writeMode(dir, "live");
+      assert.equal(readMode(dir), "live");
+      writeMode(dir, "simulated");
+      assert.equal(readMode(dir), "simulated");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   test("the mode cannot be changed once the process has locked it", () => {
