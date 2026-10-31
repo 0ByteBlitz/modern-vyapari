@@ -25,11 +25,15 @@ import { api, isError, type Session } from "@/lib/api";
  */
 export function ChatDrawer({
   session,
+  selectedSession,
   open,
   onToggle,
   onOpenSession,
 }: {
+  /** The session whose chat to show — null on any surface that isn't one of its own. */
   session: Session | null;
+  /** Still selected while you visit a global surface; offered first, as the way back. */
+  selectedSession: Session | null;
   open: boolean;
   onToggle: () => void;
   onOpenSession: (session: Session) => void;
@@ -60,7 +64,7 @@ export function ChatDrawer({
         <ChatPanel key={session.id} sessionId={session.id} />
       ) : (
         <>
-          <SessionPicker onOpenSession={onOpenSession} />
+          <SessionPicker selected={selectedSession} onOpenSession={onOpenSession} />
           <ChatPanel
             key="general"
             sessionId={null}
@@ -85,7 +89,13 @@ export function ChatDrawer({
 }
 
 /** The sessions as one-click ways into a session's chat. The last one used leads. */
-function SessionPicker({ onOpenSession }: { onOpenSession: (s: Session) => void }) {
+function SessionPicker({
+  selected,
+  onOpenSession,
+}: {
+  selected: Session | null;
+  onOpenSession: (s: Session) => void;
+}) {
   const [sessions, setSessions] = useState<Session[] | null>(null);
   const [last, setLast] = useState<Session | null>(null);
 
@@ -103,9 +113,13 @@ function SessionPicker({ onOpenSession }: { onOpenSession: (s: Session) => void 
   }, []);
 
   if (!sessions || sessions.length === 0) return null;
-  const ordered = last
-    ? [...sessions.filter((s) => s.id === last.id), ...sessions.filter((s) => s.id !== last.id)]
+  /* The selected session (you stepped out to Home or Portfolio) leads; else the
+     last one used (fresh launch). */
+  const lead = selected ?? last;
+  const ordered = lead
+    ? [...sessions.filter((s) => s.id === lead.id), ...sessions.filter((s) => s.id !== lead.id)]
     : sessions;
+  const note = selected ? "back" : "last";
 
   return (
     <div className="chat-session-picker">
@@ -114,12 +128,12 @@ function SessionPicker({ onOpenSession }: { onOpenSession: (s: Session) => void 
         {ordered.map((s) => (
           <button
             key={s.id}
-            className={`chat-session-chip${last?.id === s.id ? " is-last" : ""}`}
+            className={`chat-session-chip${lead?.id === s.id ? " is-last" : ""}`}
             onClick={() => onOpenSession(s)}
-            title={last?.id === s.id ? "Where you left off" : `Open ${s.pair}`}
+            title={lead?.id === s.id ? "Where you left off" : `Open ${s.pair}`}
           >
             <span className="mono">{s.pair}</span>
-            {last?.id === s.id && <span className="chat-session-chip-note">last</span>}
+            {lead?.id === s.id && <span className="chat-session-chip-note">{note}</span>}
             <ArrowRight size={11} />
           </button>
         ))}

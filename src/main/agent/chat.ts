@@ -8,6 +8,7 @@ import { getResearchView } from "./research-view";
 import { createLogger } from "../logger";
 import { emitTo, emitError, type ChatConversation } from "../events/outbound";
 import { AppError, toUserFacing } from "../../shared/errors";
+import { isSessionSurfaceId } from "../../shared/surfaces";
 import { getAnalysisCandles } from "../data/analysis-candles";
 import { computeIndicatorBatch } from "../insights/indicators";
 import { getSessionById } from "../sessions/service";
@@ -380,6 +381,16 @@ function notifyDataUpdated(kind: string): void {
   }
 }
 
+/* The renderer shows a session's chat only on that session's own surfaces, and
+   the general chat everywhere else. So an agent that navigates must stay on its
+   own side: a session conversation jumping to Markets, or the general one
+   jumping to Research, would swap the transcript out from under the reply it is
+   still writing. The Browser tab is allowed from both — its tools need it open. */
+function surfaceKeepsConversation(surface: string, general: boolean): boolean {
+  if (surface === "browser") return true;
+  return general ? !isSessionSurfaceId(surface) : isSessionSurfaceId(surface);
+}
+
 /** Short pause to let React re-render after a navigation event. */
 const waitForRender = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
@@ -723,7 +734,7 @@ export async function sendChatMessage(
       try {
         for (const toolUse of toolUseBlocks) {
           const targetSurface = TOOL_SURFACE_MAP[toolUse.name];
-          if (targetSurface) {
+          if (targetSurface && surfaceKeepsConversation(targetSurface, general)) {
             navigateAgent(targetSurface);
             // Deliberate pause so the user visually sees the page switch and purple active glow
             await waitForRender(800);
