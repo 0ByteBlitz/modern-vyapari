@@ -213,11 +213,15 @@ export function portfolioSummary(includeArchived = false): PortfolioSummary {
       )
       .get(s.id) as any;
 
-    const strat = db
+    /* Plans, not strategies. This read the strategies table, frozen since
+       30 Jul, so "armed" was always 0 and a session with armed plans and an
+       open position was badged "idle" — an armed-vs-idle ambiguity in the
+       direction that hides risk. */
+    const plans = db
       .prepare(
-        `SELECT COUNT(*) AS n,
-                SUM(CASE WHEN state IN ('paper','live_supervised','live_auto') THEN 1 ELSE 0 END) AS armed
-         FROM strategies WHERE session_id = ?`
+        `SELECT SUM(CASE WHEN state IN ('draft','planned','triggered') THEN 1 ELSE 0 END) AS active,
+                SUM(CASE WHEN state = 'planned' THEN 1 ELSE 0 END) AS armed
+         FROM trade_plans WHERE session_id = ?`
       )
       .get(s.id) as any;
 
@@ -231,8 +235,8 @@ export function portfolioSummary(includeArchived = false): PortfolioSummary {
       wins: agg?.wins || 0,
       realizedPnl: agg?.pnl || 0,
       fees: agg?.fees || 0,
-      strategyCount: strat?.n || 0,
-      armedCount: strat?.armed || 0,
+      planCount: plans?.active || 0,
+      armedCount: plans?.armed || 0,
       lastActivityAt: agg?.last_at ?? null,
     };
   });

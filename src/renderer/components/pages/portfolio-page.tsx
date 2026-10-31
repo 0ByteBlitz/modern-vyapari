@@ -75,9 +75,14 @@ export function PortfolioPage({ onOpenSession }: { onOpenSession: (s: { id: numb
           label="Account value"
           value={formatUsd(totals.equity)}
           sub={
-            totals.unrealisedPnl !== 0
-              ? `${formatUsd(totals.unrealisedPnl, { sign: true })} unrealised`
-              : `${formatUsd(totals.cashBalance)} cash, nothing open`
+            /* "nothing open" used to be inferred from zero unrealised P&L, so an
+               open position with no recent price read as nothing open while the
+               Cash cell beside it said the opposite. Decide from the count. */
+            totals.openCount === 0
+              ? `${formatUsd(totals.cashBalance)} cash, nothing open`
+              : totals.unpricedPositions === totals.openCount
+                ? `${totals.openCount} open, no current price`
+                : `${formatUsd(totals.unrealisedPnl, { sign: true })} unrealised`
           }
           tone={totals.unrealisedPnl > 0 ? "up" : totals.unrealisedPnl < 0 ? "down" : "neutral"}
         />
@@ -126,7 +131,7 @@ export function PortfolioPage({ onOpenSession }: { onOpenSession: (s: { id: numb
             <tr>
               <th style={{ textAlign: "left" }}>Pair</th>
               <th style={{ textAlign: "left" }}>Status</th>
-              <th>Strategies</th>
+              <th>Plans</th>
               <th>Armed</th>
               <th>Open</th>
               <th>Closed</th>
@@ -144,7 +149,7 @@ export function PortfolioPage({ onOpenSession }: { onOpenSession: (s: { id: numb
                   <td className="t-text" style={{ color: s.status === "active" ? "var(--up)" : "var(--text-faint)" }}>
                     {s.status}
                   </td>
-                  <td>{s.strategyCount}</td>
+                  <td>{s.planCount}</td>
                   <td className={s.armedCount > 0 ? "v-caution" : "v-flat"}>{s.armedCount}</td>
                   <td className={s.openCount > 0 ? "v-caution" : "v-flat"}>{s.openCount}</td>
                   <td>{s.closedCount}</td>
@@ -165,8 +170,7 @@ export function PortfolioPage({ onOpenSession }: { onOpenSession: (s: { id: numb
         )}
         <div className="panel-footer">
           <span>
-            All figures are paper results, fee- and slippage-adjusted. They are not live performance and never will be
-            until a strategy is promoted past paper.
+            All figures are paper results, fee- and slippage-adjusted — not live performance.
           </span>
         </div>
       </section>

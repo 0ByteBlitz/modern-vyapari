@@ -350,7 +350,11 @@ export interface SessionSummary {
   wins: number;
   realizedPnl: number;
   fees: number;
-  strategyCount: number;
+  /** Plans still in play: draft, armed, or holding a position. */
+  planCount: number;
+  /** Plans armed and waiting for a trigger (`planned`). This counted
+   *  strategies until 31 Oct 2026 — always 0 since the strategy path froze,
+   *  so a session with armed plans read "idle". */
   armedCount: number;
   lastActivityAt: number | null;
 }

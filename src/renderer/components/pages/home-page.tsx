@@ -43,6 +43,15 @@ function relTime(ms: number): string {
   return `${Math.floor(d / 86_400_000)}d ago`;
 }
 
+/** One word for a session card. An open position outranks an armed plan:
+ *  it is the state with money in it. Never "idle" while either exists. */
+function sessionState(s: SessionSummary): string {
+  if (s.openCount > 0 && s.armedCount > 0) return "in position · armed";
+  if (s.openCount > 0) return "in position";
+  if (s.armedCount > 0) return "armed";
+  return "idle";
+}
+
 function greeting(): string {
   const h = new Date().getHours();
   if (h < 5) return "Late session";
@@ -111,12 +120,13 @@ export function HomePage({
   }
 
   const armedTotal = sessions.reduce((n, s) => n + s.armedCount, 0);
-  const strategiesTotal = sessions.reduce((n, s) => n + s.strategyCount, 0);
+  const plansTotal = sessions.reduce((n, s) => n + s.planCount, 0);
+  const openTotal = sessions.reduce((n, s) => n + s.openCount, 0);
 
-  if (sessions.length > 0 && armedTotal === 0 && strategiesTotal > 0) {
+  if (sessions.length > 0 && armedTotal === 0 && openTotal === 0 && plansTotal > 0) {
     attention.push({
       tone: "info",
-      text: `${strategiesTotal} ${strategiesTotal === 1 ? "strategy exists" : "strategies exist"} but none is armed — nothing can trade.`,
+      text: `${plansTotal} ${plansTotal === 1 ? "plan is" : "plans are"} drafted but none is armed — nothing will trigger.`,
     });
   }
   if (sessions.length === 0) {
@@ -149,7 +159,7 @@ export function HomePage({
               ? "Checking on things…"
               : sessions.length === 0
                 ? "Nothing is running. Everything below is read-only until you create a session."
-                : `${sessions.length} session${sessions.length === 1 ? "" : "s"} · ${armedTotal} armed ${armedTotal === 1 ? "strategy" : "strategies"} · paper mode`}
+                : `${sessions.length} session${sessions.length === 1 ? "" : "s"} · ${armedTotal} armed ${armedTotal === 1 ? "plan" : "plans"} · ${setup?.mode === "live" ? "live" : "simulated"} mode`}
           </p>
         </div>
         <div className="home-actions">
@@ -279,10 +289,10 @@ export function HomePage({
               <div className="home-session-top">
                 <span className="home-session-pair">{s.pair}</span>
                 <span
-                  className={`badge ${s.armedCount > 0 ? "badge-paper" : "badge-draft"}`}
+                  className={`badge ${s.armedCount > 0 || s.openCount > 0 ? "badge-paper" : "badge-draft"}`}
                   style={{ marginLeft: "auto" }}
                 >
-                  {s.armedCount > 0 ? "armed" : "idle"}
+                  {sessionState(s)}
                 </span>
               </div>
               <div className="home-session-stats mono">
@@ -298,7 +308,7 @@ export function HomePage({
                 </span>
               </div>
               <div className="home-session-meta">
-                {s.strategyCount} {s.strategyCount === 1 ? "strategy" : "strategies"}
+                {s.planCount} {s.planCount === 1 ? "plan" : "plans"}
                 {s.lastActivityAt ? ` · last ${relTime(s.lastActivityAt)}` : " · no activity yet"}
                 <ArrowRight size={12} className="ml-auto" />
               </div>
