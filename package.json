@@ -37,7 +37,7 @@
     "clean": "tsc -b --clean && node -e \"fs.rmSync('dist',{recursive:true,force:true})\"",
     "generate-icons": "node scripts/generate-icons.mjs",
     "inspect-db": "node --experimental-sqlite scripts/inspect-db.mjs",
-    "test": "npm run build:main && node --test dist/main/test/**/*.test.js",
+    "test": "npm run build:main && node scripts/ensure-electron.mjs && node --test dist/main/test/**/*.test.js",
     "start": "npm run build && electron .",
     "package:win": "npm run build && electron-builder --win"
   },
@@ -48,7 +48,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "klinecharts": "^9.8.11",
-    "lucide-react": "^0.469.0",
+    "lucide-react": "^1.63.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "recharts": "^3.10.1",
