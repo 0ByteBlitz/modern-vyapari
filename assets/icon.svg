@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Modern Bot — App Icon
+  Motif: Geometric Devanagari "ब" (ba) fused with an upward chart line.
+  Cleaned up version for premium aesthetics.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Primary gradient for Devanagari 'ब': cyan-500 to violet-500 -->
+    <linearGradient id="grad-main" x1="100" y1="400" x2="400" y2="100" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#06b6d4"/>
+      <stop offset="100%" stop-color="#8b5cf6"/>
+    </linearGradient>
+
+    <!-- Accent gradient for the chart line: amber-500 to amber-400 -->
+    <linearGradient id="grad-accent" x1="110" y1="390" x2="385" y2="175" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#fbbf24"/>
+    </linearGradient>
+
+    <filter id="glow-subtle" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <clipPath id="bg-clip">
+      <!-- Rounded rectangle for app icon shape -->
+      <rect width="512" height="512" rx="112" ry="112"/>
+    </clipPath>
+  </defs>
+
+  <!-- Background -->
+  <g clip-path="url(#bg-clip)">
+    <rect width="512" height="512" fill="#0f1419"/>
+    <!-- Subtle radial glow behind the mark -->
+    <radialGradient id="bg-glow" cx="50%" cy="50%" r="60%">
+      <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#0f1419" stop-opacity="0"/>
+    </radialGradient>
+    <rect width="512" height="512" fill="url(#bg-glow)"/>
+  </g>
+
+  <!--
+    Geometric Devanagari "ब" (ba)
+    Constructed with thick strokes for a modern, scalable look.
+  -->
+  <g>
+    <!-- Top Bar (Shirorekha) -->
+    <path d="M 160 160 L 340 160" fill="none" stroke="url(#grad-main)" stroke-width="32" stroke-linecap="round" />
+    <!-- Vertical Stem -->
+    <path d="M 300 160 L 300 360" fill="none" stroke="url(#grad-main)" stroke-width="32" stroke-linecap="round" />
+    <!-- Loop (Belly of the 'ब') -->
+    <circle cx="235" cy="275" r="65" fill="none" stroke="url(#grad-main)" stroke-width="32" />
+  </g>
+
+  <!--
+    Chart Line (Upward Trend)
+    Strikes dynamically across the 'ब', doubling as its diagonal stroke.
+  -->
+  <g filter="url(#glow-subtle)">
+    <!-- Main Trend Line -->
+    <polyline 
+      points="108,310 189,229 281,321 402,200" 
+      fill="none" 
+      stroke="url(#grad-accent)" 
+      stroke-width="20" 
+      stroke-linecap="round" 
+      stroke-linejoin="round" 
+    />
+    
+    <!-- Arrowhead at the end of the line -->
+    <g transform="translate(402, 200) rotate(-45)">
+      <polyline 
+        points="-25,-20 0,0 -25,20" 
+        fill="none" 
+        stroke="url(#grad-accent)" 
+        stroke-width="20" 
+        stroke-linecap="round" 
+        stroke-linejoin="round" 
+      />
+    </g>
+    
+    <!-- Data point dots at the joints -->
+    <circle cx="108" cy="310" r="10" fill="#f59e0b" />
+    <circle cx="189" cy="229" r="10" fill="#f59e0b" />
+    <circle cx="281" cy="321" r="10" fill="#fbbf24" />
+  </g>
+</svg>

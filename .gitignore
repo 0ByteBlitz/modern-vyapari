@@ -1,0 +1,54 @@
+# ── Dependencies ─────────────────────────────────────────
+node_modules/
+
+# ── Build output ─────────────────────────────────────────
+dist/
+release/
+*.tsbuildinfo
+
+# ── Secrets ──────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+credentials/
+
+# ── Logs & diagnostics ───────────────────────────────────
+*.log
+logs/
+npm-debug.log*
+
+# ── Local data ───────────────────────────────────────────
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+# Root-anchored on purpose. An unanchored `data/` matches ANY directory of
+# that name — including `src/main/data/`, which is source. That silently kept
+# `candle-repair.ts` out of the repository while `git status` reported a clean
+# tree; the file existed on disk, its test was committed, and the build passed
+# locally, so nothing would ever have noticed until a fresh clone failed.
+/data/
+/backup/
+# `logs/` above has the same shape but no source directory collides with it
+# today; anchoring it too would need care, since Electron writes logs under
+# userData rather than the repo.
+
+# ── Editor / OS noise ────────────────────────────────────
+.vscode/*
+!.vscode/settings.json
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Scratch ──────────────────────────────────────────────
+*.tmp
+*.bak
+*.orig
+tmp/
+scratch/

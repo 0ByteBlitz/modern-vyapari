@@ -1,0 +1,104 @@
+{
+  "name": "modern-vyapari",
+  "version": "0.1.0",
+  "description": "Open-source AI trading partner for crypto: you author the thesis, the agent monitors it, deterministic code executes. Electron desktop app.",
+  "author": "0ByteBlitz",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/0ByteBlitz/modern-vyapari.git"
+  },
+  "bugs": {
+    "url": "https://github.com/0ByteBlitz/modern-vyapari/issues"
+  },
+  "homepage": "https://github.com/0ByteBlitz/modern-vyapari#readme",
+  "keywords": [
+    "trading",
+    "crypto",
+    "ai-agent",
+    "claude",
+    "anthropic",
+    "electron",
+    "trading-bot",
+    "risk-management",
+    "paper-trading",
+    "revolut-x"
+  ],
+  "engines": {
+    "node": ">=22.13"
+  },
+  "private": true,
+  "main": "dist/main/main.js",
+  "scripts": {
+    "build": "npm run build:main && npm run build:renderer",
+    "build:main": "tsc -b tsconfig.node.json && node scripts/prune-orphan-output.mjs",
+    "build:renderer": "vite build",
+    "typecheck": "tsc -b",
+    "clean": "tsc -b --clean && node -e \"fs.rmSync('dist',{recursive:true,force:true})\"",
+    "generate-icons": "node scripts/generate-icons.mjs",
+    "inspect-db": "node --experimental-sqlite scripts/inspect-db.mjs",
+    "test": "npm run build:main && node --test dist/main/test/**/*.test.js",
+    "start": "npm run build && electron .",
+    "package:win": "npm run build && electron-builder --win"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.112.3",
+    "@radix-ui/react-select": "^2.1.4",
+    "@radix-ui/react-slot": "^1.1.1",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "klinecharts": "^9.8.11",
+    "lucide-react": "^0.469.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "recharts": "^3.9.2",
+    "tailwind-merge": "^2.6.0",
+    "technicalindicators": "^3.1.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.0.0",
+    "@types/node": "^22.10.0",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^43.1.1",
+    "electron-builder": "^26.15.3",
+    "png-to-ico": "^3.0.2",
+    "sharp": "^0.35.3",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.7.0",
+    "vite": "^6.0.0"
+  },
+  "build": {
+    "appId": "com.modernvyapari.app",
+    "productName": "Modern Vyapari",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "assets/**/*",
+      "package.json",
+      "!**/*.map",
+      "!dist/main/test/**"
+    ],
+    "forceCodeSigning": false,
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "electronFuses": {
+      "runAsNode": false,
+      "enableCookieEncryption": true,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false,
+      "enableEmbeddedAsarIntegrityValidation": true,
+      "onlyLoadAppFromAsar": true,
+      "grantFileProtocolExtraPrivileges": false
+    }
+  }
+}
