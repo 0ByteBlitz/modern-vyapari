@@ -64,7 +64,7 @@ function ModeBadge() {
   );
 }
 
-export function Titlebar({ version = "0.1.0" }: { version?: string }) {
+export function Titlebar({ version = __APP_VERSION__ }: { version?: string }) {
   return (
     <header className="titlebar">
       <div className="titlebar-brand">
