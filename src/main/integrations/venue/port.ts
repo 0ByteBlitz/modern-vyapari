@@ -131,6 +131,11 @@ export interface VenueCapabilities {
 export interface VenueReadPort {
   readonly capabilities: VenueCapabilities;
 
+  /** Whether this venue's credentials are in place. A presence check — it
+   *  decrypts nothing. Setup asks the adapter rather than knowing any one
+   *  venue's key files, so onboarding is not tied to a single venue. */
+  isConfigured(): boolean;
+
   /** Account balances — execution truth, used to value real holdings. */
   getBalances(): Promise<VenueBalance[]>;
 

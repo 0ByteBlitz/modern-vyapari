@@ -70,6 +70,9 @@ export const PAPER_CAPABILITIES: VenueCapabilities = {
 export const paperVenue: VenueReadPort = {
   capabilities: PAPER_CAPABILITIES,
 
+  /* Nothing to configure: there is no account. */
+  isConfigured: () => true,
+
   /* No account exists, so there are no balances. Deliberately not a synthetic
      figure — see the module note. */
   async getBalances(): Promise<VenueBalance[]> {

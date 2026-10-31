@@ -118,7 +118,10 @@ export default function App() {
     })();
   }, []);
 
-  const isSetupComplete = setup?.hasKeyPair && setup?.hasApiKey && setup?.hasAnthropicApiKey;
+  /* Main decides: simulated mode needs only an AI provider; live mode also
+     needs the venue. Re-deriving it here from venue-specific key flags is what
+     used to lock onboarding to one exchange. */
+  const isSetupComplete = Boolean(setup?.setupComplete);
 
   const refreshStatus = useCallback(async () => {
     const db = await api.dbInfo();

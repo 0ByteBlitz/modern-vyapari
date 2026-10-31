@@ -36,7 +36,7 @@ const PLANNED_LIMITS: { label: string; note: string; value: string }[] = [
   { label: "Max capital per pair", note: "share of total equity", value: "20%" },
   { label: "Max daily loss", note: "halts the session, not just the order", value: "5%" },
   { label: "Max open positions", note: "across all sessions", value: "3" },
-  { label: "Max orders per day", note: "Revolut X caps limit orders at 1,000/day", value: "50" },
+  { label: "Max orders per day", note: "venues cap limit orders per day (Revolut X: 1,000)", value: "50" },
   { label: "Min time between orders", note: "throttles a misfiring strategy", value: "60s" },
   { label: "Feed staleness tolerance", note: "no orders on stale data", value: "3 intervals" },
 ];
@@ -271,12 +271,12 @@ export function SettingsPage({ setup, setupError, onRefresh, dbStatus }: Setting
                 symbol so a chart can never disagree with the engine that traded on it.
               </p>
               <p style={{ marginTop: 8 }}>
-                <strong style={{ color: "var(--foreground)" }}>Revolut X</strong> is execution and
+                <strong style={{ color: "var(--foreground)" }}>The trading venue</strong> is execution and
                 reconciliation truth — balances, orders, fills. It is never charted from.
               </p>
               <p style={{ marginTop: 8, color: "var(--text-faint)" }}>
                 Analysis is USD-quote only; no FX conversion happens anywhere. The basis monitor samples
-                the RevX-vs-Binance spread every 60s and feeds the measured value into backtest slippage.
+                the venue-vs-Binance spread every 60s and feeds the measured value into backtest slippage.
               </p>
               {dbStatus && (
                 <p className="mono" style={{ marginTop: 10, color: "var(--text-faint)", fontSize: "var(--text-sm)" }}>

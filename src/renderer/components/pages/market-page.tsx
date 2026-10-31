@@ -26,21 +26,21 @@ function formatVolume(v: number): string {
 export function MarketPage({ lockedSymbol }: { lockedSymbol?: string } = {}) {
   const [symbol, setSymbol] = useState(lockedSymbol ?? "BTC-USD");
   const [search, setSearch] = useState("");
-  /** When on, hide markets the bot could not actually execute on Revolut X. */
+  /** When on, hide markets the bot could not actually execute on the venue. */
   const [tradableOnly, setTradableOnly] = useState(false);
 
   useEffect(() => {
     if (lockedSymbol) setSymbol(lockedSymbol);
   }, [lockedSymbol]);
 
-  // Single feed: Binance for all prices, volume, and 24h change. The Revolut X
-  // pair list only annotates rows with `tradableOnRevolutX`.
+  // Single feed: Binance for all prices, volume, and 24h change. The venue's
+  // pair list only annotates rows with `tradableOnVenue`.
   const { tickers, loading, error, streaming, tradableCount } = useTickers();
 
   const list = useMemo(() => {
     const q = search.toLowerCase();
     const filtered = tickers.filter(
-      (t) => t.symbol.toLowerCase().includes(q) && (!tradableOnly || t.tradableOnRevolutX)
+      (t) => t.symbol.toLowerCase().includes(q) && (!tradableOnly || t.tradableOnVenue)
     );
     return filtered
       .sort((a, b) => b.volume24h - a.volume24h)
@@ -85,7 +85,7 @@ export function MarketPage({ lockedSymbol }: { lockedSymbol?: string } = {}) {
           </div>
 
           {/* Execution-venue filter. Binance supplies the data either way —
-              this only narrows the list to what Revolut X can actually fill. */}
+              this only narrows the list to what the venue can actually fill. */}
           <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
             <input
               type="checkbox"
@@ -93,7 +93,7 @@ export function MarketPage({ lockedSymbol }: { lockedSymbol?: string } = {}) {
               checked={tradableOnly}
               onChange={(e) => setTradableOnly(e.target.checked)}
             />
-            Tradable on Revolut X only
+            Tradable pairs only
             {tradableCount > 0 && <span className="text-muted-foreground/60">({tradableCount})</span>}
           </label>
         </div>
@@ -128,13 +128,13 @@ export function MarketPage({ lockedSymbol }: { lockedSymbol?: string } = {}) {
                     <div className="min-w-0">
                       <div className={`font-bold text-sm flex items-center gap-1.5 ${symbol === t.symbol ? "text-primary" : "text-foreground"}`}>
                         {t.symbol}
-                        {t.tradableOnRevolutX && (
+                        {t.tradableOnVenue && (
                           <span
-                            title="Listed on Revolut X — the bot can execute this pair"
+                            title="Listed on the venue — the bot can execute this pair"
                             className="inline-flex items-center gap-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-500/90 bg-amber-500/10 rounded px-1 py-px"
                           >
                             <Zap className="h-2.5 w-2.5" />
-                            RevX
+                            Tradable
                           </span>
                         )}
                       </div>

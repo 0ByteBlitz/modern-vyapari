@@ -15,7 +15,8 @@ interface SetupCardProps {
 type Tab = "revolut" | "anthropic";
 
 export function SetupCard({ setup, setupError, onRefresh, onFinish }: SetupCardProps) {
-  const [activeTab, setActiveTab] = useState<Tab>("revolut");
+  /* The AI provider is always required; the venue only to go live — so start there. */
+  const [activeTab, setActiveTab] = useState<Tab>("anthropic");
   
   const [apiKey, setApiKey] = useState("");
   const [apiKeyMsg, setApiKeyMsg] = useState<{ text: string; ok: boolean } | null>(null);
@@ -60,18 +61,19 @@ export function SetupCard({ setup, setupError, onRefresh, onFinish }: SetupCardP
   // Tab configurations
   const TABS: { id: Tab; label: string; icon: any; isComplete: boolean; isOptional: boolean }[] = [
     {
-      id: "revolut",
-      label: "Trading Venue",
-      icon: Wallet,
-      isComplete: !!(setup?.hasKeyPair && setup?.hasApiKey),
-      isOptional: false,
-    },
-    {
       id: "anthropic",
       label: "AI Agent",
       icon: Brain,
-      isComplete: !!setup?.hasAnthropicApiKey,
+      isComplete: !!setup?.ai.configured,
       isOptional: false,
+    },
+    {
+      id: "revolut",
+      label: "Trading Venue",
+      icon: Wallet,
+      isComplete: !!setup?.venue.configured,
+      /* Simulated mode trades on paper and needs no exchange account. */
+      isOptional: !setup?.venue.required,
     },
   ];
 
@@ -101,7 +103,11 @@ export function SetupCard({ setup, setupError, onRefresh, onFinish }: SetupCardP
                   <Icon className="w-4 h-4" />
                   <span>{tab.label}</span>
                 </div>
-                {tab.isComplete && <ShieldCheck className="w-4 h-4 text-success" />}
+                {tab.isComplete ? (
+                  <ShieldCheck className="w-4 h-4 text-success" />
+                ) : tab.isOptional ? (
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Optional</span>
+                ) : null}
               </button>
             );
           })}
@@ -127,12 +133,18 @@ export function SetupCard({ setup, setupError, onRefresh, onFinish }: SetupCardP
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-foreground">Revolut X Connection</h3>
+                  <h3 className="text-xl font-bold text-foreground">{setup.venue.displayName} Connection</h3>
                   <p className="text-sm text-muted-foreground mt-1">
                     Configure signing keys for institutional execution.
                   </p>
                 </div>
               </div>
+              {!setup.venue.required && (
+                <p className="text-sm text-muted-foreground p-3 rounded-md border border-border bg-secondary/30">
+                  Optional while you trade in simulated mode — paper trading needs no exchange account.
+                  Connect {setup.venue.displayName} to see your real balances, and before going live.
+                </p>
+              )}
 
               <div className="space-y-4">
                 {/* Step 1: Ed25519 Keys */}
@@ -223,7 +235,7 @@ export function SetupCard({ setup, setupError, onRefresh, onFinish }: SetupCardP
                   <Brain className="w-5 h-5 text-muted-foreground" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-foreground">Anthropic AI</h3>
+                  <h3 className="text-xl font-bold text-foreground">{setup.ai.displayName}</h3>
                   <p className="text-sm text-muted-foreground mt-1">
                     Power your trading assistant with Claude models.
                   </p>
@@ -264,7 +276,7 @@ export function SetupCard({ setup, setupError, onRefresh, onFinish }: SetupCardP
           {/* ─────────────────────────────────────────────────────────
               LAUNCH BUTTON (Only shown during onboarding when ready)
               ───────────────────────────────────────────────────────── */}
-          {onFinish && setup.hasKeyPair && setup.hasApiKey && setup.hasAnthropicApiKey && (
+          {onFinish && setup.setupComplete && (
             <div className="mt-8 pt-6 border-t border-border flex justify-end animate-in fade-in duration-500">
               <Button onClick={onFinish} className="group">
                 Continue to Dashboard

@@ -85,7 +85,7 @@ export function DerivativesStrip({ symbol }: { symbol: string }) {
       />
       <Cell label="HL funding" value={hlFunding.value} note={hlFunding.note} tone={hlFunding.tone} />
       <Cell
-        label="RevX spread"
+        label="Venue spread"
         value={spread === null ? "—" : `${spread.toFixed(1)}bp`}
         note={
           spread === null

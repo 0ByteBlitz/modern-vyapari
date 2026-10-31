@@ -12,22 +12,51 @@ import * as windowsHello from "../security/windows-hello";
 import type { SetupStatus } from "../../shared/ipc-types";
 import { auditLog } from "../db/database";
 import { appMode, readMode, writeMode, isAppMode } from "../modes/app-mode";
-import { venueCapabilities } from "../integrations/venue/registry";
+import { venueCapabilities, liveVenue } from "../integrations/venue/registry";
+import { aiProvider } from "../ai/registry";
 import { AppError } from "../../shared/errors";
 import { safe } from "./safe";
 import { emit } from "../events/outbound";
 
+/**
+ * Whether the app is ready to use. Simulated mode trades on the paper adapter,
+ * which needs no account, so it needs only an AI provider; live mode also needs
+ * its venue. Decided here, once — the renderer used to require one exchange's
+ * key files, which locked onboarding to that exchange.
+ */
+export function isSetupComplete(ai: { configured: boolean }, venue: { required: boolean; configured: boolean }): boolean {
+  return ai.configured && (!venue.required || venue.configured);
+}
+
 export function registerSetup(): void {
 ipcMain.handle("setup:status", () =>
     safe(
-      (): SetupStatus => ({
+      (): SetupStatus => {
+        const mode = appMode();
+        const live = liveVenue();
+        const ai = aiProvider();
+        const venue = {
+          id: live?.capabilities.id ?? "none",
+          displayName: live?.capabilities.displayName ?? "No venue",
+          configured: live?.isConfigured() ?? false,
+          /* Simulated mode trades on the paper adapter, which needs no account
+             — so a venue is optional there, and required only to go live. */
+          required: mode === "live",
+        };
+        const aiStatus = { id: ai.info.id, displayName: ai.info.displayName, configured: ai.isConfigured() };
+        return {
+        setupComplete: isSetupComplete(aiStatus, venue),
+        mode,
+        venue,
+        ai: aiStatus,
         hasKeyPair: credentials.hasKeyPair(),
         hasApiKey: credentials.hasApiKey(),
         hasAnthropicApiKey: credentials.hasAnthropicApiKey(),
         // Presence only — the key itself never crosses IPC.
         hasBrowserbaseKey: credentials.hasBrowserbaseKey(),
         publicKeyPem: credentials.getPublicKeyPem(),
-      })
+        };
+      }
     , "setup:status")
   );
 
