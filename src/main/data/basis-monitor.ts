@@ -222,7 +222,11 @@ function watchedSymbols(): string[] {
 }
 
 async function tick(): Promise<void> {
-  if (!credentials.getApiKey()) return; // Revolut X not configured yet
+  /* hasApiKey, not getApiKey: the getter THROWS when no key is saved, so this
+     guard was itself the crash — an unhandled rejection at every startup on a
+     fresh install. It also decrypted the key once a minute just to test for it;
+     the existence check needs no secret. */
+  if (!credentials.hasApiKey()) return; // Revolut X not configured yet
 
   for (const symbol of watchedSymbols()) {
     try {
