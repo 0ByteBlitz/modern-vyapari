@@ -29,7 +29,8 @@ startup error from the basis monitor; no window icon on Linux/macOS.
 
 **Open:**
 
-**1 · A Revolut X key is required to get past onboarding — J0.** Anyone without a
+**1 · A Revolut X key is required to get past onboarding — J0. Resolved 2026-10-31:**
+setup completeness is decided in main, and simulated mode needs only an AI provider. Anyone without a
 Revolut X account — most contributors — cannot try the app at all, even though
 simulated mode needs no venue. The design already says so — *"Simulated is the
 default and needs no credentials"* (`DECISIONS.md`, app modes) — so this is a

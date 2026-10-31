@@ -52,6 +52,12 @@ These are enforced by structure and tests, and a PR that weakens one will not be
 - **Every live position carries a venue-side TP/SL.** The exchange is the source
   of truth; reconcile on startup and start **paused**. Never auto-resume.
 - **Money is a string end-to-end.** No float arithmetic on prices or quantities.
+- **No vendor lock-in.** The venue, the analysis feed and the AI provider each sit
+  behind a port (`integrations/venue/`, `integrations/feed/`, `ai/`). Vendor SDKs and
+  clients are imported **only** inside their adapter folder — `vendor-boundary.test.ts`
+  enforces it for AI SDKs. Adapters declare capabilities honestly; features degrade
+  by capability, never by checking a vendor's name. Setup and UI copy never assume one
+  vendor.
 - **No state may be ambiguous** — live vs. paper, armed vs. idle, up vs. down.
   This outranks every preference, including theming.
 
@@ -136,9 +142,10 @@ outranks almost any feature.
 | Plans (the product) | `src/main/plans/` | `trade-plan.ts` (falsifiability gate), `plan-service.ts` (arming), `plan-monitor.ts` (per-bar decision), `level-reference.ts` |
 | Insights | `src/main/insights/` | 24 indicators, volume profile, anchored VWAP/CVD, level resolver |
 | Data feeds | `src/main/data/` | Binance analysis feed, derivatives (Binance + Hyperliquid), basis monitor |
-| Venue seam | `src/main/integrations/venue/` | Port, adapters (`revolutx`, `paper`), registry, declared capabilities |
+| Venue seam | `src/main/integrations/venue/` | Port, adapters (`revolutx`, `paper`), registry, declared capabilities, `isConfigured()` |
+| AI provider seam | `src/main/ai/` | `port.ts`, `registry.ts`, `anthropic.ts` — the only place a model vendor's SDK is imported |
 | Paper engine | `src/main/paper/` | Backtester's fill model against the live stream; protective levels intrabar |
-| Agent | `src/main/agent/` | `chat.ts` (streaming loop), `tools.ts` + `tool-registry.ts`, `context.ts`, `review.ts` |
+| Agent | `src/main/agent/` | `chat.ts` (provider-neutral agent loop), `tools.ts` + `tool-registry.ts`, `context.ts`, `review.ts` |
 | Risk | `src/main/risk/` | Pure 8-gate `risk-engine.ts`; `kill-switch.ts` blocks entries, never exits |
 | Security | `src/main/security/` | `safeStorage` credential vault, Windows Hello gate |
 | Notifications | `src/main/notify/` | Transactional outbox → Telegram |

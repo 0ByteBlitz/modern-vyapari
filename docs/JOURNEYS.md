@@ -21,7 +21,7 @@ below has its own step table; this is the summary.
 | J4 · Structure moved → critique | 🟡 Drift measured and acted on; the agent's critique and the reconfirm queue (J-4) are not built |
 | J5 · Was I right? | ✅ Calibration record built; few entries so far |
 | J6 · Paper → live, supervised | ❌ Not built (Sprint 4) — nothing can place a real order |
-| J7 · Swap venue or feed | 🟡 Venue layer built (Revolut X, paper); feed port not built |
+| J7 · Swap venue, feed or AI provider | 🟡 Venue layer and **AI provider port** built (one adapter each, plus paper); feed port not built |
 
 ## Why this document exists, and what it is not
 
@@ -341,9 +341,10 @@ journey's acceptance test, line by line.
 
 ---
 
-## J7 · Swap the venue or the feed *(integrations)*
+## J7 · Swap the venue, the feed or the AI provider *(integrations)*
 
-**Trigger:** a different exchange, or a different price source.
+**Trigger:** a different exchange, a different price source, or a different model vendor —
+including a local model. No feature of the app is meant to be locked to one vendor.
 
 **Moment of truth:** **nothing silently blends.** Two sources never meet inside
 one computation.
@@ -357,6 +358,11 @@ one computation.
 | Symbol mapping has one home; non-USD returns `null`, never a best-effort string | ✅ `feed/symbols.ts` |
 | The feed's identity is one constant across all 18 predicates | ✅ `FEED_SCOPE_SQL` |
 | A feed **port**, so a second analysis source is possible | ❌ rest of S2-9 |
+| Setup asks the venue whether it is configured; simulated mode needs no venue at all | ✅ `isConfigured()`, `setup:status` |
+| AI provider reached through a port; vendor SDKs only under `src/main/ai/` | ✅ `ai/port.ts`, `vendor-boundary.test.ts` |
+| The agent loop is provider-neutral and contract-tested | ✅ `agent-loop.test.ts` |
+| A second AI provider (OpenAI-compatible: OpenAI, OpenRouter, Ollama, LM Studio, Gemini) | ❌ A-1 |
+| Choose the provider and its key in Settings | ❌ A-2 |
 
 **The healthiest journey in the app**, and the only one where the seams were
 designed before the surfaces. Scope stays **swappable, not concurrent** — one

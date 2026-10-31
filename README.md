@@ -149,9 +149,12 @@ The roadmap and the reasoning behind every cut are in [`docs/ROADMAP.md`](docs/R
 - **Node.js 22.13+** (uses the built-in `node:sqlite`)
 - **Windows 10/11** is the primary platform. macOS and Linux build and should run, but are
   not yet tested — reports welcome.
-- An **[Anthropic API key](https://console.anthropic.com/)** for the agent.
-- A **[Revolut X](https://developer.revolut.com/docs/api/revolut-x-crypto-exchange) API key** — currently required
-  by onboarding (a no-exchange simulated start is on the [contributing](#contributing) list).
+- An **AI provider key** for the agent — today **[Anthropic](https://console.anthropic.com/)**.
+  The provider sits behind a port, so OpenAI, Gemini, OpenRouter and local models (Ollama,
+  LM Studio) are adapters away — see [Contributing](#contributing).
+- **No exchange account needed to start.** Simulated mode trades on paper. Connecting
+  **[Revolut X](https://developer.revolut.com/docs/api/revolut-x-crypto-exchange)** is optional
+  until you go live, and the venue sits behind a port too.
 
 ```bash
 git clone https://github.com/0ByteBlitz/modern-vyapari.git
@@ -160,8 +163,8 @@ npm install
 npm start
 ```
 
-First launch generates an Ed25519 keypair for Revolut X request signing, then asks for your
-API keys. Everything is encrypted at rest with the OS keychain (DPAPI on Windows): never
+First launch asks for your AI provider key; connecting a venue (for Revolut X, an Ed25519
+signing keypair plus an API key) is optional in simulated mode. Everything is encrypted at rest with the OS keychain (DPAPI on Windows): never
 plaintext, never logged, never sent anywhere except the service it belongs to. Market data for
 analysis comes from Binance's **public** endpoints — no Binance account needed.
 
@@ -201,8 +204,9 @@ Start with **[`docs/README.md`](docs/README.md)** — a map of the docs and a gl
 Contributions are very welcome — read [`CONTRIBUTING.md`](CONTRIBUTING.md) first. Good places
 to start:
 
+- **AI provider adapters** — one OpenAI-compatible adapter covers OpenAI, OpenRouter, Ollama
+  and LM Studio (and Gemini, via its compatible endpoint). Implement `src/main/ai/port.ts`.
 - **Venue adapters** — Kraken, Coinbase, Bybit, Binance spot… implement the venue port.
-- **Simulated-only onboarding** — try the app with just an Anthropic key, no exchange account.
 - **macOS / Linux** — packaging targets and a test run.
 - **Live-stream verification** — arm a paper plan on a USD pair and report what happens.
 - Anything in [`docs/FRICTION.md`](docs/FRICTION.md).

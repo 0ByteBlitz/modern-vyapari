@@ -29,6 +29,9 @@ should take.
 >   monitor, notify worker, monitor heartbeat), still no single owner — the design
 >   in the second half of this file stands.
 > - Secrets: both credential stores share one async cipher (`security/cipher.ts`).
+> - **AI provider port** (`src/main/ai/`, 31 October): the agent loop, compaction
+>   and reviews talk to a port; Anthropic is one adapter. Setup no longer needs an
+>   exchange in simulated mode. See §11.
 
 ---
 
@@ -405,6 +408,98 @@ Revolut X client directly.
 defensible is the first "for" and the third "against" together: doing it now is
 cheap and doing it later is not, provided the feed work is sequenced last and
 treated as the dangerous half.
+
+
+---
+
+## 11. Vendor neutrality — the AI provider is swappable too
+
+**Journey: J7, swap the venue, the feed or the AI provider.** The moment of
+truth: someone without an Anthropic account — or without an exchange account —
+installs the app, picks what they already have, and reaches Home. Before
+31 October they could not: setup demanded Revolut X keys and the agent loop was
+written against Anthropic's SDK, so either missing account was a dead end.
+
+The same rule as §3 applies: **swappable, not multi-provider.** One AI provider
+at a time, chosen in settings. Routing a single conversation across models is not
+in scope.
+
+### The port (`src/main/ai/port.ts`)
+
+The agent loop is the app's, not the vendor's. `agent/chat.ts` runs the loop —
+tool dispatch, retries, usage recording, compaction — and asks the provider for
+exactly three things: complete a prompt, take one streamed step of a
+conversation, and accept tool results. The conversation itself is **opaque**
+(`AgentConversation`): each adapter keeps its own wire format inside it, so the
+loop never sees a vendor's message shape and an adapter never has to round-trip
+through a lowest-common-denominator one.
+
+Each adapter declares its capabilities, and features degrade **by capability,
+never by vendor name**:
+
+| Capability | When false |
+| --- | --- |
+| `serverWebSearch` | The agent finds pages with the app's own `fetch_url`; A-3 adds app-side search. |
+| `promptCaching` | Every step pays full input price; the stable/volatile system split is still sent. |
+| `vision` | Chart screenshots are not attached; the agent reads levels as numbers. |
+| `toolCalling: "basic"` | Typical of small local models. The loop still validates every tool call; nothing is trusted because the model emitted it. |
+
+**The safety invariant does not move.** Tools belong to the app (`agent/tools.ts`,
+`tool-registry.ts`), not the provider. An adapter translates the app's tool list;
+it cannot add one. So whatever model is on the other end, there is still no
+order, arming or venue tool — *the agent drafts, the owner signs, code executes*
+holds by construction, not by trusting a vendor.
+
+**Enforced:** `vendor-boundary.test.ts` fails if any file outside `src/main/ai/`
+imports a model vendor's SDK. `agent-loop.test.ts` drives the loop against a fake
+provider (text, tool round-trips, web-search rejection and retry, missing key);
+every new adapter must pass it with a fake transport, so adapters are testable
+without a key.
+
+### One adapter covers four of the five requested providers (A-1)
+
+OpenAI, OpenRouter, Ollama, LM Studio and Gemini all accept the OpenAI chat
+completions format with tool calling, so the plan is **one** `openai-compatible`
+adapter with a configurable base URL rather than five:
+
+| Provider | Base URL | Key |
+| --- | --- | --- |
+| OpenAI | `https://api.openai.com/v1` | required |
+| OpenRouter | `https://openrouter.ai/api/v1` | required |
+| Google Gemini | `https://generativelanguage.googleapis.com/v1beta/openai/` | required |
+| Ollama (local) | `http://localhost:11434/v1` | none |
+| LM Studio (local) | `http://localhost:1234/v1` | none |
+
+Gemini goes through its OpenAI-compatible endpoint rather than its native SDK —
+one adapter fewer to keep correct, at the price of Gemini-only features the agent
+does not use. Local servers declare `toolCalling: "basic"`, `promptCaching: false`
+and `serverWebSearch: false`. They still honour `net-guard`'s offline switch,
+like every other outbound call.
+
+**Cost (A-5): unknown stays unknown.** An adapter that has no price for a model
+records usage with cost `null`, and the UI says *unknown* — never `$0.00`, which
+is a confident wrong number. Local models declare a true zero.
+
+**Credentials:** per-provider keys go in `security/integration-secrets.ts` through the same
+async cipher as every other secret, main-process only, crossing IPC as booleans
+(`SetupStatus.ai.configured`). A base URL is not a secret and is stored as a
+setting.
+
+### Onboarding is venue-optional in simulated mode
+
+`VenueReadPort.isConfigured()` and `SetupStatus.{mode, venue, ai, setupComplete}`
+make setup complete when **an AI provider is configured and, in live mode only,
+the venue is too**. Simulated mode runs on the paper venue, which needs nothing.
+`isSetupComplete` is one exported function in `ipc/setup.ts`, tested in
+`setup-status.test.ts`, and the renderer only reads its result — the rule exists
+in one place.
+
+### Still open
+
+A-1 adapter, A-2 provider choice in Settings, A-3 app-side web search, A-5
+per-provider cost; on the venue side V-1 connection forms rendered from the
+declared auth spec, and V-2 venue choice in onboarding once a second adapter
+exists. All in ROADMAP › *Vendor neutrality*. The feed port (§4) is unchanged.
 
 ---
 

@@ -60,6 +60,24 @@ The venue sits behind a port in `src/main/integrations/venue/`. An adapter:
 - keeps all wire formats and symbol translation inside the adapter;
 - comes with a test alongside `venue-port.test.ts`.
 
+## Adding an AI provider adapter
+
+The model vendor sits behind `src/main/ai/port.ts`. An adapter:
+
+- lives in `src/main/ai/` and is the **only** file that imports its SDK
+  (`vendor-boundary.test.ts` fails otherwise);
+- declares `capabilities` honestly — server-side web search, prompt caching, vision,
+  and how reliable its tool calling is (`"basic"` for most local models);
+- translates the app's messages and tool specs to its wire format, and back;
+- passes the agent-loop contract in `agent-loop.test.ts` against a fake transport,
+  so it can be tested without a key;
+- registers in `ai/registry.ts`.
+
+The agent's tools belong to the app, not the provider, so no adapter can widen what
+the agent is allowed to do. One OpenAI-compatible adapter with a configurable base URL
+covers OpenAI, OpenRouter, Ollama, LM Studio and Gemini's compatible endpoint — see
+`docs/ARCHITECTURE.md`, *Vendor neutrality*.
+
 ## Using AI coding agents
 
 Welcome — this repo is set up for them. `CLAUDE.md` and `.claude/skills/` load automatically
