@@ -1,6 +1,6 @@
 {
   "name": "modern-vyapari",
-  "version": "0.1.0-alpha.2",
+  "version": "0.1.0-alpha.3",
   "description": "Open-source AI trading partner for crypto: you author the thesis, the agent monitors it, deterministic code executes. Electron desktop app.",
   "author": "0ByteBlitz",
   "license": "MIT",
