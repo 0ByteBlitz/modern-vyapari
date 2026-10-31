@@ -184,6 +184,8 @@ dependencies) · KLineChart · `@anthropic-ai/sdk`
 The venue and data feed sit behind a port (`src/main/integrations/`), so **adding an exchange
 is an adapter, not a rewrite.** Start with [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
+Start with **[`docs/README.md`](docs/README.md)** — a map of the docs and a glossary of the project's terms.
+
 | Doc | What it's for |
 |---|---|
 | [`docs/JOURNEYS.md`](docs/JOURNEYS.md) | The seven end-to-end journeys the app serves — read first |

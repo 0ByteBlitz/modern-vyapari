@@ -9,6 +9,20 @@ promotion ladder and backtesting are gone from every surface), and
 **simulated/live as app modes** rather than a per-plan flag. How anything runs
 unattended is `docs/ARCHITECTURE.md`.
 
+**Status · 31 October 2026.** "Owner" means the person using the app. Each journey
+below has its own step table; this is the summary.
+
+| Journey | State |
+|---|---|
+| J0 · Daily loop | ✅ Built — Home, *while you were away*, plan distances |
+| J1 · Hunch → thesis | ✅ Built — Research, order flow, agent with web search and fetch |
+| J2 · Thesis → plan | ✅ Built — falsifiability gate; the agent drafts, never arms |
+| J3 · Plan executes while away | 🟡 **Paper only** — monitor, execution and notifications built; proven on seeded bars, not yet driven by a live stream; the app must be running |
+| J4 · Structure moved → critique | 🟡 Drift measured and acted on; the agent's critique and the reconfirm queue (J-4) are not built |
+| J5 · Was I right? | ✅ Calibration record built; few entries so far |
+| J6 · Paper → live, supervised | ❌ Not built (Sprint 4) — nothing can place a real order |
+| J7 · Swap venue or feed | 🟡 Venue layer built (Revolut X, paper); feed port not built |
+
 ## Why this document exists, and what it is not
 
 A surface checklist tests **surfaces** — does this page load, does this
@@ -216,12 +230,12 @@ levels were worth at the moment it fired.*
 | **The monitor actually runs on a live bar** | ✅ wired watch-only 2026-08-01 |
 | Expiry and thesis invalidation transition the plan | ✅ |
 | A trigger is recorded, OCO siblings cancelled | ✅ |
-| A triggered branch **opens a position** | ❌ gated behind S1-2 |
+| A triggered branch **opens a position** | ✅ `openPlanPosition`, 2026-08-05 (S1-2) |
 | One fill model shared with backtest and paper | ✅ `persistEntry`, owner-agnostic |
 | A plan-owned position has somewhere to live | ✅ schema v15 |
 | Position carries a stop and a target from the moment it opens | ✅ engine rule |
-| **The paper engine has ever executed a position** | ❌ **S1-2 unrun** |
-| **The owner is told what happened, in plan language** | ❌ |
+| **The paper engine has ever executed a position** | ✅ on seeded bars, 2026-08-05 — **not yet driven by the live stream** |
+| **The owner is told what happened, in plan language** | ✅ N-1 — trigger and close notifications carry the thesis and whether a position opened |
 | **A closed plan position is reviewed** | ✅ J-2, 2026-08-01 |
 
 **Found by walking this journey, 2026-08-01:** the owner armed a plan, went

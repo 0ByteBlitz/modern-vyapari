@@ -8,8 +8,9 @@ reference, not instruction.
 
 **So: `CLAUDE.md` holds the rules an agent needs before touching anything, and
 this file holds why they exist.** Nothing was deleted in the move. The standing
-rules that came out of these entries are listed in `CLAUDE.md` under "Standing
-rules, and what each one cost", one line each, pointing back here.
+rules that came out of these entries are condensed into `CLAUDE.md`'s *Hard
+rules*, *Tech conventions* and *The bug class to hunt*; this file holds the
+incident behind each. "Owner" throughout means the person using the app.
 
 **How to read it.** Roughly chronological, and the ordering is the point: the
 same defect shape recurs. *A value or a control presented with more confidence
@@ -69,6 +70,7 @@ plan path and these are still the fastest way in. Do not build on them.
 - [One object: the trading plan (owner decision, 2026-08-05)](#one-object-the-trading-plan-owner-decision-2026-08-05)
 - [The first position this app has ever opened (S1-2, 2026-08-05)](#the-first-position-this-app-has-ever-opened-s1-2-2026-08-05)
 - [Simulated and live are app modes, not per-plan flags (owner decision, 2026-08-05)](#simulated-and-live-are-app-modes-not-per-plan-flags-owner-decision-2026-08-05)
+- [Going public (2026-10-31) — the kill switch that threw, and four more](#going-public-2026-10-31--the-kill-switch-that-threw-and-four-more)
 
 ---
 
@@ -661,3 +663,51 @@ Design decided, **not yet built**:
 - **Simulated is the default and needs no credentials.** Live requires explicit entry, credentials, Windows Hello, and an unmissable mode marker in the titlebar and toolbar.
 - **Lessons cross modes; the calibration record does not** (owner decision). What you learned about how a range reclaim behaves is market knowledge and transfers. A hit rate must never blend simulated fills with real ones — simulated fills are optimistic by construction, and a blended record flatters the owner with nothing that would notice. So distilled lessons live in a small shared store both modes open; sessions, plans, positions and the calibration record stay inside their own mode's database.
 - **No promotion ladder.** Each plan is armed simulated or real — one decision at arm time. Simulation exists so a broken monitor is found without cost, not as a probation period.
+
+---
+
+## Going public (2026-10-31) — the kill switch that threw, and four more
+
+The first run by a second pair of eyes, on the day the repo went public. Every one
+of these had a green suite and a clean typecheck.
+
+**The kill switch threw (and so did the unlock).** Splitting `ipc.ts` into
+`ipc/` (2026-08-05) moved handlers one directory deeper, and ten lazy `require()`
+calls kept their old relative paths — `./main`, `./risk/kill-switch`,
+`./db/database`. TypeScript does not check `require` strings, and no test executed
+those handlers, so `killSwitch:trip`, `reset` and `status`, the Windows Hello
+unlock, the window controls, showing the browser and two database reads all threw
+"Cannot find module" at runtime and surfaced as "Something went wrong". Found
+because the maintainer was locked out of the app. **The kill switch displayed as
+working and did nothing — the same shape as the 2026-07-29 bug sweep.**
+`lazy-require-paths.test.ts` now resolves every relative lazy `require`/`import`
+under `src/main` and `src/preload`; it fails on the old code with all ten listed.
+
+**A rejected key looked like loading.** `getAnthropicModels` swallowed the error
+and returned `[]`, and the picker rendered an empty list as "Loading models…" —
+for ever, while chat silently fell back to a hard-coded, most-expensive model.
+The picker now uses a throwing lister, so a 401 crosses `safe()` as CREDENTIALS
+with a Retry; saving the key broadcasts `credentials` and the panel reloads. The
+error copy had also pointed at "Settings › Credentials", which no longer exists.
+
+**A presence check that threw.** The basis monitor guarded with
+`if (!credentials.getApiKey()) return;` — but the getter throws when no key is
+saved, so the guard *was* the crash: an unhandled rejection on every fresh install.
+It also decrypted the key once a minute to answer a yes/no question. Now
+`hasApiKey()`.
+
+**A race only CI could see.** Electron 43 stopped downloading its binary at
+install; the first `require("electron")` fetches it. `node --test` runs files in
+parallel, so on a fresh runner several processes extracted into the same
+directory and one failed with "File exists" — a random test, on a random OS.
+Reproduced (4 of 6 parallel requires failed), then fixed by
+`scripts/ensure-electron.mjs` before the suite runs (6 of 6).
+
+**The vault went async before Electron 46 removes the sync API.** Moving
+`safeStorage` to its async methods found the trap the compiler cannot: an
+un-awaited key in `if (!key)` is a Promise, always truthy, and an un-awaited save
+reports success first — `setup:saveAnthropicApiKey` would have told the chat panel
+to reload with the key being replaced. Every call site was audited, not just the
+ones TypeScript flagged; the main vault got its first tests (mutation-checked);
+and `CLAUDE.md` now carries the rule.
+

@@ -1,5 +1,10 @@
 # Friction log (ROADMAP S1-6)
 
+> **Contributors:** this is the most honest list of what is rough in the app.
+> Anything here without a "Closed" or "Resolved" note is open, and fair game for a
+> PR — say which entry and which journey it serves. To add one, open an issue with
+> what you were trying to do, what got in the way, and the journey it interrupts.
+
 Observations from actually using the app. **Written down, not fixed** — the point
 of S1-6 is to accumulate real friction before spending Sprint 1 days on it. Each
 entry says what was being attempted, what got in the way, and where a fix would
@@ -9,6 +14,42 @@ land (this sprint / Sprint 2 / post-launch §5). Nothing here is a commitment.
 Friction is not evenly costly: an awkward step inside the spine journey — J3, the
 plan executing without the owner — is worth more than a rough edge on a surface
 visited monthly.
+
+---
+
+## 2026-10-31 · Going public — first run by a second pair of eyes
+
+**Attempted:** publish the repo, then run the app end to end on a fresh clone and
+on the maintainer's machine.
+
+**Fixed the same day** (defects, not friction): ten lazy `require` paths broken by
+the `ipc/` split — the **kill switch** and the Windows Hello unlock threw at
+runtime; the model picker loading for ever on a rejected key; a fresh-install
+startup error from the basis monitor; no window icon on Linux/macOS.
+
+**Open:**
+
+**1 · A Revolut X key is required to get past onboarding — J0.** Anyone without a
+Revolut X account — most contributors — cannot try the app at all, even though
+simulated mode needs no venue. The design already says so — *"Simulated is the
+default and needs no credentials"* (`DECISIONS.md`, app modes) — so this is a
+seam between design and build, not a new feature. Lands: simulated-only
+onboarding.
+
+**2 · Telegram failures read as "Telegram HTTP 400" — J3.** Telegram's reply says
+why ("chat not found"), but the whole body is withheld because it can echo the
+token. A wrong chat ID cost a debugging session. Lands: surface the short reason,
+never the body.
+
+**3 · A failed unlock points at Settings › Diagnostics, which is unreachable while
+locked — J0.** Lands: show the error on the lock screen, or a button that opens the
+log folder.
+
+**4 · The agent reported indicator values timestamped July 2026 while the candles
+were current — J1.** Reported by the agent itself during a demo run (visible in
+the README's research screenshot); **not yet investigated or confirmed**. If true,
+it is the project's recurring defect — a value shown with more confidence than it
+earned — and outranks the rest of this list.
 
 ---
 
@@ -31,7 +72,9 @@ its levels on the chart. Both are legitimate; only the un-reached-for one is
 built. **This is the entry that matters** — it is not a rough edge, it is a
 missing seam, and it took §3, §4 and part of §5 with it. Promoted to a roadmap
 item (**J-3**, Sprint 2) rather than left here, because friction that blocks a
-third of the test surface is not friction.
+third of the test surface is not friction. **Resolved 2026-08-01 by J-3:** the
+bookmark panel leads with armed plans, and toggling one draws its levels on the
+chart, labelled by role.
 
 **2 · The feed chip could not be found at all — J0/J7. Closed same day.**
 §1.1–1.3 were ticked with *"Where is this? Confusing where to test this?"*

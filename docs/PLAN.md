@@ -2,6 +2,9 @@
 
 Personal-use Electron app · Revolut X · Spot only · Approval-first autonomy · Claude Agent SDK
 
+> **Public readers:** this was written as a single-user plan. "Owner" means the
+> person using the app; current status is the top of `docs/ROADMAP.md`.
+>
 > **Read this before the rest of the file.** This is the original architecture
 > plan (July 2026) and it is still the reference for how the system is built —
 > the risk engine, the security model, the data-feed roles, the session model
