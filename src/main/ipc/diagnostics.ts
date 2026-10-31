@@ -33,8 +33,11 @@ ipcMain.handle("logs:reveal", () =>
   );
 
 ipcMain.handle("clipboard:write", (_e, text: string) =>
-    safe(() => {
-      clipboard.writeText(text);
+    safe(async () => {
+      /* Electron 44 made clipboard.writeText return a Promise. Without the
+         await, this reported success before the copy happened, and a failed
+         copy became an unhandled rejection the user never saw. */
+      await clipboard.writeText(text);
       return { ok: true };
     }, "clipboard:write")
   );
