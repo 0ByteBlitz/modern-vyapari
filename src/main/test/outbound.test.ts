@@ -72,7 +72,7 @@ describe("emitError sanitises", () => {
       t as never,
       "chat:error",
       new AppError("CREDENTIALS", "The AI isn't configured yet.", {
-        hint: "Add your Anthropic key in Settings › Credentials.",
+        hint: "Add your Anthropic key in Settings › Integrations.",
       })
     );
 
@@ -80,7 +80,7 @@ describe("emitError sanitises", () => {
     assert.equal(payload.code, "CREDENTIALS");
     assert.match(payload.error, /isn't configured yet/);
     assert.match(payload.error, /Add your Anthropic key/, "the hint is folded into the message");
-    assert.equal(payload.hint, "Add your Anthropic key in Settings › Credentials.");
+    assert.equal(payload.hint, "Add your Anthropic key in Settings › Integrations.");
   });
 
   test("returns the payload it sent, so a caller can log or reuse it", () => {

@@ -135,17 +135,32 @@ export async function compactChatHistory(sessionId: number): Promise<{ ok: boole
  * header in one place, and it returns `capabilities` typed, which is what the
  * renderer switches effort/thinking on.
  */
-export async function getAnthropicModels(): Promise<Anthropic.ModelInfo[]> {
+export async function listAnthropicModels(): Promise<Anthropic.ModelInfo[]> {
   const apiKey = credentials.getAnthropicApiKey();
-  if (!apiKey) return [];
+  if (!apiKey) throw new AppError("CREDENTIALS", "Add your Anthropic key to use the agent.");
 
+  const anthropic = new Anthropic({ apiKey });
+  const models: Anthropic.ModelInfo[] = [];
+  for await (const model of anthropic.models.list({ limit: 100 })) {
+    models.push(model);
+  }
+  return models;
+}
+
+/**
+ * Non-throwing variant for background jobs (compaction, review), which degrade
+ * rather than fail when no model can be listed.
+ *
+ * The model PICKER must not use this. It used to: an expired key came back as
+ * an empty list, which the picker cannot tell apart from "still loading", so it
+ * showed "Loading models..." for ever while chat quietly fell back to a
+ * hard-coded model. The picker calls `listAnthropicModels`, whose failure
+ * crosses `safe()` as a classified error — a rejected key reads as CREDENTIALS.
+ */
+export async function getAnthropicModels(): Promise<Anthropic.ModelInfo[]> {
+  if (!credentials.getAnthropicApiKey()) return [];
   try {
-    const anthropic = new Anthropic({ apiKey });
-    const models: Anthropic.ModelInfo[] = [];
-    for await (const model of anthropic.models.list({ limit: 100 })) {
-      models.push(model);
-    }
-    return models;
+    return await listAnthropicModels();
   } catch (err) {
     log.error("Error fetching models", err);
     return [];
@@ -638,7 +653,7 @@ export async function sendChatMessage(
       sender,
       "chat:error",
       new AppError("CREDENTIALS", "The AI isn't configured yet.", {
-        hint: "Add your Anthropic key in Settings › Credentials.",
+        hint: "Add your Anthropic key in Settings › Integrations.",
       })
     );
     return;

@@ -15,6 +15,7 @@ import { appMode, readMode, writeMode, isAppMode } from "../modes/app-mode";
 import { venueCapabilities } from "../integrations/venue/registry";
 import { AppError } from "../../shared/errors";
 import { safe } from "./safe";
+import { emit } from "../events/outbound";
 
 export function registerSetup(): void {
 ipcMain.handle("setup:status", () =>
@@ -50,6 +51,9 @@ ipcMain.handle("setup:saveAnthropicApiKey", (_e, apiKey: string) =>
     safe(() => {
       credentials.saveAnthropicApiKey(apiKey);
       auditLog("anthropic_api_key_saved", {});
+      /* The chat panel fetched its model list with the OLD key; without this it
+         keeps showing that result until a restart. */
+      emit("data:updated", { kind: "credentials" });
       return { ok: true };
     }, "setup:saveAnthropicApiKey")
   );

@@ -62,7 +62,7 @@ const MESSAGES: Record<ErrorCode, { message: string; hint?: string }> = {
   },
   CREDENTIALS: {
     message: "Credentials are missing or invalid.",
-    hint: "Add or replace the key in Settings › Credentials.",
+    hint: "Add or replace the key in Settings › Integrations.",
   },
   NOT_FOUND: { message: "That item no longer exists." },
   VALIDATION: { message: "That input isn't valid." },
