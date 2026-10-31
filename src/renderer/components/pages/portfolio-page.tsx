@@ -98,12 +98,12 @@ export function PortfolioPage({ onOpenSession }: { onOpenSession: (s: { id: numb
         <StatCell label="Fees paid" value={formatUsd(totals.fees)} sub="entry + exit" />
       </div>
 
-      {/* Real account holdings, valued from Revolut X tickers — execution-side
+      {/* Real account holdings, valued from the venue's tickers — execution-side
           truth, deliberately kept separate from the paper figures above so the
           two can never be mistaken for each other. */}
       <section className="panel">
         <div className="panel-header">
-          <span className="label-micro">Revolut X account · real holdings</span>
+          <span className="label-micro">Exchange account · real holdings</span>
           <span className="ml-auto" style={{ fontSize: "var(--text-xs)", color: "var(--text-faint)" }}>
             not paper — this is your actual balance
           </span>

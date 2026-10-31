@@ -25,7 +25,9 @@ export function OnboardingPage({ setup, setupError, onRefresh, onFinish }: Onboa
           </div>
           <h1 className="onboarding-title">Welcome to Modern Vyapari</h1>
           <p className="onboarding-subtitle">
-            Let's connect to your Revolut X account. This takes about 2 minutes.
+            {setup?.venue.required
+              ? "Connect your AI provider and trading venue. This takes about 2 minutes."
+              : "Connect an AI provider to start. An exchange account is optional while you trade in simulated mode."}
           </p>
         </div>
 
@@ -38,7 +40,7 @@ export function OnboardingPage({ setup, setupError, onRefresh, onFinish }: Onboa
         <p className="onboarding-hint">
           Your private key stays on this device, encrypted via your OS keychain.
           <br />
-          The API key is stored with Electron's safeStorage — never in plain text.
+          API keys are stored with Electron's safeStorage — never in plain text.
         </p>
       </div>
     </div>

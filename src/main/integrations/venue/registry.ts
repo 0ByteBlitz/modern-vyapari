@@ -72,6 +72,18 @@ export function venue(): VenueReadPort {
 }
 
 /** What the active venue can do. Callers branch on this, never on its id. */
+/**
+ * The real venue live mode would use — regardless of the current mode.
+ *
+ * Distinct from `venue()`, which in simulated mode is always the paper adapter.
+ * Setup needs this one: in simulated mode connecting a venue is optional, but
+ * the user is still choosing (and possibly connecting) the venue they would go
+ * live on. Null if the configured id has no adapter.
+ */
+export function liveVenue(): VenueReadPort | null {
+  return ADAPTERS[activeId] ?? null;
+}
+
 export function venueCapabilities(): VenueCapabilities {
   return venue().capabilities;
 }

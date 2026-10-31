@@ -23,11 +23,11 @@ export interface MarketTicker {
   /** True when this base asset is listed on Revolut X, i.e. the bot could
    *  actually execute here. Purely an execution-venue annotation — it never
    *  affects the price, volume, or change figures above. */
-  tradableOnRevolutX: boolean;
+  tradableOnVenue: boolean;
 }
 
 export function useTickers() {
-  const [rawTickers, setRawTickers] = useState<Omit<MarketTicker, "tradableOnRevolutX">[]>([]);
+  const [rawTickers, setRawTickers] = useState<Omit<MarketTicker, "tradableOnVenue">[]>([]);
   const [tradableBases, setTradableBases] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -114,7 +114,7 @@ export function useTickers() {
     () =>
       rawTickers.map((t) => ({
         ...t,
-        tradableOnRevolutX: tradableBases.has(t.symbol.split("-")[0]?.toUpperCase() || ""),
+        tradableOnVenue: tradableBases.has(t.symbol.split("-")[0]?.toUpperCase() || ""),
       })),
     [rawTickers, tradableBases]
   );

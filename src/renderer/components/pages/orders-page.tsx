@@ -117,7 +117,7 @@ export function OrdersPage({ activeSession }: { activeSession: Session | null })
                     {o.status}
                   </td>
                   <td className="t-text" style={{ color: "var(--text-faint)" }}>
-                    {o.mode === "paper" ? "simulated" : "Revolut X"}
+                    {o.mode === "paper" ? "simulated" : "live"}
                   </td>
                 </tr>
               ))}

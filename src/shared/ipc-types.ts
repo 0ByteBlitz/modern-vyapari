@@ -20,6 +20,14 @@
 /* ── Setup / credentials ─────────────────────────────────────────────── */
 
 export interface SetupStatus {
+  /** Decided in main — the renderer never re-derives it. Simulated mode needs
+   *  only an AI provider; live mode also needs the venue configured. */
+  setupComplete: boolean;
+  mode: "simulated" | "live";
+  /** The venue live mode would trade on, and whether it is set up. */
+  venue: { id: string; displayName: string; configured: boolean; required: boolean };
+  /** The active AI provider, and whether it is set up. */
+  ai: { id: string; displayName: string; configured: boolean };
   hasKeyPair: boolean;
   hasApiKey: boolean;
   hasAnthropicApiKey: boolean;

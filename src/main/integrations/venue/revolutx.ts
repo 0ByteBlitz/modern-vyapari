@@ -24,6 +24,7 @@
  */
 
 import * as revx from "../../revx/client";
+import { hasApiKey, hasKeyPair } from "../../security/credentials";
 import type { IntegrationAuthSpec } from "../../security/integration-secrets";
 import type {
   VenueBalance,
@@ -69,6 +70,11 @@ export const REVOLUTX_CAPABILITIES: VenueCapabilities = {
 
 export const revolutXVenue: VenueReadPort = {
   capabilities: REVOLUTX_CAPABILITIES,
+
+  /* Revolut X signs requests with an Ed25519 keypair and authenticates with
+     an API key; both must exist. Still at the legacy fixed filenames — see
+     REVOLUTX_AUTH.legacyStorage. */
+  isConfigured: () => hasKeyPair() && hasApiKey(),
 
   async getBalances(): Promise<VenueBalance[]> {
     return revx.getBalances();

@@ -93,17 +93,19 @@ export function HomePage({
      a permanent list of nags trains you to ignore it. */
   const attention: Attention[] = [];
 
-  if (setup && !setup.hasAnthropicApiKey) {
+  if (setup && !setup.ai.configured) {
     attention.push({
       tone: "caution",
-      text: "The AI agent has no API key, so chat and trade reviews won't run.",
+      text: `The AI agent isn't set up (${setup.ai.displayName}), so chat and trade reviews won't run.`,
       action: { label: "Add key", go: () => onNavigate("settings") },
     });
   }
-  if (setup && (!setup.hasKeyPair || !setup.hasApiKey)) {
+  /* Only when a venue is actually required. In simulated mode not connecting
+     one is a valid choice, not something that needs attention. */
+  if (setup && setup.venue.required && !setup.venue.configured) {
     attention.push({
       tone: "caution",
-      text: "Revolut X isn't connected — balances and execution data are unavailable.",
+      text: `${setup.venue.displayName} isn't connected — balances and execution data are unavailable.`,
       action: { label: "Connect", go: () => onNavigate("settings") },
     });
   }
