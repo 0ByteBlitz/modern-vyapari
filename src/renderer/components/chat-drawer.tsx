@@ -1,48 +1,38 @@
 import { useEffect, useState } from "react";
-import { Sparkles, PanelRightClose, ArrowRight, MessagesSquare } from "lucide-react";
+import { Sparkles, PanelRightClose, ArrowRight } from "lucide-react";
 import { ChatPanel } from "@/components/chat-panel";
 import { api, isError, type Session } from "@/lib/api";
 
 /**
- * Agent chat, as a drawer available on every surface.
+ * The SESSION agent, as a drawer on a session's own surfaces.
  *
- * Previously chat only existed on the dashboard, which meant the one thing you
- * most want while looking at a backtest or a journal entry — asking the bot
- * about it — required navigating away from it. Collapsed it's a 36px rail;
- * open it's a 380px column.
+ * Two agents, never ambiguous which (31 Oct 2026):
+ *  - this drawer is bounded by its session — its pair, plans, journal and
+ *    memory — and only exists on that session's surfaces (Dashboard, Orders,
+ *    Plans, Journal, Research, Alerts);
+ *  - the GLOBAL agent is the mascot (`agent-mascot.tsx`), on every surface,
+ *    with its own floating window and its own conversation.
+ * The header always names the session, so the two can't be confused.
  *
- * **Two conversations, never ambiguous which (31 Oct 2026).** With a session
- * open, the chat is that session's — its pair, plans, journal and memory. With
- * none (how the app starts: on Home), it is the *general* conversation: the
- * agent answers anything that doesn't need session data, and the strip above
- * it offers the sessions as one-click ways in. The agent can suggest a session
- * but never switches one itself — what the owner is looking at is their click.
- * The header says which conversation this is, always.
- *
- * The footer line is load-bearing, not decoration: the agent's inability to
- * place, size, or price an order is the app's core safety property, and the
- * place a user forms their mental model of it is here.
+ * Collapsed it's a 36px rail; open it's a 380px column. The footer line is
+ * load-bearing, not decoration: the agent's inability to place, size, or price
+ * an order is the app's core safety property, and the place a user forms their
+ * mental model of it is here.
  */
 export function ChatDrawer({
   session,
-  selectedSession,
   open,
   onToggle,
-  onOpenSession,
 }: {
-  /** The session whose chat to show — null on any surface that isn't one of its own. */
-  session: Session | null;
-  /** Still selected while you visit a global surface; offered first, as the way back. */
-  selectedSession: Session | null;
+  session: Session;
   open: boolean;
   onToggle: () => void;
-  onOpenSession: (session: Session) => void;
 }) {
   if (!open) {
     return (
-      <button className="chat-rail" onClick={onToggle} title="Open agent chat">
+      <button className="chat-rail" onClick={onToggle} title={`Open the ${session.pair} agent`}>
         <Sparkles size={16} style={{ color: "var(--ai)" }} />
-        <span className="chat-rail-label">AGENT</span>
+        <span className="chat-rail-label">{session.pair}</span>
       </button>
     );
   }
@@ -53,33 +43,14 @@ export function ChatDrawer({
         <Sparkles size={14} style={{ color: "var(--ai)" }} />
         <span style={{ fontSize: "var(--text-base)", fontWeight: 600 }}>Agent</span>
         <span className="mono" style={{ fontSize: "var(--text-2xs)", color: "var(--text-faint)" }}>
-          {session ? session.pair : "general"}
+          {session.pair}
         </span>
         <button className="chat-drawer-close ml-auto" onClick={onToggle} title="Collapse">
           <PanelRightClose size={14} />
         </button>
       </div>
 
-      {session ? (
-        <ChatPanel key={session.id} sessionId={session.id} />
-      ) : (
-        <>
-          <SessionPicker selected={selectedSession} onOpenSession={onOpenSession} />
-          <ChatPanel
-            key="general"
-            sessionId={null}
-            emptyState={
-              <div className="chat-general-empty">
-                <MessagesSquare size={16} />
-                <div>Ask about markets, concepts or the app.</div>
-                <div className="chat-general-empty-sub">
-                  Plans, levels and journal need a session — open one above.
-                </div>
-              </div>
-            }
-          />
-        </>
-      )}
+      <ChatPanel key={session.id} sessionId={session.id} />
 
       <div className="chat-drawer-foot">
         The agent can propose and journal. It cannot place, size, or price an order.
@@ -88,8 +59,9 @@ export function ChatDrawer({
   );
 }
 
-/** The sessions as one-click ways into a session's chat. The last one used leads. */
-function SessionPicker({
+/** The sessions as one-click ways in. The selected one (you stepped out to a
+ *  global surface) leads as "back"; after a fresh launch, the last one used. */
+export function SessionPicker({
   selected,
   onOpenSession,
 }: {
@@ -100,21 +72,13 @@ function SessionPicker({
   const [last, setLast] = useState<Session | null>(null);
 
   useEffect(() => {
-    const load = () => {
-      void Promise.all([api.listSessions(false), api.getLastSession()]).then(([list, lastRes]) => {
-        setSessions(isError(list) ? [] : list);
-        setLast(isError(lastRes) ? null : lastRes);
-      });
-    };
-    load();
-    return api.onDataUpdated(({ kind }) => {
-      if (kind === "sessions") load();
+    void Promise.all([api.listSessions(false), api.getLastSession()]).then(([list, lastRes]) => {
+      setSessions(isError(list) ? [] : list);
+      setLast(isError(lastRes) ? null : lastRes);
     });
-  }, []);
+  }, [selected?.id]);
 
   if (!sessions || sessions.length === 0) return null;
-  /* The selected session (you stepped out to Home or Portfolio) leads; else the
-     last one used (fresh launch). */
   const lead = selected ?? last;
   const ordered = lead
     ? [...sessions.filter((s) => s.id === lead.id), ...sessions.filter((s) => s.id !== lead.id)]
