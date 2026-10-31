@@ -23,7 +23,7 @@ export function registerSafety(): void {
      entries simply stopping with no stated cause. */
 ipcMain.handle("killSwitch:trip", (_e, reason?: string) =>
     safe(() => {
-      const { killSwitch } = require("./risk/kill-switch");
+      const { killSwitch } = require("../risk/kill-switch");
       killSwitch.trip(reason);
       auditLog("kill_switch_tripped", { reason: killSwitch.getReason() });
       return { active: true, reason: killSwitch.getReason() };
@@ -32,7 +32,7 @@ ipcMain.handle("killSwitch:trip", (_e, reason?: string) =>
 
 ipcMain.handle("killSwitch:reset", () =>
     safe(() => {
-      const { killSwitch } = require("./risk/kill-switch");
+      const { killSwitch } = require("../risk/kill-switch");
       killSwitch.reset();
       auditLog("kill_switch_reset", {});
       return { active: false, reason: "" };
@@ -41,7 +41,7 @@ ipcMain.handle("killSwitch:reset", () =>
 
 ipcMain.handle("killSwitch:status", () =>
     safe(() => {
-      const { killSwitch } = require("./risk/kill-switch");
+      const { killSwitch } = require("../risk/kill-switch");
       return { active: killSwitch.isTripped(), reason: killSwitch.getReason() };
     }, "killSwitch:status")
   );

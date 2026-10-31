@@ -81,7 +81,7 @@ ipcMain.handle("security:requestWindowsHello", (_e, reason: string) =>
       // qualifies for Windows' "started by the foreground process"
       // foreground-lock exception (see windows-hello.ts for the rest of
       // the fix — AllowSetForegroundWindow covers the case this doesn't).
-      const { mainWindow } = require("./main");
+      const { mainWindow } = require("../main");
       mainWindow?.focus();
       return windowsHello.requestVerification(reason || "Unlock Modern Vyapari");
     }, "security:requestWindowsHello")
