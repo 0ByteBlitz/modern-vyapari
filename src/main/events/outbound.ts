@@ -56,16 +56,16 @@ export interface OutboundMap {
   /** One step of a session archive wind-down. */
   "sessions:archiveStep": ArchiveStepEvent;
   /** A streamed chunk of assistant text. */
-  "chat:chunk": { text: string };
+  "chat:chunk": { text: string; conversation: ChatConversation };
   /** The turn finished. */
-  "chat:complete": Record<string, never>;
+  "chat:complete": { conversation: ChatConversation };
   /** A failure, already sanitised. **Only `emitError` may construct this.** */
   "chat:error": UserFacingPayload;
   /** Something the turn did differently, while still succeeding — e.g. a
    *  capability the model refused. Deliberately not `chat:error`: the turn has
    *  not failed, and styling it as a failure would train the owner to ignore
    *  real ones. Author these as plain sentences; nothing internal goes here. */
-  "chat:notice": { text: string };
+  "chat:notice": { text: string; conversation: ChatConversation };
 }
 
 export type OutboundChannel = keyof OutboundMap;
@@ -80,7 +80,17 @@ export interface UserFacingPayload {
   error: string;
   code: ErrorCode;
   hint?: string;
+  /** Set on chat errors, so only the conversation that failed shows it. */
+  conversation?: ChatConversation;
 }
+
+/**
+ * Which conversation a chat event belongs to: a session id, or "general" (the
+ * agent with no session open). Every chat event carries it, because more than
+ * one conversation can be on screen, and a stream that outlives a session
+ * switch must not land in the next session's transcript.
+ */
+export type ChatConversation = number | "general";
 
 /* ── Sending ────────────────────────────────────────────────────────── */
 
@@ -137,13 +147,15 @@ export function emit<C extends OutboundChannel>(channel: C, payload: OutboundMap
 export function emitError<C extends { [K in OutboundChannel]: OutboundMap[K] extends UserFacingPayload ? K : never }[OutboundChannel]>(
   target: WebContents | null | undefined,
   channel: C,
-  err: unknown
+  err: unknown,
+  extra?: { conversation?: ChatConversation }
 ): UserFacingPayload {
   const ui = toUserFacing(err);
   const payload: UserFacingPayload = {
     error: ui.hint ? `${ui.message} ${ui.hint}` : ui.message,
     code: ui.code,
     ...(ui.hint ? { hint: ui.hint } : {}),
+    ...(extra?.conversation !== undefined ? { conversation: extra.conversation } : {}),
   };
   emitTo(target, channel, payload as OutboundMap[C]);
   return payload;

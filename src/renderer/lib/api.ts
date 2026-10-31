@@ -36,6 +36,9 @@ import type {
 import { isUserFacingError, type UserFacingError } from "@shared/errors";
 import type { QuitSummary } from "@shared/quit";
 
+/** Which conversation a chat event belongs to (mirrors main's `ChatConversation`). */
+export type ChatConversation = number | "general";
+
 export type {
   SetupStatus,
   Session,
@@ -475,17 +478,18 @@ export interface RendererApi {
   onBinanceTickerUpdate(callback: (data: any[]) => void): () => void;
   onCandleUpdate(callback: (data: { symbol: string; intervalMin: number; candle: Candle }) => void): () => void;
   // Chat
-  getChatHistory(sessionId: number): Promise<Result<ChatMessage[]>>;
-  clearChatHistory(sessionId: number): Promise<Result<{ ok: true }>>;
-  compactChatHistory(sessionId: number): Promise<Result<{ ok: boolean; summary?: string; error?: string }>>;
+  getChatHistory(sessionId: number | null): Promise<Result<ChatMessage[]>>;
+  clearChatHistory(sessionId: number | null): Promise<Result<{ ok: true }>>;
+  compactChatHistory(sessionId: number | null): Promise<Result<{ ok: boolean; summary?: string; error?: string }>>;
   getAiModels(): Promise<Result<AiModelInfo[]>>;
-  sendChatMessage(sessionId: number, messages: { role: string; content: string | any[] }[], params?: { model: string; effort: string; capabilities?: { adaptive: boolean; extended: boolean } }): void;
-  onChatChunk(callback: (data: { text: string }) => void): () => void;
-  onChatComplete(callback: () => void): () => void;
-  onChatError(callback: (data: { error: string }) => void): () => void;
+  sendChatMessage(sessionId: number | null, messages: { role: string; content: string | any[] }[], params?: { model: string; effort: string; capabilities?: { adaptive: boolean; extended: boolean } }): void;
+  /* Every chat event names its conversation: a session id, or "general". */
+  onChatChunk(callback: (data: { text: string; conversation?: ChatConversation }) => void): () => void;
+  onChatComplete(callback: (data: { conversation?: ChatConversation }) => void): () => void;
+  onChatError(callback: (data: { error: string; conversation?: ChatConversation }) => void): () => void;
   /** The turn succeeded but did something differently — e.g. a model that
    *  can't search the web. Rendered quietly, never as a failure. */
-  onChatNotice(callback: (data: { text: string }) => void): () => void;
+  onChatNotice(callback: (data: { text: string; conversation?: ChatConversation }) => void): () => void;
   /** Presence and outbox health. The bot token never crosses IPC. */
   /** Simulated or live. `pending` is what the NEXT launch will use. */
   /** What this app has spent. Not an account balance — none is exposed. */
@@ -513,6 +517,8 @@ export interface RendererApi {
   onArchiveStep(callback: (event: ArchiveStepEvent) => void): () => void;
   selectSession(id: number | null): Promise<Result<Session | null>>;
   getSelectedSession(): Promise<Result<Session | null>>;
+  /** The session open when the app last closed; the general chat offers it as a way back. */
+  getLastSession(): Promise<Result<Session | null>>;
   // Security (app-launch gate)
   checkWindowsHello(): Promise<Result<HelloAvailability>>;
   requestWindowsHello(reason: string): Promise<Result<HelloResult>>;

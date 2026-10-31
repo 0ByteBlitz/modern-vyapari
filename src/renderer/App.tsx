@@ -337,7 +337,12 @@ export default function App() {
             from it. Hidden on the embedded browser, which owns its own
             WebContentsView bounds and would be overlapped. */}
         {surface !== "browser" && (
-          <ChatDrawer session={activeSession} open={chatOpen} onToggle={() => setChatOpen((v) => !v)} />
+          <ChatDrawer
+            session={activeSession}
+            open={chatOpen}
+            onToggle={() => setChatOpen((v) => !v)}
+            onOpenSession={(s) => void selectSession(s)}
+          />
         )}
       </main>
     </div>

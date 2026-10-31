@@ -141,9 +141,44 @@ export function openPositionCount(sessionId: number): number {
 
 /* ── Selected session — main process is the source of truth ─────────
    The bot runtime (strategy engine, agent) reads selection from here,
-   never from renderer state. Persisted in settings, survives restart. */
+   never from renderer state. Persisted in settings.
+
+   It does NOT survive a restart any more (31 Oct 2026): the app opens on Home,
+   and restoring the old selection opened that session's chat in the agent
+   drawer beside a Home page that said nothing was selected — two answers to
+   "which session am I in?" on one screen. Launch clears it; the previous
+   choice is kept as the LAST session, which the general chat offers as a
+   one-click way back. Nothing in the runtime depends on the selection, so
+   clearing it stops nothing. */
 
 const SELECTED_KEY = "selected_session_id";
+const LAST_KEY = "last_session_id";
+
+function writeSetting(key: string, value: string): void {
+  getDb()
+    .prepare(
+      "INSERT INTO settings(key, value) VALUES(?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value"
+    )
+    .run(key, value);
+}
+
+/** Called once at startup, before any window asks: Home, no session. */
+export function clearSelectionForLaunch(): void {
+  const id = getSelectedSessionId();
+  if (id !== null) writeSetting(LAST_KEY, String(id));
+  writeSetting(SELECTED_KEY, "");
+}
+
+/** The session open when the app last closed (or last chosen), if it still exists and isn't archived. */
+export function getLastSession(): Session | null {
+  const row = getDb().prepare("SELECT value FROM settings WHERE key = ?").get(LAST_KEY) as
+    | { value: string }
+    | undefined;
+  const id = row && row.value !== "" ? parseInt(row.value, 10) : NaN;
+  if (Number.isNaN(id)) return null;
+  const session = getSessionById(id);
+  return session && session.status !== "archived" ? session : null;
+}
 
 export function getSelectedSessionId(): number | null {
   const row = getDb().prepare("SELECT value FROM settings WHERE key = ?").get(SELECTED_KEY) as
@@ -203,11 +238,8 @@ export function selectSession(id: number | null): Session | null {
        construction instead: the paper engine skips non-active sessions, and
        `setStrategyState` refuses to arm a strategy on one. */
   }
-  getDb()
-    .prepare(
-      "INSERT INTO settings(key, value) VALUES(?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value"
-    )
-    .run(SELECTED_KEY, id === null ? "" : String(id));
+  writeSetting(SELECTED_KEY, id === null ? "" : String(id));
+  if (id !== null) writeSetting(LAST_KEY, String(id));
   auditLog("session_selected", { id });
   return id === null ? null : getSelectedSession();
 }

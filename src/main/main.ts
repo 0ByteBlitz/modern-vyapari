@@ -4,6 +4,7 @@ import { registerIpcHandlers } from "./ipc";
 import { initDatabase, getDb, auditLog } from "./db/database";
 import { initSharedStore, adoptLegacyLessons, adoptLegacyUsage } from "./db/shared-store";
 import { readMode, lockMode, appMode } from "./modes/app-mode";
+import { clearSelectionForLaunch } from "./sessions/service";
 import { initLogger, createLogger } from "./logger";
 import { isResearchBrowserWebContents } from "./browser/embedded-browser";
 import { attachQuitGuard } from "./services/quit-guard";
@@ -141,6 +142,8 @@ app.whenReady().then(() => {
   initSharedStore(app.getPath("userData"));
   adoptLegacyLessons(getDb(), mode);
   adoptLegacyUsage(getDb(), mode);
+  /* The app opens on Home with no session selected (sessions/service.ts). */
+  clearSelectionForLaunch();
   registerIpcHandlers();
 
   // Phase 3: paper trading engine + the post-trade review loop that hangs off

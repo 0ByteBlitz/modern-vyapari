@@ -51,6 +51,8 @@ ipcMain.handle("sessions:select", (_e, id: number | null) => safe(() => sessions
 
 ipcMain.handle("sessions:getSelected", () => safe(() => sessions.getSelectedSession(), "sessions:getSelected"));
 
+ipcMain.handle("sessions:getLast", () => safe(() => sessions.getLastSession(), "sessions:getLast"));
+
 ipcMain.handle("sessions:setStatus", (_e, id: number, status: "active" | "paused" | "archived") =>
     safe(() => sessions.setSessionStatus(id, status), "sessions:setStatus")
   );

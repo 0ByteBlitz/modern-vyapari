@@ -1200,3 +1200,26 @@ export async function executeSessionTool(
       throw new Error(`Unknown tool: ${name}`);
   }
 }
+
+/**
+ * Tools that act on one session's data. In the general conversation — the
+ * agent with no session open — they are not offered, and refused if called
+ * anyway (`chat.ts`), because they would read or write against session 0.
+ * Everything else (web, browser, derivatives, indicator catalogue, app
+ * capabilities, the cross-session calibration record) works without one.
+ */
+export const SESSION_SCOPED_TOOLS: ReadonlySet<string> = new Set([
+  "read_candles",
+  "query_trades",
+  "read_session_memory",
+  "write_journal",
+  "get_execution_basis",
+  "compute_indicators",
+  "manage_alerts",
+  "list_plans",
+  "get_plan",
+  "list_level_references",
+  "create_level_reference",
+  "draft_plan",
+  "get_order_flow",
+]);

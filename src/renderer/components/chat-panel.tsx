@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, isError, type ChatMessage, type AiModelInfo, errorText } from "@/lib/api";
+import { api, isError, type ChatMessage, type AiModelInfo, type ChatConversation, errorText } from "@/lib/api";
 import { Send, Bot, User, Loader2, Terminal, AlertTriangle, Trash2, BookmarkPlus, Wrench, RotateCw } from "lucide-react";
 import { ToolsMenu } from "@/components/tools-menu";
 import { renderMarkdown } from "@/lib/markdown";
 
 interface ChatPanelProps {
+  /** null = the general conversation: no session open, its own history. */
   sessionId: number | null;
+  /** Shown when the conversation is empty, in place of the session wording. */
+  emptyState?: React.ReactNode;
 }
 
 /**
@@ -61,7 +64,9 @@ function AssistantMessage({ text }: { text: string }) {
   return <div className="chat-turn">{nodes}</div>;
 }
 
-export function ChatPanel({ sessionId }: ChatPanelProps) {
+export function ChatPanel({ sessionId, emptyState }: ChatPanelProps) {
+  /* Model and effort are remembered per conversation; the general one has its own key. */
+  const prefKey = sessionId ?? "general";
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
@@ -93,7 +98,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
       setModelsError(errorText(res));
     } else if (res.length === 0) {
       setAvailableModels([]);
-      setModelsError("This Anthropic key has no models available.");
+      setModelsError("No models are available for this key.");
     } else {
       setAvailableModels(res);
     }
@@ -108,10 +113,10 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
 
   // Set model/effort based on saved session state or defaults
   useEffect(() => {
-    if (!sessionId || availableModels.length === 0) return;
+    if (availableModels.length === 0) return;
 
-    const savedModel = localStorage.getItem(`chat_model_${sessionId}`);
-    const savedEffort = localStorage.getItem(`chat_effort_${sessionId}`);
+    const savedModel = localStorage.getItem(`chat_model_${prefKey}`);
+    const savedEffort = localStorage.getItem(`chat_effort_${prefKey}`);
     
     if (savedModel && availableModels.find(m => m.id === savedModel)) {
       setModel(savedModel);
@@ -123,15 +128,12 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
 
     if (savedEffort) setEffort(savedEffort);
     else setEffort("high");
-  }, [sessionId, availableModels]);
+  }, [prefKey, availableModels]);
 
 
   // Load history when session changes
   useEffect(() => {
-    if (!sessionId) {
-      setMessages([]);
-      return;
-    }
+    setMessages([]);
     api.getChatHistory(sessionId).then((res) => {
       if (!isError(res)) {
         setMessages(res);
@@ -141,7 +143,13 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
 
   // Setup stream listeners
   useEffect(() => {
-    const unsubChunk = api.onChatChunk(({ text }) => {
+    /* Events name their conversation. Without the filter, a reply still
+       streaming when the owner switched sessions landed in the next session's
+       transcript — and with the general chat on screen too, in both. */
+    const mine: ChatConversation = sessionId ?? "general";
+    const forMe = (c: ChatConversation | undefined) => c === undefined || c === mine;
+    const unsubChunk = api.onChatChunk(({ text, conversation }) => {
+      if (!forMe(conversation)) return;
       setMessages((prev) => {
         const last = prev[prev.length - 1];
         if (last && last.role === "assistant" && !last.id) {
@@ -154,22 +162,24 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
       });
     });
 
-    const unsubComplete = api.onChatComplete(() => {
+    const unsubComplete = api.onChatComplete(({ conversation }) => {
+      if (!forMe(conversation)) return;
       setIsStreaming(false);
       // Optional: re-fetch history to get real DB IDs
-      if (sessionId) {
-        api.getChatHistory(sessionId).then((res) => {
-          if (!isError(res)) setMessages(res);
-        });
-      }
+      api.getChatHistory(sessionId).then((res) => {
+        if (!isError(res)) setMessages(res);
+      });
     });
 
-    const unsubError = api.onChatError(({ error }) => {
+    const unsubError = api.onChatError(({ error, conversation }) => {
+      if (!forMe(conversation)) return;
       setError(error);
       setIsStreaming(false);
     });
 
-    const unsubNotice = api.onChatNotice(({ text }) => setNotice(text));
+    const unsubNotice = api.onChatNotice(({ text, conversation }) => {
+      if (forMe(conversation)) setNotice(text);
+    });
 
     return () => {
       unsubChunk();
@@ -185,7 +195,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   }, [messages]);
 
   const handleSend = () => {
-    if ((!input.trim() && !attachedImage) || !sessionId || isStreaming) return;
+    if ((!input.trim() && !attachedImage) || isStreaming) return;
 
     let content: any = input;
     if (attachedImage) {
@@ -224,14 +234,14 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   };
 
   const handleClearChat = async () => {
-    if (!sessionId || isStreaming) return;
+    if (isStreaming) return;
     await api.clearChatHistory(sessionId);
     setMessages([]);
     setError(null);
   };
 
   const handleCompactChat = async () => {
-    if (!sessionId || isStreaming || isCompacting || messages.length <= 4) return;
+    if (isStreaming || isCompacting || messages.length <= 4) return;
     setIsCompacting(true);
     setError(null);
     const res = await api.compactChatHistory(sessionId);
@@ -301,14 +311,6 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
     }
   };
 
-  if (!sessionId) {
-    return (
-      <div className="flex-1 flex items-center justify-center border-l border-border bg-card p-4">
-        <p className="text-sm text-muted-foreground text-center">Select a session to start chatting.</p>
-      </div>
-    );
-  }
-
   const selectedModelData = availableModels.find(m => m.id === model);
   const isEffortSupported = selectedModelData?.capabilities?.effort?.supported || selectedModelData?.capabilities?.thinking?.supported;
 
@@ -327,7 +329,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
               onChange={e => {
                 const newModel = e.target.value;
                 setModel(newModel);
-                if (sessionId) localStorage.setItem(`chat_model_${sessionId}`, newModel);
+                localStorage.setItem(`chat_model_${prefKey}`, newModel);
                 /* Say what the change does and, just as importantly, what it
                    does not do. The conversation carries over verbatim, so the
                    new model reads the old one's replies as its own — which is
@@ -364,7 +366,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
                 onChange={e => {
                   const newEffort = e.target.value;
                   setEffort(newEffort);
-                  if (sessionId) localStorage.setItem(`chat_effort_${sessionId}`, newEffort);
+                  localStorage.setItem(`chat_effort_${prefKey}`, newEffort);
                 }}
                 className="bg-secondary border border-border rounded px-2 py-1.5 focus:outline-none w-24 font-medium"
               >
@@ -387,7 +389,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
 
             <button
               onClick={() => void handleCompactChat()}
-              disabled={!sessionId || isStreaming || isCompacting || messages.length <= 4}
+              disabled={isStreaming || isCompacting || messages.length <= 4}
               title="Summarise older messages (the journal keeps the full record)"
               className="p-1.5 text-muted-foreground hover:text-ai border border-border rounded bg-secondary disabled:opacity-30 disabled:hover:text-muted-foreground shrink-0 cursor-pointer"
             >
@@ -396,7 +398,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
 
             <button
               onClick={() => void handleClearChat()}
-              disabled={!sessionId || isStreaming || messages.length === 0}
+              disabled={isStreaming || messages.length === 0}
               title="Clear this chat (journal and memory are kept)"
               className="p-1.5 text-muted-foreground hover:text-destructive border border-border rounded bg-secondary disabled:opacity-30 disabled:hover:text-muted-foreground shrink-0 cursor-pointer"
             >
@@ -419,7 +421,8 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.length === 0 && (
+        {messages.length === 0 && emptyState}
+        {messages.length === 0 && !emptyState && (
           <div className="text-xs text-muted-foreground text-center p-3 bg-secondary/40 rounded-md border border-border/50 space-y-1">
             <div className="font-medium text-foreground">Chat log is clear.</div>
             <div className="text-text-faint">
@@ -475,7 +478,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             disabled={isStreaming}
-            placeholder={isStreaming ? "Claude is thinking..." : "Ask Claude or paste an image..."}
+            placeholder={isStreaming ? "Thinking…" : "Ask the agent, or paste an image…"}
             className="w-full bg-secondary border border-border rounded-md pl-3 pr-10 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
           />
           <button

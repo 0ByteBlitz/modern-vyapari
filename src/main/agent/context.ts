@@ -318,3 +318,51 @@ export function buildSessionContext(sessionId: number): string {
 
   return lines.join("\n");
 }
+
+/**
+ * Context for the general conversation — the agent with no session open (the
+ * app always opens on Home with none selected).
+ *
+ * It lists the sessions so the agent can say which one a question belongs to
+ * and suggest opening it. It cannot open one itself: switching what the owner
+ * is looking at is the owner's click, offered as buttons above the chat.
+ */
+export function buildGeneralContext(): string {
+  const db = getDb();
+  const sessions = db
+    .prepare(
+      `SELECT s.id, s.pair, s.status,
+              (SELECT COUNT(*) FROM trade_plans p WHERE p.session_id = s.id AND p.state = 'planned') AS armed,
+              (SELECT COUNT(*) FROM paper_positions x WHERE x.session_id = s.id AND x.status = 'open') AS open_positions
+         FROM sessions s
+        WHERE s.status != 'archived'
+        ORDER BY s.updated_at DESC`
+    )
+    .all() as unknown as { id: number; pair: string; status: string; armed: number; open_positions: number }[];
+
+  const lines: string[] = [];
+  lines.push(`## General conversation — no session is open`);
+  lines.push(
+    `The owner is talking to you from Home, not from a session. Answer general questions directly ` +
+      `(markets, concepts, the app, the web). Session tools — candles, indicators, plans, levels, journal, ` +
+      `alerts, order flow — are not available here.`
+  );
+  lines.push(`Paper account balance (shared across sessions): $${getPaperBalance().toFixed(2)}`);
+  lines.push("");
+  if (sessions.length === 0) {
+    lines.push(`There are no sessions yet. If the owner wants to work on a pair, suggest creating a session for it.`);
+  } else {
+    lines.push(`### Sessions`);
+    for (const s of sessions) {
+      lines.push(
+        `- ${s.pair} [${s.status}] · ${s.armed} armed plan(s) · ${s.open_positions} open position(s)`
+      );
+    }
+    lines.push("");
+    lines.push(
+      `When a question is about one of these pairs, or needs session data, say so and ask whether to open ` +
+        `that session — the owner opens it with the buttons above the chat. Do not pretend to have its data.`
+    );
+  }
+  return lines.join("\n");
+}

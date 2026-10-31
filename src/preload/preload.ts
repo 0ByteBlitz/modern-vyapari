@@ -49,23 +49,23 @@ const api = {
     };
   },
   // Chat (Phase 1)
-  getChatHistory: (sessionId: number) => ipcRenderer.invoke("chat:history", sessionId),
-  clearChatHistory: (sessionId: number) => ipcRenderer.invoke("chat:clear", sessionId),
-  compactChatHistory: (sessionId: number) => ipcRenderer.invoke("chat:compact", sessionId),
+  getChatHistory: (sessionId: number | null) => ipcRenderer.invoke("chat:history", sessionId),
+  clearChatHistory: (sessionId: number | null) => ipcRenderer.invoke("chat:clear", sessionId),
+  compactChatHistory: (sessionId: number | null) => ipcRenderer.invoke("chat:compact", sessionId),
   getAiModels: () => ipcRenderer.invoke("chat:models"),
-  sendChatMessage: (sessionId: number, messages: any[], params?: { model: string; effort: string; capabilities?: { adaptive: boolean; extended: boolean } }) => 
+  sendChatMessage: (sessionId: number | null, messages: any[], params?: { model: string; effort: string; capabilities?: { adaptive: boolean; extended: boolean } }) => 
     ipcRenderer.send("chat:send", sessionId, messages, params),
-  onChatChunk: (callback: (data: { text: string }) => void) => {
+  onChatChunk: (callback: (data: { text: string; conversation?: number | "general" }) => void) => {
     const handler = (_event: any, data: any) => callback(data);
     ipcRenderer.on("chat:chunk", handler);
     return () => ipcRenderer.removeListener("chat:chunk", handler);
   },
-  onChatComplete: (callback: () => void) => {
-    const handler = () => callback();
+  onChatComplete: (callback: (data: { conversation?: number | "general" }) => void) => {
+    const handler = (_event: any, data: any) => callback(data ?? {});
     ipcRenderer.on("chat:complete", handler);
     return () => ipcRenderer.removeListener("chat:complete", handler);
   },
-  onChatError: (callback: (data: { error: string }) => void) => {
+  onChatError: (callback: (data: { error: string; conversation?: number | "general" }) => void) => {
     const handler = (_event: any, data: any) => callback(data);
     ipcRenderer.on("chat:error", handler);
     return () => ipcRenderer.removeListener("chat:error", handler);
@@ -83,7 +83,7 @@ const api = {
   listAgentTools: (model?: string) => ipcRenderer.invoke("agent:tools", model),
   setAgentTool: (id: string, enabled: boolean) => ipcRenderer.invoke("agent:setTool", id, enabled),
   resetAgentTools: () => ipcRenderer.invoke("agent:resetTools"),
-  onChatNotice: (callback: (data: { text: string }) => void) => {
+  onChatNotice: (callback: (data: { text: string; conversation?: number | "general" }) => void) => {
     const handler = (_event: any, data: any) => callback(data);
     ipcRenderer.on("chat:notice", handler);
     return () => ipcRenderer.removeListener("chat:notice", handler);
@@ -101,6 +101,7 @@ const api = {
   },
   selectSession: (id: number | null) => ipcRenderer.invoke("sessions:select", id),
   getSelectedSession: () => ipcRenderer.invoke("sessions:getSelected"),
+  getLastSession: () => ipcRenderer.invoke("sessions:getLast"),
   // Security (app-launch gate)
   checkWindowsHello: () => ipcRenderer.invoke("security:checkWindowsHello"),
   requestWindowsHello: (reason: string) => ipcRenderer.invoke("security:requestWindowsHello", reason),
