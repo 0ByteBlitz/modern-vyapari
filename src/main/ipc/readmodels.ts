@@ -18,7 +18,7 @@ ipcMain.handle("orders:list", (_e, sessionId: number, limit?: number) =>
 
 ipcMain.handle("orders:approve", (_e, orderId: number) =>
     safe(() => {
-      const db = require("./db/database").getDb();
+      const db = require("../db/database").getDb();
       db.prepare(`UPDATE orders SET status = 'approved', updated_at = ? WHERE id = ?`).run(Date.now(), orderId);
       return { success: true };
     }, "orders:approve")
@@ -26,7 +26,7 @@ ipcMain.handle("orders:approve", (_e, orderId: number) =>
 
 ipcMain.handle("orders:reject", (_e, orderId: number) =>
     safe(() => {
-      const db = require("./db/database").getDb();
+      const db = require("../db/database").getDb();
       db.prepare(`UPDATE orders SET status = 'rejected', updated_at = ? WHERE id = ?`).run(Date.now(), orderId);
       return { success: true };
     }, "orders:reject")
