@@ -6,7 +6,8 @@ is correctness over speed. A small, verified PR beats a large, plausible one.
 ## Before you start
 
 1. Read [`CLAUDE.md`](CLAUDE.md) — the hard rules apply to humans too.
-2. Skim [`docs/JOURNEYS.md`](docs/JOURNEYS.md). A good PR says which journey and step it
+2. Skim [`docs/README.md`](docs/README.md) — the docs map and glossary ("owner",
+   J0–J7, sprint IDs) — then [`docs/JOURNEYS.md`](docs/JOURNEYS.md). A good PR says which journey and step it
    serves. If it serves none, it should be infrastructure with a named dependant.
 3. For anything bigger than a bug fix, **open an issue first** so we can agree on the shape
    before you write it. Check [`docs/ROADMAP.md`](docs/ROADMAP.md) — several features are

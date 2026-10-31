@@ -1,4 +1,60 @@
-# Modern Vyapari — Roadmap to 30 August 2026
+# Modern Vyapari — Roadmap
+
+## Status · 31 October 2026 — read this first
+
+**This file began as a five-week sprint plan to a personal launch on 30 August
+2026.** Development paused after 9 August with Sprint 4 (live execution) not
+started, and the project went public as open source on 31 October. The sprint
+sections below are kept as the plan of record — their reasoning still governs —
+but the dates are history. **Nothing in the app can place a real order**: both
+venue adapters declare `canPlaceOrders: false`.
+
+*"Owner" in this file and the others means the person using the app — the human
+who authors and signs plans. See [`docs/README.md`](README.md) for the glossary.*
+
+### Built
+
+| Area | Items |
+|---|---|
+| Levels | S1-1 level resolver · S1-3 history re-backfill · S1-4 volume profile + CVD · S1-5 drift detection · S2-2 drawing → reference |
+| Plans (the product) | S3-1 lifecycle · S3-2 authoring + falsifiability gate · **S3-3 plan monitor, both halves** — a trigger opens, manages and closes a paper position · S3-5 structural dry-run · S3-6 calibration record |
+| Agent | J-1 plan tools (drafts, never arms) · J-2 plan-aware review · J-3 armed plan on the chart and as distances |
+| Platform | S2-7 typed event plumbing · S2-8 transactions, frontend glue, `ipc/` split · S2-9 venue layer · N-1 Telegram outbox · simulated/live app modes · conditional lessons |
+
+### Since going public (31 Oct)
+
+CI on Windows, Linux and macOS · Electron 43 → 45.2.1 (Chromium 156) · credential
+vault on async `safeStorage`, with its first tests · fixed: lazy `require` paths
+that left the **kill switch** and the Windows Hello unlock throwing at runtime ·
+model picker shows key errors instead of loading for ever · Electron download
+race in CI · fresh-install startup error · window icon on Linux/macOS ·
+Anthropic SDK 1.x · `@types/node` 24 · CodeRabbit review rules.
+
+### Open — where contributions help most
+
+**Good first contributions**
+- **Simulated-only onboarding** — try the app with an Anthropic key alone; today a Revolut X key is required to get past setup.
+- **Clearer Telegram errors** — surface Telegram's own short reason ("chat not found") without ever echoing the token.
+- **Lock-screen error detail** — a failed unlock points at Settings › Diagnostics, which is unreachable while locked.
+- **S2-4 Ichimoku offsets test** — pin all five lines against a known reference.
+- **L-1 packaging for macOS and Linux** — only `package:win` exists.
+
+**Larger pieces**
+- **Venue adapters** (Kraken, Coinbase, …) behind `integrations/venue/port.ts` — declare capabilities honestly.
+- **S2-9 feed half** — a feed port, and the last two `source = 'binance'` predicates (down from 18).
+- **S2-8 single runtime owner** — six timers across four files today; design in `ARCHITECTURE.md`.
+- **S2-1 Fibonacci as data · S2-3 anchored VWAP/profile tools · S2-5 base-rate check · S3-4 Elliott rule-checker.**
+- **J-4 `onDrift: reconfirm` queue · N-2 lesson recall · N-3 backup (L-3) · N-4 read-only MCP client.**
+- **Telegram inbound commands** — the remote kill switch from `PLAN.md` §7.1 (`/pause`, allowlisted to one chat).
+
+**Maintainer-led, with safety review: Sprint 4** (S4-1…S4-6) — real order
+placement, venue-side TP/SL, reconciliation, the approvals queue. Discuss in an
+issue before writing code; the hard rules in `CLAUDE.md` are the acceptance bar.
+
+---
+
+## Original plan (29 July 2026)
+
 
 **Launch = the day this becomes the tool the owner actually trades with, daily.**
 Single user, personal money, but held to institutional standards of correctness:
@@ -361,9 +417,16 @@ Goal: a thesis can be written down, armed, and mechanically monitored.
       per-second path, and its event map included `order:intent` /
       `order:executed` — precisely the traffic this rule forbids. Recoverable
       from f6e86db, but re-derive it against the rule above.)*
-- [~] **S3-3 Plan monitor** in the engine: trigger evaluation, drift guard,
+- [x] **S3-3 Plan monitor** in the engine: trigger evaluation, drift guard,
       expiry sweep. Reuses the paper engine's execution path — no second fill
       model, ever.
+
+      **Applying half done 2026-08-05 (with S1-2).** The paper engine calls the
+      monitor directly on every closed bar (`evaluatePlansOnBar` in
+      `paper/paper-exchange.ts`), and a triggered branch opens a plan-owned
+      position via `openPlanPosition` — sized from the plan's budget, refused
+      past its stop or target, blocked by the kill switch. Covered by
+      `plan-execution.test.ts`. The history below is kept as written.
 
       **Wired watch-only, 2026-08-01.** Until this, `plan-monitor.ts` was
       imported by **nothing but its own test** — every armed plan in the
@@ -422,7 +485,7 @@ Goal: a thesis can be written down, armed, and mechanically monitored.
       S3-6 derives from, so a plan's review must be findable by plan rather
       than by searching tag text. Migration tested against a real on-disk v15
       database, per the v15 lesson.
-- [~] **J-3 Render an armed plan — two renderings, one source of truth.**
+- [x] **J-3 Render an armed plan — two renderings, one source of truth.**
       *(From JOURNEYS.md J2, 2026-08-01.)* **The numeric half is done the same
       day:** the session dashboard's candle chart was deleted (owner decision —
       Home answers "what is this pair doing" before it is asked and Research
@@ -727,8 +790,13 @@ keeping score of the owner's own assumptions.
             queue between them, and a budget plus cooldown on every job that
             calls the model. Measured today: four `setInterval` sites, no shared
             owner, nothing enumerable, nothing persisted, no budget anywhere.
-      - [ ] **S2-7(b)** — the typed outbound channel, already scoped below.
+      - [x] **S2-7(b)** — the typed outbound channel. *(Done 2026-07-31 — see S2-7.)*
 - [~] **S2-9 Integrations become a layer.** *(Owner decision, 2026-07-31.)*
+      **Status 2026-10-31:** venue half done; feed half mostly done — symbol
+      mapping has one home and the feed's identity is one constant
+      (`integrations/feed/symbols.ts`, `FEED_SCOPE_SQL`), taking the
+      `source = 'binance'` predicates from 18 to 2. **Still open: a feed port,
+      and those last two predicates.**
       Venue and analysis feed are currently referred to by name from wherever
       they are needed; there is no integration layer at all. Full measurement
       and the target shape are in **`docs/ARCHITECTURE.md`** — read that before

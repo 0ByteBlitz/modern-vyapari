@@ -13,6 +13,23 @@ number was counted on the date above.
 sits between them: what the system currently is, and what shape the next work
 should take.
 
+> **Status · 31 October 2026 — the measurements below are dated 31 July.** Since
+> then:
+>
+> - `ipc.ts` is gone — **16 per-domain modules under `src/main/ipc/`**, guarded by
+>   `ipc-surface.test.ts` and `lazy-require-paths.test.ts` (the second added after
+>   ten lazy requires were left pointing at pre-split paths).
+> - The venue layer exists: `integrations/venue/` (port, Revolut X and paper
+>   adapters, registry, declared capabilities). Nothing outside it imports the
+>   venue client.
+> - Feed: symbol mapping and the feed's identity are consolidated in
+>   `integrations/feed/symbols.ts`; `source = 'binance'` predicates **18 → 2**.
+>   A feed port is not built.
+> - Runtime: **six** `setInterval` sites across four files (scheduler ×3, basis
+>   monitor, notify worker, monitor heartbeat), still no single owner — the design
+>   in the second half of this file stands.
+> - Secrets: both credential stores share one async cipher (`security/cipher.ts`).
+
 ---
 
 ## 1. Layer assessment
