@@ -183,7 +183,7 @@ function assertSafeUrl(raw: string): URL {
  */
 export async function fetchPageRemote(rawUrl: string): Promise<RemotePage> {
   const url = assertSafeUrl(rawUrl);
-  const apiKey = credentials.getBrowserbaseKey();
+  const apiKey = (await credentials.getBrowserbaseKey());
   if (!apiKey) throw new Error("Browserbase is not configured — add the API key in Settings › Integrations.");
 
   const session = await createSession(apiKey);

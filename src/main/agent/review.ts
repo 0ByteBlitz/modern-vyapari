@@ -301,7 +301,7 @@ export async function reviewClosedPosition(positionId: number): Promise<void> {
     if (!pos) return;
     if (pos.reviewed) return;
 
-    const apiKey = credentials.getAnthropicApiKey();
+    const apiKey = (await credentials.getAnthropicApiKey());
     if (!apiKey) {
       log.info("No Anthropic API key configured — skipping trade review.");
       return;
@@ -541,7 +541,7 @@ export async function reviewResolvedPlan(planId: number): Promise<void> {
       return;
     }
 
-    const apiKey = credentials.getAnthropicApiKey();
+    const apiKey = (await credentials.getAnthropicApiKey());
     if (!apiKey) return;
     const model = await reviewModel();
     if (!model) return;
@@ -754,7 +754,7 @@ function calibrationSummary(): unknown {
  */
 export async function distillLessons(sessionId: number, minReviews = MIN_REVIEWS_FOR_LESSONS): Promise<void> {
   try {
-    const apiKey = credentials.getAnthropicApiKey();
+    const apiKey = (await credentials.getAnthropicApiKey());
     if (!apiKey) return;
 
     const db = getDb();

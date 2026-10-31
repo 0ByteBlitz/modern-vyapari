@@ -57,7 +57,7 @@ export async function compactChatHistory(sessionId: number): Promise<{ ok: boole
     return { ok: false, error: "Not enough messages to compact yet (needs at least 5 messages)." };
   }
 
-  const apiKey = credentials.getAnthropicApiKey();
+  const apiKey = (await credentials.getAnthropicApiKey());
   if (!apiKey) {
     return { ok: false, error: "Anthropic API key is not configured. Please set your API key in Settings." };
   }
@@ -136,7 +136,7 @@ export async function compactChatHistory(sessionId: number): Promise<{ ok: boole
  * renderer switches effort/thinking on.
  */
 export async function listAnthropicModels(): Promise<Anthropic.ModelInfo[]> {
-  const apiKey = credentials.getAnthropicApiKey();
+  const apiKey = (await credentials.getAnthropicApiKey());
   if (!apiKey) throw new AppError("CREDENTIALS", "Add your Anthropic key to use the agent.");
 
   const anthropic = new Anthropic({ apiKey });
@@ -158,7 +158,7 @@ export async function listAnthropicModels(): Promise<Anthropic.ModelInfo[]> {
  * crosses `safe()` as a classified error — a rejected key reads as CREDENTIALS.
  */
 export async function getAnthropicModels(): Promise<Anthropic.ModelInfo[]> {
-  if (!credentials.getAnthropicApiKey()) return [];
+  if (!(await credentials.getAnthropicApiKey())) return [];
   try {
     return await listAnthropicModels();
   } catch (err) {
@@ -647,7 +647,7 @@ export async function sendChatMessage(
   }
 
   // 2. Initialize Anthropic client with Prompt Caching header (90% input token discount)
-  const apiKey = credentials.getAnthropicApiKey();
+  const apiKey = (await credentials.getAnthropicApiKey());
   if (!apiKey) {
     emitError(
       sender,

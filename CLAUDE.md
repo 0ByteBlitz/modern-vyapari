@@ -102,6 +102,12 @@ outranks almost any feature.
 - **Any new main→renderer channel sanitises errors** — use `emitError`; raw API
   errors must never reach the transcript.
 - **The renderer describes, main constructs.** Never build engine JSON in the renderer.
+- **The credential vault is async** (`security/credentials.ts` and
+  `integration-secrets.ts`, both through `security/cipher.ts`). Await every read
+  and save: an un-awaited key in `if (!key)` is a Promise, always truthy, and
+  TypeScript will not flag it; an un-awaited save reports success before the
+  write. Presence checks (`has*`) are synchronous and decrypt nothing — use them
+  to ask *whether* a key exists, never a getter.
 - DB: `node:sqlite` (`DatabaseSync`), WAL, FTS5 for journal search. Schema in
   `src/main/db/schema.ts` (**v20**), hand-rolled migrations in `db/database.ts`.
 - **`SCHEMA_SQL` re-runs on every startup**, including against an old database.

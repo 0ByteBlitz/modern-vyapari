@@ -23,9 +23,9 @@ export function registerNotify(): void {
      from the owner's side and they need to be able to see what is stored. */
 ipcMain.handle("notify:status", () =>
     safe(
-      () => ({
+      async () => ({
         configured: telegramConfigured(),
-        chatId: getSecret(TELEGRAM_ID, "chat_id"),
+        chatId: await getSecret(TELEGRAM_ID, "chat_id"),
         stats: outbox.outboxStats(),
         /* Abandoned messages are surfaced, not swallowed: by definition the
            owner was never told about them any other way. */
@@ -40,7 +40,7 @@ ipcMain.handle("notify:status", () =>
   );
 
 ipcMain.handle("notify:saveTelegram", (_e, botToken: string, chatId: string) =>
-    safe(() => {
+    safe(async () => {
       const token = (botToken ?? "").trim();
       const chat = (chatId ?? "").trim();
       if (!chat) throw new AppError("VALIDATION", "Enter the chat ID.");
@@ -53,8 +53,8 @@ ipcMain.handle("notify:saveTelegram", (_e, botToken: string, chatId: string) =>
       if (!token && !alreadyHasToken) {
         throw new AppError("VALIDATION", "Enter the bot token from @BotFather.");
       }
-      if (token) saveSecret(TELEGRAM_ID, "bot_token", token);
-      saveSecret(TELEGRAM_ID, "chat_id", chat);
+      if (token) await saveSecret(TELEGRAM_ID, "bot_token", token);
+      await saveSecret(TELEGRAM_ID, "chat_id", chat);
       /* Never log the token itself — the audit log outlives the process and
          ends up in bug reports. */
       auditLog("telegram_configured", { chatId: chat });

@@ -61,8 +61,8 @@ export async function sendTelegram(title: string, body: string): Promise<Deliver
   if (isNetworkDisabled()) {
     return { ok: false, error: "Network disabled in this process." };
   }
-  const token = getSecret(TELEGRAM_ID, "bot_token");
-  const chatId = getSecret(TELEGRAM_ID, "chat_id");
+  const token = await getSecret(TELEGRAM_ID, "bot_token");
+  const chatId = await getSecret(TELEGRAM_ID, "chat_id");
   if (!token || !chatId) {
     /* Permanent: retrying an unconfigured channel forever would burn attempts
        and then abandon a message that was never deliverable. */

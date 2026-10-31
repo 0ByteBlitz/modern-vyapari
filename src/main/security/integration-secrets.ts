@@ -34,6 +34,7 @@
 
 import * as fs from "fs";
 import * as path from "path";
+import { electronCipher, readEncrypted, writeEncrypted, type SecretCipher } from "./cipher";
 
 /* ── Auth schemes ───────────────────────────────────────────────────── */
 
@@ -77,39 +78,10 @@ export interface IntegrationAuthSpec {
 
 /* ── Cipher seam ────────────────────────────────────────────────────── */
 
-export interface SecretCipher {
-  isAvailable(): boolean;
-  encrypt(plain: string): Buffer;
-  decrypt(buf: Buffer): string;
-}
-
-/**
- * `safeStorage` is reached lazily, not imported at module load.
- *
- * The existing vault imports it eagerly, which is why it cannot be tested: in
- * a plain Node test process `require("electron")` yields a path string and
- * `safeStorage` is undefined, so importing the module at all would throw. A
- * lazy accessor plus an injectable cipher makes the storage rules testable —
- * and rules about credentials are exactly the ones that should be tested.
- */
-const electronCipher: SecretCipher = {
-  isAvailable() {
-    try {
-      const { safeStorage } = require("electron") as typeof import("electron");
-      return Boolean(safeStorage?.isEncryptionAvailable());
-    } catch {
-      return false;
-    }
-  },
-  encrypt(plain) {
-    const { safeStorage } = require("electron") as typeof import("electron");
-    return safeStorage.encryptString(plain);
-  },
-  decrypt(buf) {
-    const { safeStorage } = require("electron") as typeof import("electron");
-    return safeStorage.decryptString(buf);
-  },
-};
+/* The cipher, its lazy safeStorage access and the refuse-rather-than-degrade
+   rule now live in cipher.ts, shared with the main credential vault. Re-exported
+   so existing importers of the interface are unchanged. */
+export type { SecretCipher } from "./cipher";
 
 let cipher: SecretCipher = electronCipher;
 let baseDir = "";
@@ -151,21 +123,23 @@ export function hasSecret(integrationId: string, field: string): boolean {
   return fs.existsSync(secretPath(integrationId, field));
 }
 
-export function saveSecret(integrationId: string, field: string, value: string): void {
-  if (!cipher.isAvailable()) {
-    /* Refuse rather than degrade. A credential written in plaintext because
-       the keychain was briefly unavailable is a credential in plaintext
-       forever, and nothing would ever notice. */
-    throw new Error("OS encryption is unavailable — refusing to store a secret in plaintext.");
-  }
-  fs.writeFileSync(secretPath(integrationId, field), cipher.encrypt(value), { mode: 0o600 });
+export async function saveSecret(integrationId: string, field: string, value: string): Promise<void> {
+  /* Refuse rather than degrade. A credential written in plaintext because the
+     keychain was briefly unavailable is a credential in plaintext forever, and
+     nothing would ever notice. */
+  await writeEncrypted(
+    cipher,
+    secretPath(integrationId, field),
+    value,
+    "OS encryption is unavailable — refusing to store a secret in plaintext."
+  );
 }
 
 /** Main-process only. Never expose through IPC, a prompt, or a log line. */
-export function getSecret(integrationId: string, field: string): string | null {
+export async function getSecret(integrationId: string, field: string): Promise<string | null> {
   const p = secretPath(integrationId, field);
   if (!fs.existsSync(p)) return null;
-  return cipher.decrypt(fs.readFileSync(p));
+  return readEncrypted(cipher, p);
 }
 
 export function clearSecret(integrationId: string, field: string): void {
