@@ -31,6 +31,7 @@ import type {
   ArchiveStepId,
   ArchiveStepEvent,
   ArchiveSummary,
+  AiModelInfo,
 } from "@shared/ipc-types";
 import { isUserFacingError, type UserFacingError } from "@shared/errors";
 
@@ -63,6 +64,7 @@ export type {
   ArchiveStepEvent,
   ArchiveSummary,
   UserFacingError,
+  AiModelInfo,
 };
 
 
@@ -475,7 +477,7 @@ export interface RendererApi {
   getChatHistory(sessionId: number): Promise<Result<ChatMessage[]>>;
   clearChatHistory(sessionId: number): Promise<Result<{ ok: true }>>;
   compactChatHistory(sessionId: number): Promise<Result<{ ok: boolean; summary?: string; error?: string }>>;
-  getAnthropicModels(): Promise<Result<any[]>>;
+  getAiModels(): Promise<Result<AiModelInfo[]>>;
   sendChatMessage(sessionId: number, messages: { role: string; content: string | any[] }[], params?: { model: string; effort: string; capabilities?: { adaptive: boolean; extended: boolean } }): void;
   onChatChunk(callback: (data: { text: string }) => void): () => void;
   onChatComplete(callback: () => void): () => void;

@@ -15,7 +15,6 @@
  * small number of durable `lesson` entries, which `context.ts` injects into
  * every chat system prompt.
  */
-import Anthropic from "@anthropic-ai/sdk";
 import { getDb } from "../db/database";
 import { recordUsage } from "./usage";
 import { getLessonsForPair, replaceLessonsForPair, type LessonDraft } from "../db/shared-store";
@@ -23,12 +22,12 @@ import { appMode } from "../modes/app-mode";
 import { classifyRegime, type TrendRegime } from "../insights/regime";
 import { dbCandleSource } from "../insights/level-resolver";
 import { buildCalibration } from "../plans/calibration";
-import * as credentials from "../security/credentials";
 import { getStrategy } from "../strategy/strategy-service";
 import { getPlan } from "../plans/plan-service";
 import { getSessionById } from "../sessions/service";
 import type { StrategySpec } from "../strategy/strategy-spec";
 import { resolveFastModel } from "./chat";
+import { aiProvider } from "../ai/registry";
 import { isAdministrativeExit } from "../paper/paper-exchange";
 import { createLogger } from "../logger";
 import { FEED_SCOPE_SQL } from "../integrations/feed/symbols";
@@ -301,9 +300,8 @@ export async function reviewClosedPosition(positionId: number): Promise<void> {
     if (!pos) return;
     if (pos.reviewed) return;
 
-    const apiKey = (await credentials.getAnthropicApiKey());
-    if (!apiKey) {
-      log.info("No Anthropic API key configured — skipping trade review.");
+    if (!aiProvider().isConfigured()) {
+      log.info("No AI provider configured — skipping trade review.");
       return;
     }
 
@@ -404,18 +402,15 @@ export async function reviewClosedPosition(positionId: number): Promise<void> {
       return;
     }
 
-    const anthropic = new Anthropic({ apiKey });
-    const res = await anthropic.messages.create({
+    const res = await aiProvider().complete({
       model,
-      max_tokens: 500,
+      maxTokens: 500,
       system: owner.prompt,
-      messages: [{ role: "user", content: JSON.stringify(payload, null, 2) }],
+      prompt: JSON.stringify(payload, null, 2),
     });
     recordUsage(model, "trade_review", res.usage);
 
-    const text = res.content
-      .filter((b: any) => b.type === "text")
-      .map((b: any) => b.text)
+    const text = res.textParts
       .join("\n")
       .trim();
 
@@ -541,8 +536,7 @@ export async function reviewResolvedPlan(planId: number): Promise<void> {
       return;
     }
 
-    const apiKey = (await credentials.getAnthropicApiKey());
-    if (!apiKey) return;
+    if (!aiProvider().isConfigured()) return;
     const model = await reviewModel();
     if (!model) return;
 
@@ -576,17 +570,14 @@ export async function reviewResolvedPlan(planId: number): Promise<void> {
       watched_throughout: watchedThroughout(from, to),
     };
 
-    const anthropic = new Anthropic({ apiKey });
-    const res = await anthropic.messages.create({
+    const res = await aiProvider().complete({
       model,
-      max_tokens: 400,
+      maxTokens: 400,
       system: PLAN_RESOLUTION_PROMPT,
-      messages: [{ role: "user", content: JSON.stringify(payload, null, 2) }],
+      prompt: JSON.stringify(payload, null, 2),
     });
     recordUsage(model, "plan_review", res.usage);
-    const text = res.content
-      .filter((b: any) => b.type === "text")
-      .map((b: any) => b.text)
+    const text = res.textParts
       .join("\n")
       .trim();
     if (!text) return;
@@ -754,8 +745,7 @@ function calibrationSummary(): unknown {
  */
 export async function distillLessons(sessionId: number, minReviews = MIN_REVIEWS_FOR_LESSONS): Promise<void> {
   try {
-    const apiKey = (await credentials.getAnthropicApiKey());
-    if (!apiKey) return;
+    if (!aiProvider().isConfigured()) return;
 
     const db = getDb();
     const session = getSessionById(sessionId);
@@ -808,15 +798,11 @@ export async function distillLessons(sessionId: number, minReviews = MIN_REVIEWS
        model may claim — see the validation below. */
     const evidenceRegimes = new Set(reviews.map((r) => regimeAt(session.pair, r.created_at)));
 
-    const anthropic = new Anthropic({ apiKey });
-    const res = await anthropic.messages.create({
+    const res = await aiProvider().complete({
       model,
-      max_tokens: 1000,
+      maxTokens: 1000,
       system: LESSONS_SYSTEM_PROMPT,
-      messages: [
-        {
-          role: "user",
-          content: JSON.stringify(
+      prompt: JSON.stringify(
             {
               pair: session.pair,
               current_lessons: existing.map((e) => e.content),
@@ -839,14 +825,10 @@ export async function distillLessons(sessionId: number, minReviews = MIN_REVIEWS
             null,
             2
           ),
-        },
-      ],
     });
     recordUsage(model, "lessons", res.usage);
 
-    const text = res.content
-      .filter((b: any) => b.type === "text")
-      .map((b: any) => b.text)
+    const text = res.textParts
       .join("")
       .trim();
 

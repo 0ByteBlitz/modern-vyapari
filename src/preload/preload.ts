@@ -52,7 +52,7 @@ const api = {
   getChatHistory: (sessionId: number) => ipcRenderer.invoke("chat:history", sessionId),
   clearChatHistory: (sessionId: number) => ipcRenderer.invoke("chat:clear", sessionId),
   compactChatHistory: (sessionId: number) => ipcRenderer.invoke("chat:compact", sessionId),
-  getAnthropicModels: () => ipcRenderer.invoke("chat:models"),
+  getAiModels: () => ipcRenderer.invoke("chat:models"),
   sendChatMessage: (sessionId: number, messages: any[], params?: { model: string; effort: string; capabilities?: { adaptive: boolean; extended: boolean } }) => 
     ipcRenderer.send("chat:send", sessionId, messages, params),
   onChatChunk: (callback: (data: { text: string }) => void) => {

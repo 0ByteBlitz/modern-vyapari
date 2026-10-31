@@ -33,7 +33,7 @@ ipcMain.handle("chat:clear", (_e, sessionId: number) => safe(() => chat.clearCha
 
 ipcMain.handle("chat:compact", (_e, sessionId: number) => safe(() => chat.compactChatHistory(sessionId), "chat:compact"));
 
-ipcMain.handle("chat:models", () => safe(() => chat.listAnthropicModels(), "chat:models"));
+ipcMain.handle("chat:models", () => safe(() => chat.listAiModels(), "chat:models"));
 
   /* Agent tool switches. None of these can place an order — the catalogue holds
      no order tool — so the worst a switch does is make the agent less capable. */
