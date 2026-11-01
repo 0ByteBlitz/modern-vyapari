@@ -56,6 +56,14 @@ work is what settles the surfaces they would theme.
 - **U-1 One word per state** (J0, J6) — the mode now reads *simulated* in the
   titlebar, toolbar, Home and the quit dialog, all from main; live stays loud.
   Remaining *strategy* wording on screen still goes — that path is frozen.
+- **U-9 One scope per screen** (J0, J3) — a figure sits where its scope
+  matches the screen. *Landed:* the session dashboard shows only its session
+  (activity filtered by `activity:listForSession`; app-wide agent spend and the
+  approvals queue removed — Home asks for decisions); the toolbar carries the
+  session's figures only on its own surfaces, as numbers without implied-budget
+  bars; agent spend lives in Settings and shows a lower bound (≥) when calls are
+  unpriced; the rail summarises the session instead of showing the shared cash.
+  *Next:* Settings grouped by what each key powers; one word for the mode.
 - **U-2 Motion system** (all journeys) — `--dur-*` / `--ease-*` tokens exist;
   move the ~10 literal durations and the chat drawer, surface switches, list
   inserts and price ticks onto them. Motion says *appeared* or *changed*, never

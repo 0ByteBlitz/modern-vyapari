@@ -554,6 +554,8 @@ export interface RendererApi {
   ): Promise<Result<JournalEntry[]>>;
   journalCounts(sessionId: number): Promise<Result<Record<string, number>>>;
   listActivity(limit?: number): Promise<Result<ActivityEvent[]>>;
+  /** One session's events, plus the app-wide ones that affect its plans. */
+  listSessionActivity(sessionId: number, limit?: number): Promise<Result<ActivityEvent[]>>;
   portfolioSummary(includeArchived?: boolean): Promise<Result<PortfolioSummary>>;
   tripKillSwitch(reason?: string): Promise<Result<{ active: boolean; reason: string }>>;
   resetKillSwitch(): Promise<Result<{ active: boolean; reason: string }>>;

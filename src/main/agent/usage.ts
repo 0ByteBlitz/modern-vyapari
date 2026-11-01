@@ -54,15 +54,33 @@ export type UsagePurpose = "chat" | "trade_review" | "plan_review" | "lessons" |
  * Deliberately a plain table rather than a lookup against the Models API: it is
  * the price *at the time of the call* that matters, and a live lookup would
  * reprice history. Prefix matching, so a dated snapshot id resolves to its
- * family without needing a row per release.
+ * family without needing a row per release — and the FIRST match wins, so a
+ * point release priced differently from its family sits above the family row
+ * (`claude-opus-5-5` before `claude-opus-5`). Without that ordering Opus 5.5
+ * was billed at Opus 5's rate.
+ *
+ * `longPrompt` is a second rate for prompts over a size threshold (Haiku 5.5
+ * doubles past 100K input tokens).
  */
-const PRICES: Array<{ prefix: string; inputPerM: number; outputPerM: number }> = [
+const PRICES: Array<{
+  prefix: string;
+  inputPerM: number;
+  outputPerM: number;
+  longPrompt?: { overTokens: number; inputPerM: number; outputPerM: number };
+}> = [
   { prefix: "claude-fable-5", inputPerM: 10, outputPerM: 50 },
   { prefix: "claude-mythos-5", inputPerM: 10, outputPerM: 50 },
+  { prefix: "claude-opus-5-5", inputPerM: 4, outputPerM: 20 },
   { prefix: "claude-opus-5", inputPerM: 5, outputPerM: 25 },
   { prefix: "claude-opus-4", inputPerM: 5, outputPerM: 25 },
-  { prefix: "claude-sonnet-5", inputPerM: 3, outputPerM: 15 },
+  { prefix: "claude-sonnet-5", inputPerM: 2, outputPerM: 10 },
   { prefix: "claude-sonnet-4", inputPerM: 3, outputPerM: 15 },
+  {
+    prefix: "claude-haiku-5",
+    inputPerM: 0.1,
+    outputPerM: 0.5,
+    longPrompt: { overTokens: 100_000, inputPerM: 0.5, outputPerM: 2.5 },
+  },
   { prefix: "claude-haiku-4", inputPerM: 1, outputPerM: 5 },
 ];
 
@@ -78,12 +96,14 @@ export interface TokenUsage {
 
 /** Null when the model is not in the table — unknown is a value, not zero. */
 export function estimateCostUsd(model: string, u: TokenUsage): number | null {
-  const price = PRICES.find((p) => model.startsWith(p.prefix));
-  if (!price) return null;
+  const row = PRICES.find((p) => model.startsWith(p.prefix));
+  if (!row) return null;
   const inTok = u.input_tokens ?? 0;
   const outTok = u.output_tokens ?? 0;
   const cacheRead = u.cache_read_input_tokens ?? 0;
   const cacheWrite = u.cache_creation_input_tokens ?? 0;
+  const promptTokens = inTok + cacheRead + cacheWrite;
+  const price = row.longPrompt && promptTokens > row.longPrompt.overTokens ? row.longPrompt : row;
   return (
     (inTok * price.inputPerM +
       cacheRead * price.inputPerM * CACHE_READ_MULTIPLIER +

@@ -185,6 +185,8 @@ const api = {
     ipcRenderer.invoke("journal:list", sessionId, opts),
   journalCounts: (sessionId: number) => ipcRenderer.invoke("journal:counts", sessionId),
   listActivity: (limit?: number) => ipcRenderer.invoke("activity:list", limit),
+  listSessionActivity: (sessionId: number, limit?: number) =>
+    ipcRenderer.invoke("activity:listForSession", sessionId, limit),
   portfolioSummary: (includeArchived?: boolean) => ipcRenderer.invoke("portfolio:summary", includeArchived),
 
   tripKillSwitch: (reason?: string) => ipcRenderer.invoke("killSwitch:trip", reason),

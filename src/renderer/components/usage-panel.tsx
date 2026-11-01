@@ -13,15 +13,16 @@ import { api, isError, type UsageReport } from "@/lib/api";
  * account spent a token. So the panel states what it measured and says what it
  * cannot know.
  *
- * One component, three placements: `compact` for the always-visible toolbar
- * readout, full for Settings and the dashboard. A second implementation would
- * be a second set of arithmetic to keep in agreement.
+ * One placement: Settings. It used to sit in the toolbar beside the session's
+ * P&L, where "$0.000 today" read as a trading figure, and on the session
+ * dashboard, where it summed every session in both modes under one pair's
+ * name. Spend is app-wide, so it lives where app-wide settings do.
  */
 const usd = (n: number) => (n >= 1 ? `$${n.toFixed(2)}` : `$${n.toFixed(3)}`);
 const tokens = (n: number) =>
   n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1_000 ? `${(n / 1_000).toFixed(1)}k` : String(n);
 
-export function UsagePanel({ compact = false }: { compact?: boolean }) {
+export function UsagePanel() {
   const [report, setReport] = useState<UsageReport | null>(null);
 
   const load = useCallback(async () => {
@@ -39,19 +40,6 @@ export function UsagePanel({ compact = false }: { compact?: boolean }) {
 
   if (!report) return null;
 
-  if (compact) {
-    return (
-      <span
-        className="usage-chip"
-        title={`${usd(report.today.costUsd)} today · ${usd(report.last30Days.costUsd)} in 30 days · ${usd(report.allTime.costUsd)} all time\n${report.scope}`}
-      >
-        <Coins size={11} />
-        <span className="mono">{usd(report.today.costUsd)}</span>
-        <span className="usage-chip-label">today</span>
-      </span>
-    );
-  }
-
   const t = report.allTime;
   return (
     <section className="panel">
@@ -65,18 +53,27 @@ export function UsagePanel({ compact = false }: { compact?: boolean }) {
 
       <div className="usage-body">
         <div className="usage-figures">
-          <div>
-            <span className="label-micro">Today</span>
-            <span className="mono usage-big">{usd(report.today.costUsd)}</span>
-          </div>
-          <div>
-            <span className="label-micro">30 days</span>
-            <span className="mono usage-big">{usd(report.last30Days.costUsd)}</span>
-          </div>
-          <div>
-            <span className="label-micro">All time</span>
-            <span className="mono usage-big">{usd(t.costUsd)}</span>
-          </div>
+          {(
+            [
+              ["Today", report.today],
+              ["30 days", report.last30Days],
+              ["All time", t],
+            ] as const
+          ).map(([label, w]) => (
+            <div key={label}>
+              <span className="label-micro">{label}</span>
+              {/* A total with unpriced calls in it is a floor, not a figure:
+                  "$0.000" for 29 calls on an unpriced model read as free. */}
+              <span className="mono usage-big">
+                {w.unpricedCalls > 0 ? `≥ ${usd(w.costUsd)}` : usd(w.costUsd)}
+              </span>
+              {w.unpricedCalls > 0 && (
+                <span className="usage-warn">
+                  {w.unpricedCalls} {w.unpricedCalls === 1 ? "call" : "calls"} not priced
+                </span>
+              )}
+            </div>
+          ))}
         </div>
 
         {report.cacheSavedUsd > 0.0005 && (

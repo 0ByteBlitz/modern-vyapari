@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import { Gavel, Sparkles, Clock, ShieldCheck, AlertTriangle } from "lucide-react";
+import { Sparkles, Clock, ShieldCheck, AlertTriangle } from "lucide-react";
 import { PaperEquityChart } from "@/components/paper-equity-chart";
 import { PlanWatchPanel } from "@/components/plan-watch-panel";
 import { PlanDetail } from "@/components/plan-detail";
-import { UsagePanel } from "@/components/usage-panel";
 import {
   api,
   isError,
@@ -23,12 +22,16 @@ import { describeActivity, ACTIVITY_TONE_COLOR } from "@/lib/activity";
  * what is it about to do?".
  *
  * Three columns, in order of how urgently they need you:
- *   1. What is watching   — paper equity, alerts
+ *   1. What is watching   — the session's P&L, alerts
  *   2. What is happening  — armed plans as distances, open positions, activity
- *   3. What needs you     — pending approvals, then the AI's latest reviews
+ *   3. What was learned   — the AI's latest reviews
  *
- * The approvals panel is deliberately the loudest thing on the screen: it is
- * the only place the app asks for a decision.
+ * **Everything here is about this session** (2026-11-01). Two panels were
+ * app-wide under one pair's name: agent spend (every session, both modes —
+ * now in Settings) and the approvals queue (app-wide, and Home's "Needs your
+ * attention" already asks for every decision). The activity feed is filtered
+ * to the session, keeping the app-wide events that change what its plans can
+ * do.
  *
  * **The candle chart was removed on 2026-08-01** (owner decision) and replaced
  * by `PlanWatchPanel`. Rationale in that file; the short version is that Home
@@ -73,7 +76,7 @@ export function DashboardPage({ activeSession }: { activeSession: Session | null
     const [al, pos, act, rev, eq, pl, candles] = await Promise.all([
       api.listAlerts(activeSession.id),
       api.listPaperPositions(activeSession.id),
-      api.listActivity(40),
+      api.listSessionActivity(activeSession.id, 40),
       api.listJournal(activeSession.id, { kind: "trade_review", limit: 6 }),
       api.getPaperEquityCurve(activeSession.id),
       api.listPlans(activeSession.id),
@@ -124,11 +127,6 @@ export function DashboardPage({ activeSession }: { activeSession: Session | null
       {/* ── col 1 · what is armed ─────────────────────────────── */}
       <div className="cockpit-col">
         <PaperEquityChart points={equityPoints} />
-
-        {/* What the agent has cost. Next to the equity curve because the two
-            are read together: a strategy that earns less than its own research
-            bill is worth knowing about. */}
-        <UsagePanel />
 
         <section className="panel" style={{ flex: 1 }}>
           <div className="panel-header">
@@ -276,22 +274,8 @@ export function DashboardPage({ activeSession }: { activeSession: Session | null
         </section>
       </div>
 
-      {/* ── col 3 · what needs you ────────────────────────────── */}
+      {/* ── col 3 · what was learned ──────────────────────────── */}
       <div className="cockpit-col">
-        {/* Collapsed to a single line while empty — an approvals panel sized
-            for content it doesn't have reads as broken, and the space is
-            better given to the reviews feed. It grows when intents exist. */}
-        <section className="panel panel-approval panel-quiet" style={{ flex: "0 0 auto" }}>
-          <div className="panel-header">
-            <Gavel size={13} style={{ color: "var(--caution)" }} />
-            <span className="label-micro" style={{ color: "var(--caution)" }}>Awaiting your approval</span>
-            <span className="mono ml-auto" style={{ fontSize: "var(--text-xs)", color: "var(--caution)" }}>0</span>
-          </div>
-          <div className="panel-footer" style={{ borderTop: "none" }}>
-            <span>Nothing to approve — no order path exists until the risk engine does.</span>
-          </div>
-        </section>
-
         <section className="panel" style={{ flex: 1 }}>
           <div className="panel-header">
             <Sparkles size={13} style={{ color: "var(--ai)" }} />

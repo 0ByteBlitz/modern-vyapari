@@ -241,32 +241,31 @@ export default function App() {
     );
   }
 
-  /* Risk budget shown in the toolbar. Only genuinely-known figures appear —
-     an invented limit is worse than a missing one. */
-  const riskChips: RiskChip[] = [
-    {
-      label: "session pnl",
-      value: stats ? formatUsd(stats.realizedPnl, { sign: true }) : "—",
-      pct: stats ? Math.min(100, Math.abs(stats.realizedPnl)) : 0,
-      tone: !stats ? "neutral" : stats.realizedPnl > 0 ? "up" : stats.realizedPnl < 0 ? "down" : "neutral",
-    },
-    {
-      label: "win rate",
-      value: stats && stats.closedCount > 0 ? formatPct(stats.winRate, 0) : "—",
-      pct: stats?.winRate ?? 0,
-      tone: "neutral",
-    },
-    {
-      label: "open",
-      value: stats ? `${stats.openCount}` : "—",
-      pct: stats ? Math.min(100, stats.openCount * 25) : 0,
-      tone: stats && stats.openCount > 0 ? "caution" : "neutral",
-    },
-  ];
-
   const meta = surfaceMeta(surface, activeSession);
   /** The session whose agent drawer is on screen: only on its own surfaces. */
   const sessionChat = activeSession && isSessionSurface(surface) ? activeSession : null;
+
+  /* The session's figures, in the toolbar only while one of its surfaces is
+     open — on a global surface they would belong to nothing on screen. */
+  const riskChips: RiskChip[] = sessionChat
+    ? [
+        {
+          label: "session pnl",
+          value: stats ? formatUsd(stats.realizedPnl, { sign: true }) : "—",
+          tone: !stats ? "neutral" : stats.realizedPnl > 0 ? "up" : stats.realizedPnl < 0 ? "down" : "neutral",
+        },
+        {
+          label: "win rate",
+          value: stats && stats.closedCount > 0 ? formatPct(stats.winRate, 0) : "—",
+          tone: "neutral",
+        },
+        {
+          label: "open",
+          value: stats ? `${stats.openCount}` : "—",
+          tone: stats && stats.openCount > 0 ? "caution" : "neutral",
+        },
+      ]
+    : [];
   /* From main, like the titlebar's badge. A constant here once read "paper"
      while main ran live — two answers to the one question that may not have
      two. `setup` is non-null here — the gate above returns until it loads. */

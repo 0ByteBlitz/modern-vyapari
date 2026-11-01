@@ -79,6 +79,7 @@ export function SessionRail({ activeSessionId, surface, onSelectSession, onNavig
   const [showArchived, setShowArchived] = useState(false);
   const [stats, setStats] = useState<PaperStats | null>(null);
   const [planCount, setPlanCount] = useState<number | null>(null);
+  const [armedCount, setArmedCount] = useState<number | null>(null);
   const [pairs, setPairs] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
   const [newPair, setNewPair] = useState("");
@@ -126,6 +127,7 @@ export function SessionRail({ activeSessionId, surface, onSelectSession, onNavig
     if (activeSessionId === null) {
       setStats(null);
       setPlanCount(null);
+      setArmedCount(null);
       return;
     }
     void (async () => {
@@ -137,6 +139,7 @@ export function SessionRail({ activeSessionId, surface, onSelectSession, onNavig
       ]);
       setStats(isError(s) ? null : s);
       setPlanCount(isError(plans) ? null : plans.length);
+      setArmedCount(isError(plans) ? null : plans.filter((p) => p.state === "planned").length);
     })();
   }, [activeSessionId, surface]);
 
@@ -342,8 +345,12 @@ export function SessionRail({ activeSessionId, surface, onSelectSession, onNavig
               {open && (
                 <>
                   <div className="rail-session-meta">
+                    {/* What this session is doing, in Home's words. It used to
+                        end in "$10,000.00 cash" — the one shared account
+                        balance, shown under every session as if it were the
+                        session's own money. */}
                     {stats
-                      ? `${stats.openCount} open · ${stats.closedCount} closed · $${formatUsd(stats.cashBalance)} cash`
+                      ? `${armedCount ?? 0} armed · ${stats.openCount} open · ${stats.closedCount} closed`
                       : session.status}
                   </div>
                   <div className="rail-surfaces">

@@ -627,10 +627,7 @@ body {
   border-left: 1px solid var(--border);
 }
 
-.risk-chip { display: flex; flex-direction: column; gap: 3px; min-width: 76px; }
-.risk-chip-head { display: flex; align-items: baseline; gap: 5px; }
-.risk-chip-track { height: 3px; background: #1A212B; border-radius: 2px; overflow: hidden; }
-.risk-chip-fill { height: 100%; }
+.risk-chip { display: flex; align-items: baseline; gap: 5px; }
 
 /* ── Alerts popover ── */
 .alert-popover {
@@ -4237,23 +4234,6 @@ ol.md-list li { list-style: decimal; }
    Spend, never "credit remaining" — no balance endpoint exists for a normal
    API key. Styled quiet: it is a background fact, and a loud running total
    would compete with the prices that actually matter. */
-.usage-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 8px;
-  margin-right: 8px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  font-size: var(--text-xs);
-  color: var(--muted-foreground);
-  white-space: nowrap;
-}
-
-.usage-chip-label {
-  color: var(--text-faint);
-}
-
 .usage-body {
   padding: 8px 10px 10px;
   display: flex;
