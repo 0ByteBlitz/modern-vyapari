@@ -3,7 +3,8 @@ import * as path from "path";
 import { registerIpcHandlers } from "./ipc";
 import { initDatabase, getDb, auditLog } from "./db/database";
 import { initSharedStore, adoptLegacyLessons, adoptLegacyUsage } from "./db/shared-store";
-import { readMode, lockMode, appMode } from "./modes/app-mode";
+import { readMode, resolveMode, lockMode, appMode } from "./modes/app-mode";
+import { liveExecutionBuilt } from "./integrations/venue/registry";
 import { clearSelectionForLaunch } from "./sessions/service";
 import { initLogger, createLogger } from "./logger";
 import { isResearchBrowserWebContents } from "./browser/embedded-browser";
@@ -125,9 +126,12 @@ app.whenReady().then(() => {
   /* The mode is resolved and fixed BEFORE anything opens a database, because
      the mode decides which file opens. Anything unreadable resolves to
      simulated — a corrupt config must never be the reason the app comes up
-     pointed at real money. */
-  const mode = readMode(app.getPath("userData"));
+     pointed at real money. A live choice runs simulated until some venue can
+     place orders (`resolveMode`). */
+  const chosen = readMode(app.getPath("userData"));
+  const mode = resolveMode(chosen, liveExecutionBuilt());
   lockMode(mode);
+  if (chosen !== mode) log.warn(`Live mode is selected but no venue can place orders; running ${mode}.`);
   log.info(`Starting in ${mode} mode.`);
 
   initDatabase(app.getPath("userData"));

@@ -79,6 +79,13 @@ faking a live swap.
 
 - **Simulated is the default**, and anything unreadable resolves to it. A
   corrupt config must never be why the app comes up pointed at real money.
+- **Live runs only when some venue can place an order** (2026-11-01). Choosing
+  Live in Settings used to be enough: the process opened `mybot-live.db`, the
+  titlebar said LIVE, the toolbar (a hard-coded constant) said PAPER, and the
+  paper engine kept filling — simulated fills written into the file that must
+  hold only real ones. `resolveMode` now runs a stored "live" choice as
+  simulated until an adapter declares `canPlaceOrders`, Settings disables Live,
+  and every surface reads the mode from main.
 - **The guarantee is an absence, not a flag.** In simulated mode `venue()`
   returns `paperVenue` *before* the configured id is consulted, and that adapter
   imports no client, no credentials and no HTTP. A test scans its import lines,
