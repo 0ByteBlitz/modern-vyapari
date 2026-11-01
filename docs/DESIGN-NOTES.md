@@ -85,7 +85,13 @@ faking a live swap.
   paper engine kept filling — simulated fills written into the file that must
   hold only real ones. `resolveMode` now runs a stored "live" choice as
   simulated until an adapter declares `canPlaceOrders`, Settings disables Live,
-  and every surface reads the mode from main.
+  and every surface reads the mode from main (`lib/mode.ts`'s context, so no
+  component writes its own word for it).
+- **A live choice that cannot run is cleared** (2026-11-01, owner decision).
+  Kept, it waited invisibly — the Mode pane showed Simulated selected — and the
+  first launch after live execution shipped would have come up live on a choice
+  made before live trading existed. `main.ts` rewrites it to simulated and
+  audits `app_mode_reset`. Every Mode click now says what it saved.
 - **The guarantee is an absence, not a flag.** In simulated mode `venue()`
   returns `paperVenue` *before* the configured id is consulted, and that adapter
   imports no client, no credentials and no HTTP. A test scans its import lines,

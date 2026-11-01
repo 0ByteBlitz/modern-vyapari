@@ -125,7 +125,7 @@ export function ApprovalsPage({ activeSession }: { activeSession?: Session | nul
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed mb-3">
             Every gate runs on each order the pipeline receives. Live orders
-            don't exist yet, so today these guard paper trades.
+            don't exist yet, so today these guard simulated trades.
           </p>
           <div className="space-y-2">
             {ENFORCED_CHECKS.map(([label, note]) => (

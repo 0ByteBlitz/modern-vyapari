@@ -22,9 +22,11 @@ import { ChatDrawer } from "@/components/chat-drawer";
 import { AgentMascot } from "@/components/agent-mascot";
 import { AlertToastHost } from "@/components/alert-toast";
 import { formatUsd, formatPct } from "@/lib/format";
+import { ModeContext } from "@/lib/mode";
+import type { AppMode } from "@/lib/api";
 
 /** Surface titles + subtitles for the context bar. */
-function surfaceMeta(surface: Surface, session: Session | null): { title: string; sub: string } {
+function surfaceMeta(surface: Surface, session: Session | null, mode: AppMode): { title: string; sub: string } {
   /* A paused or archived session must never read as a running one — the pair
      alone looks identical either way. */
   const pair = session ? (session.status === "active" ? session.pair : `${session.pair} · ${session.status}`) : "no session";
@@ -32,9 +34,9 @@ function surfaceMeta(surface: Surface, session: Session | null): { title: string
     case "home":
       return { title: "Home", sub: "everything, at a glance" };
     case "dashboard":
-      return { title: "Dashboard", sub: `${pair} · live paper state` };
+      return { title: "Dashboard", sub: `${pair} · ${mode}` };
     case "orders":
-      return { title: "Orders & fills", sub: `${pair} · paper mode` };
+      return { title: "Orders & fills", sub: `${pair} · ${mode} fills` };
     case "plans":
       return { title: "Scenario plans", sub: `${pair} · a thesis the engine monitors` };
     case "journal":
@@ -244,7 +246,7 @@ export default function App() {
     );
   }
 
-  const meta = surfaceMeta(surface, activeSession);
+  const meta = surfaceMeta(surface, activeSession, setup.mode);
   /** The session whose agent drawer is on screen: only on its own surfaces. */
   const sessionChat = activeSession && isSessionSurface(surface) ? activeSession : null;
 
@@ -275,6 +277,7 @@ export default function App() {
   const mode: TradingMode = setup.mode;
 
   return (
+    <ModeContext.Provider value={mode}>
     <div className="app-shell">
       <AlertToastHost onOpenBot={() => setSurface("alerts")} />
       <Titlebar
@@ -372,5 +375,6 @@ export default function App() {
         )}
       </main>
     </div>
+    </ModeContext.Provider>
   );
 }

@@ -20,6 +20,10 @@ export function ModePane() {
   const [status, setStatus] = useState<AppModeStatus | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  /* Every click answers. Choosing the mode already selected used to rewrite
+     the saved choice with no change on screen — a stored "live" was silently
+     replaced by "simulated" and nothing said so. */
+  const [saved, setSaved] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const res = await api.appModeStatus();
@@ -37,12 +41,18 @@ export function ModePane() {
   async function choose(mode: AppMode) {
     setBusy(true);
     setProblem(null);
+    setSaved(null);
     const res = await api.setAppMode(mode);
     setBusy(false);
     if (isError(res)) {
       setProblem(errorText(res));
       return;
     }
+    setSaved(
+      mode === status?.mode
+        ? `Saved. The app keeps running ${mode}.`
+        : `Saved. The app switches to ${mode} on the next launch.`
+    );
     await load();
   }
 
@@ -56,7 +66,9 @@ export function ModePane() {
           <ShieldCheck size={13} style={{ color: "var(--accent)" }} />
           <span className="label-micro">Mode</span>
           <span className="ml-auto">
-            <span className={`badge badge-${status.mode === "live" ? "live" : "paper"}`}>
+            {/* Live is loud; there is no badge-live class, so this rendered
+                unstyled. */}
+            <span className={`badge badge-${status.mode === "live" ? "down" : "paper"}`}>
               running: {status.mode}
             </span>
           </span>
@@ -102,6 +114,12 @@ export function ModePane() {
             Lessons are shared, because what you learn about a market is true in both.
           </p>
 
+          {saved && (
+            <p className="integ-note">
+              <ShieldCheck size={12} style={{ color: "var(--up)" }} />
+              {saved}
+            </p>
+          )}
           {problem && <p className="integ-problem">{problem}</p>}
         </div>
       </section>

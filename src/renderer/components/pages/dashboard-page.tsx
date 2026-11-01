@@ -16,6 +16,7 @@ import {
 } from "@/lib/api";
 import { formatPrice, formatQty } from "@/lib/format";
 import { describeActivity, ACTIVITY_TONE_COLOR } from "@/lib/activity";
+import { useAppMode } from "@/lib/mode";
 
 /**
  * Session dashboard — the answer to "what is the bot doing right now, and
@@ -58,6 +59,7 @@ function clockTime(ms: number): string {
 }
 
 export function DashboardPage({ activeSession }: { activeSession: Session | null }) {
+  const mode = useAppMode();
   const [alerts, setAlerts] = useState<AlertRecord[]>([]);
   const [positions, setPositions] = useState<PaperPositionRecord[]>([]);
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
@@ -167,7 +169,7 @@ export function DashboardPage({ activeSession }: { activeSession: Session | null
         <section className="panel" style={{ flexShrink: 0 }}>
           <div className="panel-header">
             <span className="label-micro">Open positions</span>
-            <span className="badge badge-paper">paper</span>
+            <span className={`badge badge-${mode === "live" ? "down" : "paper"}`}>{mode}</span>
             <span className="mono ml-auto" style={{ fontSize: "var(--text-xs)", color: "var(--muted-foreground)" }}>
               {openPositions.length} open
             </span>
@@ -232,7 +234,9 @@ export function DashboardPage({ activeSession }: { activeSession: Session | null
                   </span>
                 </>
               )}
-              <span className="ml-auto" style={{ color: "var(--text-ghost)" }}>simulated · no venue orders</span>
+              {mode === "simulated" && (
+                <span className="ml-auto" style={{ color: "var(--text-ghost)" }}>simulated · no venue orders</span>
+              )}
             </div>
           )}
         </section>
@@ -305,7 +309,7 @@ export function DashboardPage({ activeSession }: { activeSession: Session | null
             {reviews.length === 0 && (
               <div style={{ padding: "14px 10px", fontSize: "var(--text-md)", color: "var(--text-faint)", lineHeight: 1.55 }}>
                 <Clock size={12} style={{ display: "inline", marginRight: 6 }} />
-                No reviews yet. One is written automatically each time a paper
+                No reviews yet. One is written automatically each time a
                 position closes.
               </div>
             )}
