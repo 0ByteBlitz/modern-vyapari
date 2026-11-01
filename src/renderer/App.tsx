@@ -267,7 +267,10 @@ export default function App() {
   const meta = surfaceMeta(surface, activeSession);
   /** The session whose agent drawer is on screen: only on its own surfaces. */
   const sessionChat = activeSession && isSessionSurface(surface) ? activeSession : null;
-  const mode: TradingMode = "paper";
+  /* From main, like the titlebar's badge. A constant here once read "paper"
+     while main ran live — two answers to the one question that may not have
+     two. `setup` is non-null here — the gate above returns until it loads. */
+  const mode: TradingMode = setup.mode;
 
   return (
     <div className="app-shell">

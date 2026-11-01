@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Bell, FlaskConical, ShieldAlert } from "lucide-react";
-import type { AlertEvent } from "@/lib/api";
+import type { AlertEvent, AppMode } from "@/lib/api";
 import { formatPrice } from "@/lib/format";
 import { UsagePanel } from "@/components/usage-panel";
 
@@ -15,7 +15,8 @@ import { UsagePanel } from "@/components/usage-panel";
  * The risk budget sits here for the same reason — a limit you have to go
  * looking for is a limit you find out about after it's breached.
  */
-export type TradingMode = "paper" | "live";
+/** The mode main is running in — read from main, never assumed here. */
+export type TradingMode = AppMode;
 
 export interface RiskChip {
   label: string;
@@ -74,14 +75,14 @@ export function AppToolbar({
     <header className="app-toolbar">
       <div className={`mode-banner ${mode === "live" ? "mode-banner-live" : "mode-banner-paper"}`}>
         {mode === "live" ? <ShieldAlert size={13} /> : <FlaskConical size={13} />}
-        <span className="mode-banner-label">{mode === "live" ? "Live" : "Paper"}</span>
+        <span className="mode-banner-label">{mode === "live" ? "Live" : "Simulated"}</span>
         <span className="mode-banner-note">
-          {mode === "live" ? "real funds at risk" : "simulated fills · no real orders"}
+          {mode === "live" ? "real funds at risk" : "no real orders"}
         </span>
       </div>
 
       {/* Live promotion is a two-step, typed confirmation — never one click. */}
-      {mode === "paper" && !arming && (
+      {mode === "simulated" && !arming && (
         <button
           className="toolbar-btn"
           onClick={() => setArming(true)}
@@ -97,7 +98,7 @@ export function AppToolbar({
         </button>
       )}
 
-      {mode === "paper" && arming && (
+      {mode === "simulated" && arming && (
         <div className="arm-live">
           <span style={{ fontSize: "var(--text-xs)", color: "var(--muted-foreground)" }}>
             type <span className="mono" style={{ color: "var(--foreground)" }}>GO LIVE</span> to confirm
@@ -128,8 +129,8 @@ export function AppToolbar({
       )}
 
       {mode === "live" && (
-        <button className="toolbar-btn" onClick={() => onModeChange?.("paper")}>
-          <FlaskConical size={13} /> Back to paper
+        <button className="toolbar-btn" onClick={() => onModeChange?.("simulated")}>
+          <FlaskConical size={13} /> Back to simulated
         </button>
       )}
 

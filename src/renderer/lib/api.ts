@@ -275,8 +275,10 @@ export type AppMode = "simulated" | "live";
  */
 export interface AppModeStatus {
   mode: AppMode;
+  /** What the next launch will run in — not merely what was chosen. */
   pending: AppMode;
-  canPlaceOrders: boolean;
+  /** Whether any venue in this build can place an order, i.e. live can run. */
+  liveAvailable: boolean;
 }
 
 /** Notification channel state plus outbox health. */
