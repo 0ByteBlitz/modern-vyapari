@@ -240,7 +240,7 @@ export function CandlesCard({ symbol, onSymbolChange, symbolLocked = false, fill
           /* The key is what tells the chart this is a different series —
              without it a new pair or interval looks identical to a tick,
              because the window size never changes. */
-          <CandlestickChart candles={candles} height="fill" seriesKey={`${symbol}:${interval}`} />
+          <CandlestickChart candles={candles} intervalMin={parseInt(interval, 10)} height="fill" seriesKey={`${symbol}:${interval}`} />
         )}
       </div>
 
