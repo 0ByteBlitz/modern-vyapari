@@ -59,6 +59,7 @@ const GROUPS = [
 ] as const;
 
 type SectionId = (typeof GROUPS)[number]["sections"][number]["id"];
+export type SettingsSectionId = SectionId;
 
 /** The limits the risk engine will enforce once it exists. Values are the plan's
  *  defaults, displayed so the intended shape is reviewable before it's live. */
@@ -207,12 +208,16 @@ interface SettingsPageProps {
   setupError: string;
   onRefresh: () => Promise<void>;
   dbStatus?: string;
+  /** Open on this section, e.g. Usage & cost from the titlebar's spend chip. */
+  openSection?: SectionId;
 }
 
-export function SettingsPage({ setup, setupError, onRefresh, dbStatus }: SettingsPageProps) {
+export function SettingsPage({ setup, setupError, onRefresh, dbStatus, openSection }: SettingsPageProps) {
   /* Opens where something is missing: without the AI key nothing else in the
      app works, so that comes first; otherwise the first section. */
-  const [section, setSection] = useState<SectionId>(setup && !setup.hasAnthropicApiKey ? "ai" : "mode");
+  const [section, setSection] = useState<SectionId>(
+    openSection ?? (setup && !setup.hasAnthropicApiKey ? "ai" : "mode")
+  );
   const [audit, setAudit] = useState<ActivityEvent[]>([]);
 
   const loadAudit = useCallback(async () => {

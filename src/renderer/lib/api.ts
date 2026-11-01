@@ -32,6 +32,8 @@ import type {
   ArchiveStepEvent,
   ArchiveSummary,
   AiModelInfo,
+  UsageTotals,
+  UsageReport,
 } from "@shared/ipc-types";
 import { isUserFacingError, type UserFacingError } from "@shared/errors";
 import type { QuitSummary } from "@shared/quit";
@@ -69,6 +71,8 @@ export type {
   ArchiveSummary,
   UserFacingError,
   AiModelInfo,
+  UsageTotals,
+  UsageReport,
 };
 
 
@@ -230,37 +234,6 @@ export interface CalibrationRecord {
   stillOpen: number;
   minSample: number;
   empty: boolean;
-}
-
-export interface UsageTotals {
-  calls: number;
-  inputTokens: number;
-  outputTokens: number;
-  cacheReadTokens: number;
-  cacheWriteTokens: number;
-  costUsd: number;
-  /** Calls whose model had no published price. Shown, never folded into 0. */
-  unpricedCalls: number;
-}
-
-/**
- * Measured spend, not an account balance.
- *
- * Anthropic exposes no credit-balance endpoint, and its cost reports need an
- * Admin key that individual accounts cannot create. So this is what the app
- * itself has spent, computed from the `usage` block on every response.
- */
-export interface UsageReport {
-  today: UsageTotals;
-  last30Days: UsageTotals;
-  allTime: UsageTotals;
-  byModel: Array<{ model: string; calls: number; costUsd: number; unpriced: number }>;
-  byPurpose: Array<{ purpose: string; calls: number; costUsd: number }>;
-  cacheSavedUsd: number;
-  /** Attribution across simulated and live. The total is not split by mode:
-      the bill is one bill, so the shared store holds every row. */
-  byMode: Array<{ mode: string; calls: number; costUsd: number }>;
-  scope: string;
 }
 
 export type AppMode = "simulated" | "live";

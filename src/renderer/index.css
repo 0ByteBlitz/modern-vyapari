@@ -2038,10 +2038,53 @@ ol.md-list li { list-style: decimal; }
 /* Titlebar nav (.titlebar-nav/.titlebar-tab*) removed with the redesign —
    navigation is session-first and lives in the rail. */
 
+/* The width Windows paints its minimise/maximise/close over. Fixed rather than
+   flex: 1, so the AI spend chip sits beside the buttons, not mid-bar. */
 .titlebar-spacer {
-  flex: 1;
+  flex: 0 0 140px;
   -webkit-app-region: drag;
 }
+
+/* ── AI spend (titlebar) ─────────────────────────────────────────────
+   On every screen, in the window's chrome rather than the trading toolbar, so
+   it can't be read as a trading figure. Quiet until opened. */
+.ai-spend { position: relative; -webkit-app-region: no-drag; }
+.ai-spend-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--muted-foreground);
+  font-family: inherit;
+  font-size: var(--text-xs);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ai-spend-chip:hover,
+.ai-spend-chip[aria-expanded="true"] { background: var(--surface-3); color: var(--foreground); }
+.ai-spend-label { color: var(--text-faint); }
+.ai-spend-pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 80;
+  width: 300px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 8px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+.ai-spend-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.ai-spend-grid > div { display: flex; flex-direction: column; gap: 2px; }
+.ai-spend-big { font-size: var(--text-md); color: var(--foreground); }
 
 /* ═══════════════════════════════════════════════════════════════════
    Lock Screen (Windows Hello app-launch gate)

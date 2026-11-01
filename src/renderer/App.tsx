@@ -10,7 +10,7 @@ import { HomePage } from "@/components/pages/home-page";
 import { DashboardPage } from "@/components/pages/dashboard-page";
 import { MarketPage } from "@/components/pages/market-page";
 import { BrowserPage } from "@/components/pages/browser-page";
-import { SettingsPage } from "@/components/pages/settings-page";
+import { SettingsPage, type SettingsSectionId } from "@/components/pages/settings-page";
 import { OrdersPage } from "@/components/pages/orders-page";
 import { PlansPage } from "@/components/pages/plans-page";
 import { JournalPage } from "@/components/pages/journal-page";
@@ -68,6 +68,9 @@ export default function App() {
   const [activeSession, setActiveSession] = useState<Session | null>(null);
   const [stats, setStats] = useState<PaperStats | null>(null);
   const [alertsOpen, setAlertsOpen] = useState(false);
+  /* A request to open a Settings section from elsewhere (the AI spend chip).
+     `n` changes on every request so asking twice re-opens it. */
+  const [settingsSection, setSettingsSection] = useState<{ id: SettingsSectionId; n: number } | null>(null);
   const [chatOpen, setChatOpen] = useState(true);
   /* Alert history lives at the root so the bell has something to open. Toasts
      auto-dismiss after 12s; without this, an alert that fired while you were
@@ -274,7 +277,13 @@ export default function App() {
   return (
     <div className="app-shell">
       <AlertToastHost onOpenBot={() => setSurface("alerts")} />
-      <Titlebar />
+      <Titlebar
+        onOpenUsage={() => {
+          setSettingsSection({ id: "usage", n: Date.now() });
+          setSurface("settings");
+          setAlertsOpen(false);
+        }}
+      />
       <AppToolbar
         mode={mode}
         /* No risk engine, no execution engine — live mode is not reachable
@@ -331,6 +340,8 @@ export default function App() {
             {surface === "browser" && <BrowserPage />}
             {surface === "settings" && (
               <SettingsPage
+                key={settingsSection?.n ?? 0}
+                openSection={settingsSection?.id}
                 setup={setup}
                 setupError={setupError}
                 onRefresh={refreshStatus}

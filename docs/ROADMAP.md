@@ -108,7 +108,7 @@ left is adapters, the choice, and removing the defaults.
 - **A-2 Provider choice, and no default provider** — first launch asks which provider (or a local server, which needs no key); Settings › AI switches it, with per-provider keys in `integration-secrets` and a base URL for local servers, persisted and read by `ai/registry.ts`. Remove the Anthropic defaults that remain: the registry's fallback, `chat:send`'s default model, the chat panel's fallback model id, and the review model named in Settings.
 - **A-6 Local models first-class** — Ollama and LM Studio detected on their default ports; their models listed with honest capabilities (`toolCalling: "basic"` for most); cost a true zero; works with the network off.
 - **A-3 App-side web search** — for providers without a server-side search tool, so search is not an Anthropic-only feature.
-- **A-5 Cost per provider** — price tables per adapter; local models declare zero cost; unknown stays *unknown*, never $0.
+- **A-5 Cost per provider** — *landed:* each adapter declares its prices (`AiProvider.pricing`), every usage row records its provider, the readout totals per provider, and unknown stays *unknown* (shown as a ≥ floor), never $0. AI spend is in the titlebar on every screen. *Left:* local adapters declaring zero cost, once they exist.
 - **H-2 Model compatibility matrix** (J7) — every adapter and model the app offers is run against `agent-loop.test.ts`'s contract with a recorded transport, and Settings shows what each model can actually do (tool calling, vision, search, cost known or *unknown*). A model that fails tool calls is listed as chat-only, not hidden.
 
 **Exchange venues** (J6, J7) — Revolut X is the only live venue adapter; simulated mode needs none.

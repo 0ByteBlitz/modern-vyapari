@@ -2,6 +2,7 @@ import logoUrl from "../assets/logo.svg";
 import { useEffect, useState } from "react";
 import { TAGLINE_NE } from "@/lib/brand";
 import { api, isError, type AppModeStatus } from "@/lib/api";
+import { AiSpendChip } from "@/components/usage-panel";
 
 /**
  * OS titlebar (40px) — window chrome and brand identity only.
@@ -64,7 +65,14 @@ function ModeBadge() {
   );
 }
 
-export function Titlebar({ version = __APP_VERSION__ }: { version?: string }) {
+export function Titlebar({
+  version = __APP_VERSION__,
+  onOpenUsage,
+}: {
+  version?: string;
+  /** Opens Settings › Usage & cost from the spend chip. */
+  onOpenUsage: () => void;
+}) {
   return (
     <header className="titlebar">
       <div className="titlebar-brand">
@@ -78,6 +86,10 @@ export function Titlebar({ version = __APP_VERSION__ }: { version?: string }) {
         <span className="titlebar-version">v{version}</span>
         <ModeBadge />
       </div>
+      {/* AI spend, on every screen — the titlebar is the one element all of
+          them share, and it keeps the figure away from trading numbers. */}
+      <div className="flex-1" />
+      <AiSpendChip onOpenUsage={onOpenUsage} />
       {/* Eaten by titleBarOverlay's native window buttons */}
       <div className="titlebar-spacer" />
     </header>
