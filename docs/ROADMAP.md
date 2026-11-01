@@ -53,10 +53,9 @@ work is what settles the surfaces they would theme.
   tokens, reduced-motion support, one focus ring · the app opens on Home with
   no session, and the agent is a **general conversation** until one is opened;
   the session chat appears only on that session's own surfaces (J0, J1).
-- **U-1 One word per state** (J0, J6) — the mode reads *simulated* in the
-  titlebar and on Home but *PAPER* in the toolbar. Pick one vocabulary
-  and use it everywhere; live stays loud. Remaining *strategy* wording on screen
-  goes with it — that path is frozen.
+- **U-1 One word per state** (J0, J6) — the mode now reads *simulated* in the
+  titlebar, toolbar, Home and the quit dialog, all from main; live stays loud.
+  Remaining *strategy* wording on screen still goes — that path is frozen.
 - **U-2 Motion system** (all journeys) — `--dur-*` / `--ease-*` tokens exist;
   move the ~10 literal durations and the chat drawer, surface switches, list
   inserts and price ticks onto them. Motion says *appeared* or *changed*, never

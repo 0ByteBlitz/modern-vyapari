@@ -13,6 +13,7 @@
 import {
   registerIndicator,
   registerOverlay,
+  type Chart,
   type IndicatorTemplate,
   type KLineData,
   type OverlayTemplate,
@@ -114,6 +115,12 @@ export function setPositionToolContext(equity: number, riskPct: number): void {
   riskFraction = Math.max(0, riskPct) / 100;
 }
 
+/** The chart's price precision — set from the app-wide rule when the series
+ *  loads, so labels drawn here match the axis and the tables. */
+function pricePrecision(chart: Chart): number {
+  return chart.getSymbol()?.pricePrecision ?? 2;
+}
+
 /**
  * Three clicks: entry, stop, target. Draws the risk box below/above the entry
  * and the reward box opposite it, then labels R:R and a suggested size.
@@ -129,8 +136,9 @@ const positionTool: OverlayTemplate = {
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: true,
   needDefaultYAxisFigure: true,
-  createPointFigures: ({ coordinates, overlay, precision }) => {
+  createPointFigures: ({ chart, coordinates, overlay }) => {
     if (coordinates.length < 2) return [];
+    const precision = pricePrecision(chart);
 
     const pts = overlay.points ?? [];
     const entry = pts[0]?.value ?? 0;
@@ -166,7 +174,7 @@ const positionTool: OverlayTemplate = {
         attrs: {
           x: left + 6,
           y: (pEntry.y + pStop.y) / 2 - 7,
-          text: `risk ${risk.toFixed(precision.price)} · ${((risk / entry) * 100).toFixed(2)}%`,
+          text: `risk ${risk.toFixed(precision)} · ${((risk / entry) * 100).toFixed(2)}%`,
           baseline: "middle",
         },
         styles: { color: C.down, size: 11, family: "IBM Plex Mono, monospace" },
@@ -182,7 +190,7 @@ const positionTool: OverlayTemplate = {
         attrs: {
           x: left + 6,
           y: pEntry.y - 9,
-          text: `${isLong ? "LONG" : "SHORT"} entry ${entry.toFixed(precision.price)}`,
+          text: `${isLong ? "LONG" : "SHORT"} entry ${entry.toFixed(precision)}`,
           baseline: "bottom",
         },
         styles: { color: C.accent, size: 11, family: "IBM Plex Mono, monospace" },
@@ -201,7 +209,7 @@ const positionTool: OverlayTemplate = {
           attrs: {
             x: left + 6,
             y: (pEntry.y + pTarget.y) / 2 - 7,
-            text: `reward ${reward.toFixed(precision.price)} · R ${rr.toFixed(2)}`,
+            text: `reward ${reward.toFixed(precision)} · R ${rr.toFixed(2)}`,
             baseline: "middle",
           },
           styles: { color: C.up, size: 11, family: "IBM Plex Mono, monospace" },
@@ -235,8 +243,10 @@ const measureTool: OverlayTemplate = {
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: true,
   needDefaultYAxisFigure: true,
-  createPointFigures: ({ coordinates, overlay, precision, barSpace }) => {
+  createPointFigures: ({ chart, coordinates, overlay }) => {
     if (coordinates.length < 2) return [];
+    const precision = pricePrecision(chart);
+    const barSpace = chart.getBarSpace();
     const a = overlay.points?.[0];
     const b = overlay.points?.[1];
     const [pa, pb] = coordinates;
@@ -269,7 +279,7 @@ const measureTool: OverlayTemplate = {
         attrs: {
           x: (pa.x + pb.x) / 2,
           y: Math.min(pa.y, pb.y) - 6,
-          text: `${up ? "+" : ""}${delta.toFixed(precision.price)}  ${pct.toFixed(2)}%  ${bars} bars`,
+          text: `${up ? "+" : ""}${delta.toFixed(precision)}  ${pct.toFixed(2)}%  ${bars} bars`,
           align: "center",
           baseline: "bottom",
         },
@@ -409,8 +419,9 @@ const fibExtension: OverlayTemplate = {
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: true,
   needDefaultYAxisFigure: true,
-  createPointFigures: ({ coordinates, overlay, precision, bounding }) => {
+  createPointFigures: ({ chart, coordinates, overlay, bounding }) => {
     if (coordinates.length < 3) return [];
+    const precision = pricePrecision(chart);
     const pts = overlay.points ?? [];
     const a = pts[0]?.value ?? 0;
     const b = pts[1]?.value ?? 0;
@@ -437,7 +448,7 @@ const fibExtension: OverlayTemplate = {
         },
         {
           type: "text",
-          attrs: { x: pc.x + 4, y: y - 2, text: `${lvl} · ${price.toFixed(precision.price)}`, baseline: "bottom" },
+          attrs: { x: pc.x + 4, y: y - 2, text: `${lvl} · ${price.toFixed(precision)}`, baseline: "bottom" },
           styles: { color: lvl === 1 ? C.caution : C.faint, size: 10, family: "IBM Plex Mono, monospace" },
         },
       ];

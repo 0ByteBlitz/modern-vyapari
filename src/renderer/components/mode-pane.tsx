@@ -99,11 +99,15 @@ export function ModePane() {
 
             <button
               className={`mode-option ${status.pending === "live" ? "mode-option-on" : ""}`}
-              disabled={busy}
+              disabled={busy || !status.liveAvailable}
               onClick={() => void choose("live")}
             >
               <strong>Live</strong>
-              <span>Real venue and credentials. Orders still need your signature.</span>
+              <span>
+                {status.liveAvailable
+                  ? "Real venue and credentials. Orders still need your signature."
+                  : "Live trading isn't available yet."}
+              </span>
             </button>
           </div>
 
@@ -119,15 +123,6 @@ export function ModePane() {
             Each mode keeps its own sessions, plans, positions and track record — they can never mix.
             Lessons are shared, because what you learn about a market is true in both.
           </p>
-
-          {status.mode === "live" && !status.canPlaceOrders && (
-            /* Honest about the current state of the build rather than letting
-               "live" imply a capability Sprint 4 has not built yet. */
-            <p className="integ-note">
-              Live mode is selected, but this build still cannot place orders — the venue adapter
-              reports no order support.
-            </p>
-          )}
 
           {problem && <p className="integ-problem">{problem}</p>}
         </div>

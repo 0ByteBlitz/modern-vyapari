@@ -84,6 +84,15 @@ export function liveVenue(): VenueReadPort | null {
   return ADAPTERS[activeId] ?? null;
 }
 
+/**
+ * Can this build place a real order on any venue? Decides whether live mode
+ * can run at all (`resolveMode`). Mode-independent, so `main.ts` can ask before
+ * the mode is locked.
+ */
+export function liveExecutionBuilt(): boolean {
+  return Object.values(ADAPTERS).some((a) => a.capabilities.canPlaceOrders);
+}
+
 export function venueCapabilities(): VenueCapabilities {
   return venue().capabilities;
 }

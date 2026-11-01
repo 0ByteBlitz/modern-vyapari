@@ -17,6 +17,7 @@ const INTERVALS = [
 ];
 
 const CANDLE_WINDOW = 120; // candles fetched per load
+const EMPTY: Candle[] = [];
 const CANDLE_REFRESH_MS = 30_000;
 const TICKER_REFRESH_MS = 10_000;
 
@@ -37,7 +38,13 @@ interface CandlesCardProps {
 export function CandlesCard({ symbol, onSymbolChange, symbolLocked = false, fill = false }: CandlesCardProps) {
   const [pairs, setPairs] = useState<string[]>([]);
   const [interval, setIntervalMin] = useState("60");
-  const [candles, setCandles] = useState<Candle[]>([]);
+  /* Candles carry the series they were loaded for. The selection changes
+     the moment the owner picks a pair, but the bars arrive later: until they
+     do, the previous pair's bars must not be drawn, priced or patched under
+     the new pair's name. */
+  const [series, setSeries] = useState<{ key: string; candles: Candle[] }>({ key: "", candles: [] });
+  const seriesKey = `${symbol}:${interval}`;
+  const candles = series.key === seriesKey ? series.candles : EMPTY;
   const [ticker, setTicker] = useState<Ticker | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -72,7 +79,7 @@ export function CandlesCard({ symbol, onSymbolChange, symbolLocked = false, fill
       return;
     }
     setError("");
-    setCandles(res.slice(-CANDLE_WINDOW));
+    setSeries({ key: `${symbol}:${interval}`, candles: res.slice(-CANDLE_WINDOW) });
   }, [symbol, interval]);
 
   useEffect(() => {
@@ -82,25 +89,28 @@ export function CandlesCard({ symbol, onSymbolChange, symbolLocked = false, fill
   /* ── Binance WS Subscription ── */
   useEffect(() => {
     const intervalMin = parseInt(interval, 10);
+    const key = `${symbol}:${interval}`;
     api.subscribeBinanceCandles(symbol, intervalMin);
 
     const cleanup = api.onCandleUpdate((data) => {
       if (data.symbol !== symbol || data.intervalMin !== intervalMin) return;
-      setCandles((prev) => {
-        if (prev.length === 0) return [data.candle];
+      setSeries((cur) => {
+        // A tick before this pair's history has loaded has nothing to patch.
+        if (cur.key !== key) return cur;
+        const prev = cur.candles;
         const last = prev[prev.length - 1];
-        if (!last) return prev;
-        
+        if (!last) return { key, candles: [data.candle] };
+
         if (data.candle.start === last.start) {
           // Update current active candle
           const copy = [...prev];
           copy[copy.length - 1] = data.candle;
-          return copy;
+          return { key, candles: copy };
         } else if (data.candle.start > last.start) {
           // New candle
-          return [...prev, data.candle].slice(-CANDLE_WINDOW);
+          return { key, candles: [...prev, data.candle].slice(-CANDLE_WINDOW) };
         }
-        return prev;
+        return cur;
       });
     });
 
@@ -240,7 +250,7 @@ export function CandlesCard({ symbol, onSymbolChange, symbolLocked = false, fill
           /* The key is what tells the chart this is a different series —
              without it a new pair or interval looks identical to a tick,
              because the window size never changes. */
-          <CandlestickChart candles={candles} height="fill" seriesKey={`${symbol}:${interval}`} />
+          <CandlestickChart candles={candles} intervalMin={parseInt(interval, 10)} height="fill" seriesKey={seriesKey} />
         )}
       </div>
 
