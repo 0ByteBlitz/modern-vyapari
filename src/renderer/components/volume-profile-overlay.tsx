@@ -20,7 +20,7 @@
  * who knows it is an estimate.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ActionType, type Chart } from "klinecharts";
+import type { Chart } from "klinecharts";
 import { api, isError, errorText } from "@/lib/api";
 import type { VolumeProfileView } from "@/lib/api";
 
@@ -89,11 +89,11 @@ export function VolumeProfileOverlay({
   useEffect(() => {
     if (!chart) return;
     const bump = () => setTick((t) => t + 1);
-    chart.subscribeAction(ActionType.OnZoom, bump);
-    chart.subscribeAction(ActionType.OnScroll, bump);
+    chart.subscribeAction("onZoom", bump);
+    chart.subscribeAction("onScroll", bump);
     return () => {
-      chart.unsubscribeAction(ActionType.OnZoom, bump);
-      chart.unsubscribeAction(ActionType.OnScroll, bump);
+      chart.unsubscribeAction("onZoom", bump);
+      chart.unsubscribeAction("onScroll", bump);
     };
   }, [chart]);
 

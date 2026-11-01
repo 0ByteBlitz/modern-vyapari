@@ -3,6 +3,7 @@ import { init, dispose, type Chart, type KLineData } from "klinecharts";
 import type { Candle } from "@/lib/api";
 import { priceDecimals } from "@/lib/format";
 import { CHART_THEME, registerChartTools } from "@/lib/chart-tools";
+import { attachFeed, type ChartFeed } from "@/lib/chart-feed";
 
 /**
  * The app's one chart component — KLineChart everywhere.
@@ -36,6 +37,8 @@ export interface PriceLevel {
 
 interface CandlestickChartProps {
   candles: Candle[];
+  /** Bar interval in minutes — the chart's axis labels follow it. */
+  intervalMin: number;
   /** Fixed pixel height, or "fill" to track the parent element's height. */
   height?: number | "fill";
   markers?: TradeMarker[];
@@ -65,6 +68,7 @@ function toKLineData(candles: Candle[]): KLineData[] {
 
 export function CandlestickChart({
   candles,
+  intervalMin,
   height = 400,
   markers,
   levels,
@@ -73,6 +77,10 @@ export function CandlestickChart({
 }: CandlestickChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<Chart | null>(null);
+  const feedRef = useRef<ChartFeed | null>(null);
+  /** The series last given to the chart — see the data effect. */
+  const prevKey = useRef<string | undefined>(undefined);
+  const prevLastTs = useRef<number | null>(null);
   /** Overlay ids we created, so a re-render replaces rather than stacks. */
   const overlayIds = useRef<string[]>([]);
 
@@ -108,7 +116,12 @@ export function CandlestickChart({
             upWickColor: CHART_THEME.up,
             downWickColor: CHART_THEME.down,
           },
-          tooltip: { text: { family: "IBM Plex Mono, monospace", size: 11 } },
+          tooltip: {
+            // The title would print the ticker, which here is only the series
+            // key ("BTC-USD:60"); the card header already names the pair.
+            title: { show: false },
+            legend: { family: "IBM Plex Mono, monospace", size: 11 },
+          },
         },
         xAxis: {
           axisLine: { color: CHART_THEME.grid },
@@ -124,13 +137,19 @@ export function CandlestickChart({
           horizontal: { line: { color: CHART_THEME.dim }, text: { family: "IBM Plex Mono, monospace" } },
           vertical: { line: { color: CHART_THEME.dim }, text: { family: "IBM Plex Mono, monospace" } },
         },
-        indicator: { tooltip: { text: { family: "IBM Plex Mono, monospace", size: 10 } } },
+        indicator: {
+          tooltip: {
+            title: { family: "IBM Plex Mono, monospace", size: 10 },
+            legend: { family: "IBM Plex Mono, monospace", size: 10 },
+          },
+        },
       },
     });
 
     if (!chart) return;
     chartRef.current = chart;
-    if (volume) chart.createIndicator("VOL", false, { id: "pane_vol" });
+    feedRef.current = attachFeed(chart);
+    if (volume) chart.createIndicator({ name: "VOL", paneId: "pane_vol" });
 
     /* Track the container, not the window. The panel changes height when the
        drawer opens, a sibling grows, or the layout settles after mount — none
@@ -141,7 +160,11 @@ export function CandlestickChart({
     return () => {
       observer.disconnect();
       chartRef.current = null;
+      feedRef.current = null;
       overlayIds.current = [];
+      // A remount is a fresh chart; the next data effect must replace, not patch.
+      prevKey.current = undefined;
+      prevLastTs.current = null;
       dispose(el);
     };
   }, [volume]);
@@ -165,15 +188,13 @@ export function CandlestickChart({
    * every refresh. If that bar is missing the data has jumped, and a full
    * replace is the only honest option.
    */
-  const prevKey = useRef<string | undefined>(undefined);
-  const prevLastTs = useRef<number | null>(null);
   useEffect(() => {
-    const chart = chartRef.current;
-    if (!chart || candles.length === 0) return;
+    const feed = feedRef.current;
+    if (!feed || candles.length === 0) return;
 
     const data = toKLineData(candles);
     // Precision follows the app-wide rule so the axis matches every table.
-    chart.setPriceVolumePrecision(priceDecimals(candles[candles.length - 1]!.close), 2);
+    const pricePrecision = priceDecimals(candles[candles.length - 1]!.close);
 
     const changedSeries = seriesKey !== prevKey.current;
     const resumeAt =
@@ -182,14 +203,14 @@ export function CandlestickChart({
         : data.findIndex((d) => d.timestamp === prevLastTs.current);
 
     if (resumeAt === -1) {
-      chart.applyNewData(data);
+      feed.replace(data, { ticker: seriesKey ?? "", intervalMin, pricePrecision });
     } else {
-      for (let i = resumeAt; i < data.length; i++) chart.updateData(data[i]!);
+      for (let i = resumeAt; i < data.length; i++) feed.update(data[i]!);
     }
 
     prevKey.current = seriesKey;
     prevLastTs.current = data[data.length - 1]!.timestamp;
-  }, [candles, seriesKey]);
+  }, [candles, seriesKey, intervalMin, volume]);
 
   /* Markers and levels are overlays. Rebuilt wholesale on change — there are
      at most a handful and they're cheap. */
@@ -197,7 +218,7 @@ export function CandlestickChart({
     const chart = chartRef.current;
     if (!chart) return;
 
-    for (const id of overlayIds.current) chart.removeOverlay(id);
+    for (const id of overlayIds.current) chart.removeOverlay({ id });
     overlayIds.current = [];
 
     for (const m of markers ?? []) {

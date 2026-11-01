@@ -13,7 +13,6 @@
     "isolatedModules": true,
     "types": ["vite/client"],
     "composite": true,
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./*"],
       "@shared/*": ["../shared/*"]
