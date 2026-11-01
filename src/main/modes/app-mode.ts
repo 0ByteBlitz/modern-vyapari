@@ -82,6 +82,20 @@ export function readMode(userDataPath: string): AppMode {
   }
 }
 
+/**
+ * The mode a process actually runs in, given the stored choice.
+ *
+ * **Live is only real when some venue can place an order.** Until then a "live"
+ * process opens the live database while the paper engine keeps filling — so
+ * the titlebar says LIVE, the toolbar says paper, and simulated fills land in
+ * the file whose whole purpose is to hold only real ones. That happened
+ * (2026-11-01). A stored "live" choice therefore runs simulated until live
+ * execution exists; the choice itself is left alone.
+ */
+export function resolveMode(chosen: AppMode, liveExecutionBuilt: boolean): AppMode {
+  return chosen === "live" && liveExecutionBuilt ? "live" : "simulated";
+}
+
 /** Persist the choice for the next launch. Takes effect on restart. */
 export function writeMode(userDataPath: string, mode: AppMode): void {
   fs.mkdirSync(userDataPath, { recursive: true });

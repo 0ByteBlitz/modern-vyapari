@@ -29,9 +29,8 @@ let inTransaction = false;
  * no query that can reach the other mode's rows, because the other mode's rows
  * are not in this connection.
  *
- * Live keeps the historic `mybot.db` filename so an existing install's real
- * history stays exactly where it is. Renaming it would orphan the owner's
- * financial record, which has no backup routine yet (roadmap L-3).
+ * Simulated keeps the historic `mybot.db` filename — every row in it is paper,
+ * because live execution has never run (see `databaseFileName`).
  */
 export function initDatabase(userDataPath: string): void {
   const dataDir = path.join(userDataPath, "data");
