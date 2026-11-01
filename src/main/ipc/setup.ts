@@ -11,8 +11,8 @@ import * as credentials from "../security/credentials";
 import * as windowsHello from "../security/windows-hello";
 import type { SetupStatus } from "../../shared/ipc-types";
 import { auditLog } from "../db/database";
-import { appMode, readMode, writeMode, isAppMode } from "../modes/app-mode";
-import { venueCapabilities, liveVenue } from "../integrations/venue/registry";
+import { appMode, readMode, resolveMode, writeMode, isAppMode } from "../modes/app-mode";
+import { liveVenue, liveExecutionBuilt } from "../integrations/venue/registry";
 import { aiProvider } from "../ai/registry";
 import { AppError } from "../../shared/errors";
 import { safe } from "./safe";
@@ -133,8 +133,8 @@ ipcMain.handle("security:requestWindowsHello", (_e, reason: string) =>
         mode: appMode(),
         /* What the NEXT launch will use. Differs from `mode` between choosing
            and restarting, and the UI has to be able to say so. */
-        pending: readMode(app.getPath("userData")),
-        canPlaceOrders: venueCapabilities().canPlaceOrders,
+        pending: resolveMode(readMode(app.getPath("userData")), liveExecutionBuilt()),
+        liveAvailable: liveExecutionBuilt(),
       }),
       "mode:get"
     )
@@ -143,6 +143,9 @@ ipcMain.handle("security:requestWindowsHello", (_e, reason: string) =>
   ipcMain.handle("mode:set", (_e, mode: string) =>
     safe(() => {
       if (!isAppMode(mode)) throw new AppError("VALIDATION", "Unknown mode.");
+      if (mode === "live" && !liveExecutionBuilt()) {
+        throw new AppError("NOT_IMPLEMENTED", "Live trading isn't available yet. Keep using simulated mode.");
+      }
       writeMode(app.getPath("userData"), mode);
       /* Audited like the kill switch and the venue switch: it decides whether
          this app can reach real money. */
