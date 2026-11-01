@@ -1153,7 +1153,7 @@ export function ResearchPage({ activeSession }: { activeSession: Session | null 
             <span
               className="mono ml-auto"
               style={{ fontSize: "var(--text-xs)", color: "var(--caution)" }}
-              title="Some bars are missing buy/sell data, so the CVD line breaks there. Repair the history in Settings › Data & feeds."
+              title="Some bars are missing buy/sell data, so the CVD line breaks there. Repair the history in Settings › Analysis feed."
             >
               CVD {(cvdInfo.coverage * 100).toFixed(0)}% covered
               {cvdInfo.suggestedAnchor

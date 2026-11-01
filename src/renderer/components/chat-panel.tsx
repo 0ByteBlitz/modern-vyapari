@@ -426,7 +426,7 @@ export function ChatPanel({ sessionId, emptyState }: ChatPanelProps) {
           <div className="text-xs text-muted-foreground text-center p-3 bg-secondary/40 rounded-md border border-border/50 space-y-1">
             <div className="font-medium text-foreground">Chat log is clear.</div>
             <div className="text-text-faint">
-              Session journal entries & distilled lessons remain preserved in SQLite memory and system context.
+              The agent still reads this session's journal and lessons.
             </div>
           </div>
         )}

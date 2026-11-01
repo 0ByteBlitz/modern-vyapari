@@ -25,7 +25,7 @@
  *
  * ## One bill, not one per mode
  *
- * This lives in the **shared** store. The Anthropic bill is a fact about the
+ * This lives in the **shared** store. An AI bill is a fact about the provider
  * account, not about simulated or live trading, and keeping it per mode meant
  * the readout under-reported by whatever the other mode had cost — a number
  * labelled "what I have spent" that was really "what I spent in this world".
@@ -33,13 +33,22 @@
  *
  * ## An unpriced model costs `null`, never zero
  *
- * A model missing from the table records its tokens with no cost. Zero would be
- * indistinguishable from "free" and would quietly under-report the total; null
- * lets the UI say "3 calls not priced" instead of lying by omission.
+ * A model its provider cannot price records its tokens with no cost. Zero would
+ * be indistinguishable from "free" and would quietly under-report the total;
+ * null lets the UI say "3 calls not priced" instead of lying by omission.
+ *
+ * ## Every provider, not one
+ *
+ * Each row names the provider that made the call, and that provider's adapter
+ * prices it (`AiProvider.pricing`). Rows written before the column existed were
+ * all Anthropic — the only adapter there has been — and are labelled so.
  */
 
 import { getSharedStore } from "../db/shared-store";
 import { appMode } from "../modes/app-mode";
+import { aiProvider, listAiProviders } from "../ai/registry";
+import type { ModelPrice } from "../ai/port";
+import type { UsageTotals, UsageReport } from "../../shared/ipc-types";
 import { createLogger } from "../logger";
 
 const log = createLogger("usage");
@@ -47,25 +56,11 @@ const log = createLogger("usage");
 /** What the call was for, so a bill can be attributed rather than just totalled. */
 export type UsagePurpose = "chat" | "trade_review" | "plan_review" | "lessons" | "other";
 
-/**
- * USD per million tokens, as published. Cache reads are ~0.1× input and cache
- * writes ~1.25× (5-minute TTL), which is what the arithmetic below applies.
- *
- * Deliberately a plain table rather than a lookup against the Models API: it is
- * the price *at the time of the call* that matters, and a live lookup would
- * reprice history. Prefix matching, so a dated snapshot id resolves to its
- * family without needing a row per release.
- */
-const PRICES: Array<{ prefix: string; inputPerM: number; outputPerM: number }> = [
-  { prefix: "claude-fable-5", inputPerM: 10, outputPerM: 50 },
-  { prefix: "claude-mythos-5", inputPerM: 10, outputPerM: 50 },
-  { prefix: "claude-opus-5", inputPerM: 5, outputPerM: 25 },
-  { prefix: "claude-opus-4", inputPerM: 5, outputPerM: 25 },
-  { prefix: "claude-sonnet-5", inputPerM: 3, outputPerM: 15 },
-  { prefix: "claude-sonnet-4", inputPerM: 3, outputPerM: 15 },
-  { prefix: "claude-haiku-4", inputPerM: 1, outputPerM: 5 },
-];
-
+/* Prices come from the adapter that made the call (`AiProvider.pricing`), never
+   from a table here: one shared table priced every other provider's calls as
+   unknown. It is the price *at the time of the call* that matters, so it is
+   stored with the row rather than looked up later. Where a provider states no
+   cache price, reads are ~0.1× input and writes ~1.25× (5-minute TTL). */
 const CACHE_READ_MULTIPLIER = 0.1;
 const CACHE_WRITE_MULTIPLIER = 1.25;
 
@@ -76,21 +71,20 @@ export interface TokenUsage {
   cache_creation_input_tokens?: number | null;
 }
 
-/** Null when the model is not in the table — unknown is a value, not zero. */
-export function estimateCostUsd(model: string, u: TokenUsage): number | null {
-  const price = PRICES.find((p) => model.startsWith(p.prefix));
-  if (!price) return null;
+/** Null when the provider can't price the model — unknown is a value, not zero. */
+export function estimateCostUsd(row: ModelPrice | null, u: TokenUsage): number | null {
+  if (!row) return null;
   const inTok = u.input_tokens ?? 0;
   const outTok = u.output_tokens ?? 0;
   const cacheRead = u.cache_read_input_tokens ?? 0;
   const cacheWrite = u.cache_creation_input_tokens ?? 0;
-  return (
-    (inTok * price.inputPerM +
-      cacheRead * price.inputPerM * CACHE_READ_MULTIPLIER +
-      cacheWrite * price.inputPerM * CACHE_WRITE_MULTIPLIER +
-      outTok * price.outputPerM) /
-    1_000_000
-  );
+  const promptTokens = inTok + cacheRead + cacheWrite;
+  const long = row.longPrompt && promptTokens > row.longPrompt.overTokens ? row.longPrompt : null;
+  const inputPerM = long?.inputPerM ?? row.inputPerM;
+  const outputPerM = long?.outputPerM ?? row.outputPerM;
+  const cacheReadPerM = row.cacheReadPerM ?? inputPerM * CACHE_READ_MULTIPLIER;
+  const cacheWritePerM = row.cacheWritePerM ?? inputPerM * CACHE_WRITE_MULTIPLIER;
+  return (inTok * inputPerM + cacheRead * cacheReadPerM + cacheWrite * cacheWritePerM + outTok * outputPerM) / 1_000_000;
 }
 
 /**
@@ -111,15 +105,19 @@ export function recordUsage(
 ): void {
   if (!u) return;
   try {
-    const cost = estimateCostUsd(model, u);
+    /* The provider that made the call prices it, and is recorded with it, so
+       the readout can say what each provider cost. */
+    const provider = aiProvider();
+    const cost = estimateCostUsd(provider.pricing?.(model) ?? null, u);
     getSharedStore()
       .prepare(
-        `INSERT INTO api_usage (mode, model, purpose, input_tokens, output_tokens,
+        `INSERT INTO api_usage (mode, provider, model, purpose, input_tokens, output_tokens,
                                 cache_read_tokens, cache_write_tokens, cost_usd, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         appMode(),
+        provider.info.id,
         model,
         purpose,
         u.input_tokens ?? 0,
@@ -134,30 +132,7 @@ export function recordUsage(
   }
 }
 
-export interface UsageTotals {
-  calls: number;
-  inputTokens: number;
-  outputTokens: number;
-  cacheReadTokens: number;
-  cacheWriteTokens: number;
-  costUsd: number;
-  /** Calls whose model had no published price here. Reported, not hidden. */
-  unpricedCalls: number;
-}
-
-export interface UsageReport {
-  today: UsageTotals;
-  last30Days: UsageTotals;
-  allTime: UsageTotals;
-  byModel: Array<{ model: string; calls: number; costUsd: number; unpriced: number }>;
-  byPurpose: Array<{ purpose: string; calls: number; costUsd: number }>;
-  /** What the cache has saved, in dollars, against paying full input price. */
-  cacheSavedUsd: number;
-  /** Per mode, so a cost can be attributed without splitting the total. */
-  byMode: Array<{ mode: string; calls: number; costUsd: number }>;
-  /** Stated so the UI never implies this is an account balance. */
-  scope: string;
-}
+export type { UsageTotals, UsageReport };
 
 const EMPTY: UsageTotals = {
   calls: 0,
@@ -207,17 +182,35 @@ export function buildUsageReport(): UsageReport {
     )
     .all() as unknown as UsageReport["byPurpose"];
 
-  /* What caching saved: cached input billed at ~0.1x, so the other 0.9x is the
-     saving. Priced per row's own model, which is why it is a query rather than
-     one multiplication over the total. */
+  /* What caching saved against paying full input price. Priced per row's own
+     provider and model, which is why it is a query rather than one
+     multiplication over the total. */
+  const providers = new Map(listAiProviders().map((p) => [p.info.id, p]));
   const saved = db
-    .prepare(`SELECT model, COALESCE(SUM(cache_read_tokens), 0) AS tok FROM api_usage GROUP BY model`)
-    .all() as unknown as Array<{ model: string; tok: number }>;
+    .prepare(
+      `SELECT provider, model, COALESCE(SUM(cache_read_tokens), 0) AS tok FROM api_usage GROUP BY provider, model`
+    )
+    .all() as unknown as Array<{ provider: string; model: string; tok: number }>;
   let cacheSavedUsd = 0;
   for (const s of saved) {
-    const price = PRICES.find((p) => s.model.startsWith(p.prefix));
-    if (price) cacheSavedUsd += (s.tok * price.inputPerM * (1 - CACHE_READ_MULTIPLIER)) / 1_000_000;
+    const price = providers.get(s.provider)?.pricing?.(s.model);
+    if (!price) continue;
+    const readPerM = price.cacheReadPerM ?? price.inputPerM * CACHE_READ_MULTIPLIER;
+    cacheSavedUsd += (s.tok * (price.inputPerM - readPerM)) / 1_000_000;
   }
+
+  /* Per provider, named as the user knows it. A provider no longer in this
+     build keeps its stored id rather than vanishing from the bill. */
+  const byProvider = (
+    db
+      .prepare(
+        `SELECT provider, COUNT(*) AS calls,
+                COALESCE(SUM(CAST(cost_usd AS REAL)), 0) AS costUsd,
+                SUM(CASE WHEN cost_usd IS NULL THEN 1 ELSE 0 END) AS unpriced
+         FROM api_usage GROUP BY provider ORDER BY costUsd DESC`
+      )
+      .all() as unknown as Array<{ provider: string; calls: number; costUsd: number; unpriced: number }>
+  ).map((r) => ({ ...r, provider: providers.get(r.provider)?.info.displayName ?? r.provider }));
 
   const byMode = db
     .prepare(
@@ -233,8 +226,10 @@ export function buildUsageReport(): UsageReport {
     byModel,
     byPurpose,
     byMode,
+    byProvider,
     cacheSavedUsd,
-    /* The UI must never render this as a balance. */
-    scope: "What this app has spent, across both modes — one Anthropic bill. Anthropic exposes no account balance to a normal API key.",
+    /* The UI must never render this as a balance. Provider-neutral: measured
+       per call, whoever bills it. */
+    scope: "Measured from each call, across both modes. This is what was spent, not an account balance.",
   };
 }

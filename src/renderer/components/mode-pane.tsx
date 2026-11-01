@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { ShieldCheck, AlertTriangle, Wallet } from "lucide-react";
+import { ShieldCheck, AlertTriangle } from "lucide-react";
 import { api, isError, errorText, type AppMode, type AppModeStatus } from "@/lib/api";
 
 /**
@@ -20,8 +20,10 @@ export function ModePane() {
   const [status, setStatus] = useState<AppModeStatus | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [account, setAccount] = useState<{ balance: number; initialBalance: number } | null>(null);
-  const [draft, setDraft] = useState("");
+  /* Every click answers. Choosing the mode already selected used to rewrite
+     the saved choice with no change on screen — a stored "live" was silently
+     replaced by "simulated" and nothing said so. */
+  const [saved, setSaved] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const res = await api.appModeStatus();
@@ -30,41 +32,27 @@ export function ModePane() {
       return;
     }
     setStatus(res);
-    const acc = await api.paperAccount();
-    if (!isError(acc)) setAccount(acc);
   }, []);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  async function applyBalance() {
-    const v = Number(draft);
-    if (!Number.isFinite(v) || v <= 0) {
-      setProblem("Enter a starting balance above zero.");
-      return;
-    }
-    setBusy(true);
-    setProblem(null);
-    const res = await api.setPaperBalance(v);
-    setBusy(false);
-    if (isError(res)) {
-      setProblem(errorText(res));
-      return;
-    }
-    setDraft("");
-    await load();
-  }
-
   async function choose(mode: AppMode) {
     setBusy(true);
     setProblem(null);
+    setSaved(null);
     const res = await api.setAppMode(mode);
     setBusy(false);
     if (isError(res)) {
       setProblem(errorText(res));
       return;
     }
+    setSaved(
+      mode === status?.mode
+        ? `Saved. The app keeps running ${mode}.`
+        : `Saved. The app switches to ${mode} on the next launch.`
+    );
     await load();
   }
 
@@ -78,7 +66,9 @@ export function ModePane() {
           <ShieldCheck size={13} style={{ color: "var(--accent)" }} />
           <span className="label-micro">Mode</span>
           <span className="ml-auto">
-            <span className={`badge badge-${status.mode === "live" ? "live" : "paper"}`}>
+            {/* Live is loud; there is no badge-live class, so this rendered
+                unstyled. */}
+            <span className={`badge badge-${status.mode === "live" ? "down" : "paper"}`}>
               running: {status.mode}
             </span>
           </span>
@@ -124,48 +114,13 @@ export function ModePane() {
             Lessons are shared, because what you learn about a market is true in both.
           </p>
 
+          {saved && (
+            <p className="integ-note">
+              <ShieldCheck size={12} style={{ color: "var(--up)" }} />
+              {saved}
+            </p>
+          )}
           {problem && <p className="integ-problem">{problem}</p>}
-        </div>
-      </section>
-
-      <section className="panel">
-        <div className="panel-header">
-          <Wallet size={13} style={{ color: "var(--accent)" }} />
-          <span className="label-micro">Simulated account</span>
-          <span className="ml-auto mono" style={{ fontSize: "var(--text-xs)", color: "var(--text-faint)" }}>
-            {account ? `$${account.balance.toFixed(2)}` : "—"}
-          </span>
-        </div>
-        <div className="integ-body">
-          {/* One balance, shared across every session. Each session used to be
-              minted its own $10,000, so the portfolio total was really a count
-              of sessions — five of them read $50,000. */}
-          <p className="integ-sub" style={{ marginBottom: 10 }}>
-            One balance for all sessions. A session is a workspace for one pair's plans and history —
-            it does not hold its own money.
-          </p>
-
-          <label className="plans-field">
-            <span>Starting balance (USD)</span>
-            <input
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              inputMode="decimal"
-              placeholder={account ? String(account.initialBalance) : "10000"}
-            />
-          </label>
-
-          <div className="plans-actions" style={{ marginTop: 8 }}>
-            <button className="plans-ghost" disabled={busy} onClick={() => void applyBalance()}>
-              Reset account
-            </button>
-          </div>
-
-          {/* Says the cost plainly rather than after the fact. */}
-          <p className="integ-note usage-dim">
-            Resetting sets the balance and the figure every return is measured against. Your plans,
-            positions and journal are untouched.
-          </p>
         </div>
       </section>
     </div>

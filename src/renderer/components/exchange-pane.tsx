@@ -1,10 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
 import { Check, X, Plug, ShieldCheck, AlertTriangle } from "lucide-react";
 import { api, isError, type SetupStatus, type VenueInfo } from "@/lib/api";
-import { CredentialsPanels } from "@/components/credentials-panels";
+import { VenueKeysPanel } from "@/components/credentials-panels";
 
 /**
- * Integrations — what this app is connected to, and what each one can do.
+ * Exchange — what executes, what it can do, and its keys, in one place.
+ *
+ * Was "Integrations" until 2026-11-01, which put the exchange, the analysis
+ * feed and every key on one page: the Revolut X keys sat below the Analysis
+ * feed card, away from the Exchange card they belong to, and the Exchange card
+ * said "connected" for the simulated venue because the venue's keys happened to
+ * be saved. The feed moved to Settings › Analysis feed and each key to the
+ * section it powers.
  *
  * Settings used to show **Credentials**: one venue's key status, and nothing
  * about the venue itself. That was true when Revolut X was referred to by name
@@ -21,7 +28,7 @@ import { CredentialsPanels } from "@/components/credentials-panels";
  * locally, because a local stop is not a stop if the app is closed. Printing
  * those honestly is the point of the section.
  *
- * **Key management stays where it is.** `CredentialsPanels` is embedded rather
+ * **Key management stays where it is.** `VenueKeysPanel` is embedded rather
  * than reimplemented: it is the only code that handles the Ed25519 keypair, and
  * a second path to writing a private key the venue already knows is exactly the
  * kind of duplication this codebase keeps paying for.
@@ -40,13 +47,11 @@ function Cap({ label, on, note }: { label: string; on: boolean; note?: string })
   );
 }
 
-export function IntegrationsPane({
+export function ExchangePane({
   setup,
-  setupError,
   onRefresh,
 }: {
   setup: SetupStatus | null;
-  setupError: string | null;
   onRefresh: () => Promise<void>;
 }) {
   const [venue, setVenue] = useState<{ active: VenueInfo; available: VenueInfo[] } | null>(null);
@@ -65,7 +70,10 @@ export function IntegrationsPane({
     void load();
   }, [load]);
 
-  const connected = Boolean(setup?.hasApiKey && setup?.hasKeyPair);
+  /* The simulated venue has no keys and no connection; calling it "connected"
+     because a real venue's keys were saved described a different system. */
+  const simulated = venue?.active.id === "simulated";
+  const keysSaved = Boolean(setup?.hasApiKey && setup?.hasKeyPair);
 
   return (
     <div className="integ-pane">
@@ -73,9 +81,6 @@ export function IntegrationsPane({
         <div className="panel-header">
           <Plug size={13} style={{ color: "var(--accent)" }} />
           <span className="label-micro">Exchange</span>
-          <span className="ml-auto" style={{ fontSize: "var(--text-xs)", color: "var(--text-faint)" }}>
-            one at a time
-          </span>
         </div>
 
         <div className="integ-body">
@@ -86,10 +91,14 @@ export function IntegrationsPane({
               <div className="integ-row">
                 <div>
                   <div className="integ-name">{venue.active.displayName}</div>
-                  <div className="integ-sub">Execution, balances and fills come from here.</div>
+                  <div className="integ-sub">
+                    {simulated
+                      ? "No venue. Fills are simulated against the analysis feed."
+                      : "Execution, balances and fills come from here."}
+                  </div>
                 </div>
-                <span className={`badge badge-${connected ? "supervised" : "draft"}`}>
-                  {connected ? "connected" : "not connected"}
+                <span className={`badge badge-${simulated ? "paper" : keysSaved ? "supervised" : "draft"}`}>
+                  {simulated ? "simulated" : keysSaved ? "keys saved" : "keys not set"}
                 </span>
               </div>
 
@@ -139,30 +148,16 @@ export function IntegrationsPane({
         </div>
       </section>
 
-      <section className="panel">
-        <div className="panel-header">
-          <span className="label-micro">Analysis feed</span>
-        </div>
-        <div className="integ-body">
-          <div className="integ-row">
-            <div>
-              <div className="integ-name">Binance</div>
-              <div className="integ-sub">
-                Charts, indicators and every level the engine resolves. Needs no key.
-              </div>
-            </div>
-            <span className="badge badge-supervised">connected</span>
-          </div>
-          {/* The rule that keeps the two apart, in one line. */}
-          <p className="integ-note">
-            Prices are never mixed: analysis comes from here, execution from the exchange.
-          </p>
-        </div>
-      </section>
-
-      {/* Keys keep their own panels — one implementation for anything that
-          writes a private key the venue already knows. */}
-      <CredentialsPanels setup={setup} setupError={setupError ?? ""} onRefresh={onRefresh} />
+      {/* Keys keep their own panel — one implementation for anything that
+          writes a private key the venue already knows. In simulated mode they
+          are kept for when live trading exists, and the panel says so. */}
+      {setup && (
+        <VenueKeysPanel
+          setup={setup}
+          onRefresh={onRefresh}
+          note={simulated ? "used once live trading exists" : "execution venue"}
+        />
+      )}
     </div>
   );
 }

@@ -32,6 +32,8 @@ import type {
   ArchiveStepEvent,
   ArchiveSummary,
   AiModelInfo,
+  UsageTotals,
+  UsageReport,
 } from "@shared/ipc-types";
 import { isUserFacingError, type UserFacingError } from "@shared/errors";
 import type { QuitSummary } from "@shared/quit";
@@ -69,6 +71,8 @@ export type {
   ArchiveSummary,
   UserFacingError,
   AiModelInfo,
+  UsageTotals,
+  UsageReport,
 };
 
 
@@ -230,37 +234,6 @@ export interface CalibrationRecord {
   stillOpen: number;
   minSample: number;
   empty: boolean;
-}
-
-export interface UsageTotals {
-  calls: number;
-  inputTokens: number;
-  outputTokens: number;
-  cacheReadTokens: number;
-  cacheWriteTokens: number;
-  costUsd: number;
-  /** Calls whose model had no published price. Shown, never folded into 0. */
-  unpricedCalls: number;
-}
-
-/**
- * Measured spend, not an account balance.
- *
- * Anthropic exposes no credit-balance endpoint, and its cost reports need an
- * Admin key that individual accounts cannot create. So this is what the app
- * itself has spent, computed from the `usage` block on every response.
- */
-export interface UsageReport {
-  today: UsageTotals;
-  last30Days: UsageTotals;
-  allTime: UsageTotals;
-  byModel: Array<{ model: string; calls: number; costUsd: number; unpriced: number }>;
-  byPurpose: Array<{ purpose: string; calls: number; costUsd: number }>;
-  cacheSavedUsd: number;
-  /** Attribution across simulated and live. The total is not split by mode:
-      the bill is one bill, so the shared store holds every row. */
-  byMode: Array<{ mode: string; calls: number; costUsd: number }>;
-  scope: string;
 }
 
 export type AppMode = "simulated" | "live";
@@ -496,6 +469,9 @@ export interface RendererApi {
   /** Simulated or live. `pending` is what the NEXT launch will use. */
   /** What this app has spent. Not an account balance — none is exposed. */
   usageReport(): Promise<Result<UsageReport>>;
+  /** The saved review model (null = the provider's fast model) and the one reviews will use. */
+  reviewModel(): Promise<Result<{ saved: string | null; effective: string | null }>>;
+  setReviewModel(model: string | null): Promise<Result<{ ok: true }>>;
   /** The one paper balance. Sessions are workspaces; cash is not theirs. */
   paperAccount(): Promise<Result<{ balance: number; initialBalance: number; updatedAt: number }>>;
   setPaperBalance(startingBalance: number): Promise<Result<{ ok: true }>>;
@@ -554,6 +530,8 @@ export interface RendererApi {
   ): Promise<Result<JournalEntry[]>>;
   journalCounts(sessionId: number): Promise<Result<Record<string, number>>>;
   listActivity(limit?: number): Promise<Result<ActivityEvent[]>>;
+  /** One session's events, plus the app-wide ones that affect its plans. */
+  listSessionActivity(sessionId: number, limit?: number): Promise<Result<ActivityEvent[]>>;
   portfolioSummary(includeArchived?: boolean): Promise<Result<PortfolioSummary>>;
   tripKillSwitch(reason?: string): Promise<Result<{ active: boolean; reason: string }>>;
   resetKillSwitch(): Promise<Result<{ active: boolean; reason: string }>>;

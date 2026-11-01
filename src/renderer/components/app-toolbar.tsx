@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Bell, FlaskConical, ShieldAlert } from "lucide-react";
 import type { AlertEvent, AppMode } from "@/lib/api";
 import { formatPrice } from "@/lib/format";
-import { UsagePanel } from "@/components/usage-panel";
 
 /**
  * App toolbar (36px) — mode, risk budget, alerts.
@@ -12,8 +11,10 @@ import { UsagePanel } from "@/components/usage-panel";
  * with the mode; switching to live requires typing a confirmation phrase, in
  * the toolbar itself rather than buried in settings.
  *
- * The risk budget sits here for the same reason — a limit you have to go
- * looking for is a limit you find out about after it's breached.
+ * The session's own figures sit here while one of its surfaces is open, and
+ * nowhere else. They are numbers only: a bar under a figure implies a budget,
+ * and there is no budget behind them until the risk engine exists. Agent spend
+ * is not a trading figure, so it lives with the agent and in Settings › AI.
  */
 /** The mode main is running in — read from main, never assumed here. */
 export type TradingMode = AppMode;
@@ -21,8 +22,6 @@ export type TradingMode = AppMode;
 export interface RiskChip {
   label: string;
   value: string;
-  /** 0–100, how much of the budget is consumed. */
-  pct: number;
   tone: "up" | "down" | "caution" | "neutral";
 }
 
@@ -136,28 +135,18 @@ export function AppToolbar({
 
       <div className="flex-1" />
 
-      {/* Always visible, on every screen. Small on purpose: it is a
-          background fact, not a control. */}
-      <UsagePanel compact />
-
-      <div className="risk-chips">
-        {riskChips.map((chip) => (
-          <div key={chip.label} className="risk-chip">
-            <div className="risk-chip-head">
+      {riskChips.length > 0 && (
+        <div className="risk-chips">
+          {riskChips.map((chip) => (
+            <div key={chip.label} className="risk-chip">
               <span className="label-micro">{chip.label}</span>
               <span className="mono" style={{ fontSize: "var(--text-sm)", color: TONE_COLOR[chip.tone] }}>
                 {chip.value}
               </span>
             </div>
-            <div className="risk-chip-track">
-              <div
-                className="risk-chip-fill"
-                style={{ width: `${Math.max(2, Math.min(100, chip.pct))}%`, background: TONE_COLOR[chip.tone] }}
-              />
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       <div style={{ position: "relative", display: "flex" }}>
         <button

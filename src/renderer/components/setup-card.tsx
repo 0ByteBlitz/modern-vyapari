@@ -141,7 +141,7 @@ export function SetupCard({ setup, setupError, onRefresh, onFinish }: SetupCardP
               </div>
               {!setup.venue.required && (
                 <p className="text-sm text-muted-foreground p-3 rounded-md border border-border bg-secondary/30">
-                  Optional while you trade in simulated mode — paper trading needs no exchange account.
+                  Optional while you trade in simulated mode — simulated trading needs no exchange account.
                   Connect {setup.venue.displayName} to see your real balances, and before going live.
                 </p>
               )}

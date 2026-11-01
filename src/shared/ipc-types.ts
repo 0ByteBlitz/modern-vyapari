@@ -338,6 +338,35 @@ export interface ActivityEvent {
   created_at: number;
 }
 
+/* ── AI usage ─────────────────────────────────────────────────────────── */
+
+export interface UsageTotals {
+  calls: number;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
+  costUsd: number;
+  /** Calls whose provider could not price the model. Reported, not hidden. */
+  unpricedCalls: number;
+}
+
+export interface UsageReport {
+  today: UsageTotals;
+  last30Days: UsageTotals;
+  allTime: UsageTotals;
+  /** Per provider, by display name. Every provider the app has billed through. */
+  byProvider: Array<{ provider: string; calls: number; costUsd: number; unpriced: number }>;
+  byModel: Array<{ model: string; calls: number; costUsd: number; unpriced: number }>;
+  byPurpose: Array<{ purpose: string; calls: number; costUsd: number }>;
+  /** What the cache has saved, in dollars, against paying full input price. */
+  cacheSavedUsd: number;
+  /** Per mode, so a cost can be attributed without splitting the total. */
+  byMode: Array<{ mode: string; calls: number; costUsd: number }>;
+  /** Stated so the UI never implies this is an account balance. */
+  scope: string;
+}
+
 export interface SessionSummary {
   id: number;
   uuid: string;

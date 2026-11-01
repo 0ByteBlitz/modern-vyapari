@@ -71,6 +71,8 @@ const api = {
     return () => ipcRenderer.removeListener("chat:error", handler);
   },
   usageReport: () => ipcRenderer.invoke("usage:report"),
+  reviewModel: () => ipcRenderer.invoke("agent:reviewModel"),
+  setReviewModel: (model: string | null) => ipcRenderer.invoke("agent:setReviewModel", model),
   paperAccount: () => ipcRenderer.invoke("paper:account"),
   setPaperBalance: (v: number) => ipcRenderer.invoke("paper:setBalance", v),
   appModeStatus: () => ipcRenderer.invoke("mode:get"),
@@ -185,6 +187,8 @@ const api = {
     ipcRenderer.invoke("journal:list", sessionId, opts),
   journalCounts: (sessionId: number) => ipcRenderer.invoke("journal:counts", sessionId),
   listActivity: (limit?: number) => ipcRenderer.invoke("activity:list", limit),
+  listSessionActivity: (sessionId: number, limit?: number) =>
+    ipcRenderer.invoke("activity:listForSession", sessionId, limit),
   portfolioSummary: (includeArchived?: boolean) => ipcRenderer.invoke("portfolio:summary", includeArchived),
 
   tripKillSwitch: (reason?: string) => ipcRenderer.invoke("killSwitch:trip", reason),

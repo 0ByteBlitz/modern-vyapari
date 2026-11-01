@@ -10,6 +10,7 @@ import {
 } from "@/lib/api";
 import { formatUsd, formatPct } from "@/lib/format";
 import { describeActivity, ACTIVITY_TONE_COLOR } from "@/lib/activity";
+import { useAppMode, modeTitle } from "@/lib/mode";
 
 /**
  * Home — the landing surface.
@@ -69,6 +70,7 @@ export function HomePage({
   onOpenSession: (sessionId: number) => void;
   onNavigate: (surface: "markets" | "portfolio" | "settings" | "approvals") => void;
 }) {
+  const mode = useAppMode();
   const [portfolio, setPortfolio] = useState<PortfolioSummary | null>(null);
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
   const [movers, setMovers] = useState<{ symbol: string; change24h: number; volume24h: number }[]>([]);
@@ -137,7 +139,7 @@ export function HomePage({
   if (unclosed.length > 0) {
     attention.push({
       tone: "info",
-      text: `${unclosed.length} session${unclosed.length === 1 ? "" : "s"} with an open paper position.`,
+      text: `${unclosed.length} session${unclosed.length === 1 ? "" : "s"} with an open position.`,
     });
   }
 
@@ -201,11 +203,11 @@ export function HomePage({
         </section>
       )}
 
-      {/* ── 2. paper state + what happened ── */}
+      {/* ── 2. trading state + what happened ── */}
       <div className="home-split">
         <section className="panel">
           <div className="panel-header">
-            <span className="label-micro">Paper performance · all sessions</span>
+            <span className="label-micro">{modeTitle(mode)} performance · all sessions</span>
           </div>
           <div className="stat-strip" style={{ border: "none", borderRadius: 0 }}>
             <div className="stat-cell">
@@ -238,8 +240,10 @@ export function HomePage({
           </div>
           <div className="panel-footer">
             {totals?.closedCount === 0
-              ? "No paper trades yet — these fill in once an armed plan takes a position."
-              : "Simulated fills, fee- and slippage-adjusted. Not live performance."}
+              ? "No trades yet — these fill in once an armed plan takes a position."
+              : mode === "live"
+                ? "Fills from the exchange, after fees."
+                : "Simulated fills, fee- and slippage-adjusted. Not live performance."}
           </div>
         </section>
 

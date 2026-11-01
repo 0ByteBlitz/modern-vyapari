@@ -999,7 +999,7 @@ function toolGetOrderFlow(sessionId: number, input: Record<string, unknown>): un
       coverage_note:
         cvd.coverage >= 0.999
           ? "Every bar has a known aggressor split."
-          : "Some bars have an UNKNOWN aggressor split. The gap is missing data, not flat aggression — say so, and point at Settings › Data & feeds to repair it.",
+          : "Some bars have an UNKNOWN aggressor split. The gap is missing data, not flat aggression — say so, and point at Settings › Analysis feed to repair it.",
       bars: points.length,
       first_known: first,
       last_known: last,

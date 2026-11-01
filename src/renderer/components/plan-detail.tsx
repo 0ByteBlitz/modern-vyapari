@@ -4,6 +4,7 @@ import { describeThreshold } from "@shared/levels";
 import type { StoredPlanView, PlanBranchView, LevelDraftView } from "@/lib/api";
 import { formatPrice } from "@/lib/format";
 import { DetailModal, DetailSection, LevelRow } from "@/components/detail-modal";
+import { useAppMode } from "@/lib/mode";
 
 /**
  * Everything an armed plan committed you to, in one place.
@@ -129,6 +130,7 @@ export function PlanDetail({
   monitored: boolean;
   onClose: () => void;
 }) {
+  const mode = useAppMode();
   const left = plan.expiresAt - Date.now();
   const expiry =
     left <= 0
@@ -168,7 +170,7 @@ export function PlanDetail({
       {(plan.state === "planned" || plan.state === "triggered") && (
         <p className={`detail-watch ${monitored ? "" : "detail-watch-off"}`}>
           {monitored
-            ? "Watched on every closed bar. A trigger opens a paper position with the branch's stop and target."
+            ? `Watched on every closed bar. A trigger opens a ${mode} position with the branch's stop and target.`
             : "Not being watched — the session is paused or archived."}
         </p>
       )}

@@ -199,7 +199,7 @@ export function JournalPage({ activeSession }: { activeSession: Session | null }
           <div className="empty-state">
             <span>{search ? "No entries match that search." : `No journal entries for ${activeSession.pair} yet.`}</span>
             <span style={{ fontSize: "var(--text-sm)", color: "var(--text-ghost)" }}>
-              The bot writes one review automatically each time a paper position closes.
+              The bot writes one review automatically each time a position closes.
             </span>
           </div>
         )}
