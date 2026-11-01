@@ -650,8 +650,11 @@ export function ResearchPage({ activeSession }: { activeSession: Session | null 
   const restoreDrawings = useCallback(async () => {
     const chart = chartRef.current;
     if (!chart) return;
-    chart.removeOverlay();
+    // Forget the row mapping BEFORE removing: a no-filter `removeOverlay()`
+    // fires every overlay's `onRemoved`, which deletes the row it maps to. A
+    // view reset must find nothing to delete; only a user's delete may.
     overlayDb.current.clear();
+    chart.removeOverlay();
 
     const res = await api.listDrawings(symbol, intervalMin);
     if (isError(res)) return;
@@ -831,6 +834,8 @@ export function ResearchPage({ activeSession }: { activeSession: Session | null 
   };
 
   const clearDrawings = async () => {
+    // Remove while the row mapping is still live: each `onRemoved` goes through
+    // `drawings:delete`, which detaches promoted references before the bulk clear.
     chartRef.current?.removeOverlay();
     overlayDb.current.clear();
     await api.clearDrawings(symbol);
