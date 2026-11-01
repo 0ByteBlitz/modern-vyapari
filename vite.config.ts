@@ -30,12 +30,14 @@ export default defineConfig({
     outDir: path.resolve(__dirname, "dist/renderer"),
     emptyOutDir: true,
     chunkSizeWarningLimit: 1000,
-    rollupOptions: {
+    rolldownOptions: {
       output: {
-        manualChunks: {
-          "recharts": ["recharts"],
-          "klinecharts": ["klinecharts"],
-          "lucide-react": ["lucide-react"]
+        // Rolldown (Vite 8) only accepts the function form.
+        manualChunks(id: string) {
+          for (const pkg of ["klinecharts", "lucide-react"]) {
+            if (id.includes(`/node_modules/${pkg}/`)) return pkg;
+          }
+          return undefined;
         }
       }
     }

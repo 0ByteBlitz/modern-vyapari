@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { init, dispose, ActionType, type Chart, type KLineData } from "klinecharts";
+import { init, dispose, type Chart, type KLineData } from "klinecharts";
+import { attachFeed, type ChartFeed } from "@/lib/chart-feed";
 import {
   BarChart3,
   Bookmark,
@@ -227,6 +228,7 @@ function IndicatorRow({
 export function ResearchPage({ activeSession }: { activeSession: Session | null }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<Chart | null>(null);
+  const feedRef = useRef<ChartFeed | null>(null);
   /** overlayId → drawings row id, so an edit updates rather than duplicates. */
   const overlayDb = useRef<Map<string, number>>(new Map());
   const symbolRef = useRef<string>("BTC-USD");
@@ -299,7 +301,7 @@ export function ResearchPage({ activeSession }: { activeSession: Session | null 
     if (!chart) return;
 
     for (const id of alertOverlayIds.current) {
-      chart.removeOverlay(id);
+      chart.removeOverlay({ id });
     }
     alertOverlayIds.current = [];
 
@@ -384,7 +386,7 @@ export function ResearchPage({ activeSession }: { activeSession: Session | null 
     const chart = chartRef.current;
     if (!chart) return;
 
-    for (const id of refOverlayIds.current) chart.removeOverlay({ id } as any);
+    for (const id of refOverlayIds.current) chart.removeOverlay({ id });
     refOverlayIds.current = [];
 
     let cancelled = false;
@@ -481,7 +483,10 @@ export function ResearchPage({ activeSession }: { activeSession: Session | null 
           priceMark: {
             last: { text: { family: "IBM Plex Mono, monospace" } },
           },
-          tooltip: { text: { family: "IBM Plex Mono, monospace", size: 11 } },
+          tooltip: {
+            title: { family: "IBM Plex Mono, monospace", size: 11 },
+            legend: { family: "IBM Plex Mono, monospace", size: 11 },
+          },
         },
         xAxis: { axisLine: { color: CHART_THEME.grid }, tickLine: { color: CHART_THEME.grid }, tickText: { color: CHART_THEME.faint, family: "IBM Plex Mono, monospace" } },
         yAxis: { axisLine: { color: CHART_THEME.grid }, tickLine: { color: CHART_THEME.grid }, tickText: { color: CHART_THEME.faint, family: "IBM Plex Mono, monospace" } },
@@ -489,12 +494,18 @@ export function ResearchPage({ activeSession }: { activeSession: Session | null 
           horizontal: { line: { color: CHART_THEME.dim }, text: { family: "IBM Plex Mono, monospace" } },
           vertical: { line: { color: CHART_THEME.dim }, text: { family: "IBM Plex Mono, monospace" } },
         },
-        indicator: { tooltip: { text: { family: "IBM Plex Mono, monospace", size: 11 } } },
+        indicator: {
+          tooltip: {
+            title: { family: "IBM Plex Mono, monospace", size: 11 },
+            legend: { family: "IBM Plex Mono, monospace", size: 11 },
+          },
+        },
       },
     });
 
     if (!chart) return;
     chartRef.current = chart;
+    feedRef.current = attachFeed(chart);
 
     /* Rebuild the saved layout rather than the shipped defaults. Read straight
        from storage instead of the state above: this effect runs once on mount
@@ -502,21 +513,20 @@ export function ResearchPage({ activeSession }: { activeSession: Session | null 
        first render's value. */
     const layout = loadChartLayout();
     for (const name of layout.panes) {
-      chart.createIndicator({ name, calcParams: layout.params[name] } as any, false, {
-        id: `pane_${name.toLowerCase()}`,
-      });
+      chart.createIndicator({ name, calcParams: layout.params[name], paneId: `pane_${name.toLowerCase()}` });
     }
     for (const name of layout.overlays) {
-      chart.createIndicator({ name, calcParams: layout.params[name] } as any, true, { id: "candle_pane" });
+      chart.createIndicator({ name, calcParams: layout.params[name], paneId: "candle_pane" }, true);
     }
 
     // Bar under the crosshair — the anchor for anchored/fixed-range VWAP.
-    chart.subscribeAction(ActionType.OnCrosshairChange, (data: any) => {
+    chart.subscribeAction("onCrosshairChange", (data: any) => {
       if (typeof data?.kLineData?.timestamp === "number") crosshairTs.current = data.kLineData.timestamp;
     });
 
     return () => {
       chartRef.current = null;
+      feedRef.current = null;
       dispose(el);
     };
   }, []);
@@ -574,14 +584,14 @@ export function ResearchPage({ activeSession }: { activeSession: Session | null 
 
   /* ── Data loading (+ live updates) ───────────────────────────── */
   const loadData = useCallback(async () => {
-    const chart = chartRef.current;
-    if (!chart) return;
+    const feed = feedRef.current;
+    if (!feed) return;
     setStatus("loading…");
 
     const res = await api.getAnalysisCandles(symbol, intervalMin, 1000);
     if (isError(res)) {
       setStatus(errorText(res));
-      chart.applyNewData([]);
+      feed.replace([]);
       return;
     }
 
@@ -601,9 +611,7 @@ export function ResearchPage({ activeSession }: { activeSession: Session | null 
     // Same precision rule as every other price in the app — KLineChart
     // otherwise picks its own and the axis disagrees with the tables.
     const last = data[data.length - 1];
-    chart.setPriceVolumePrecision(priceDecimals(last?.close ?? 0), 2);
-
-    chart.applyNewData(data);
+    feed.replace(data, { ticker: symbol, intervalMin, pricePrecision: priceDecimals(last?.close ?? 0) });
 
     // Flag a stale window rather than drawing old bars as if they were live.
     const barMs = intervalMin * 60_000;
@@ -631,7 +639,7 @@ export function ResearchPage({ activeSession }: { activeSession: Session | null 
       if (s !== symbol || iv !== intervalMin) return;
       // Replay is a frozen view of history; a live tick must not jump it.
       if (replayIdx !== null) return;
-      chartRef.current?.updateData({
+      feedRef.current?.update({
         timestamp: candle.start,
         open: parseFloat(candle.open),
         high: parseFloat(candle.high),
@@ -736,22 +744,20 @@ export function ResearchPage({ activeSession }: { activeSession: Session | null 
 
     if (isOverlay) {
       if (overlays.includes(name)) {
-        chart.removeIndicator("candle_pane", name);
+        chart.removeIndicator({ paneId: "candle_pane", name });
         setOverlays((v) => v.filter((n) => n !== name));
       } else {
-        chart.createIndicator({ name, calcParams: paramsFor(name) } as any, true, { id: "candle_pane" });
+        chart.createIndicator({ name, calcParams: paramsFor(name), paneId: "candle_pane" }, true);
         setOverlays((v) => [...v, name]);
       }
       return;
     }
 
     if (panes.includes(name)) {
-      chart.removeIndicator(`pane_${name.toLowerCase()}`, name);
+      chart.removeIndicator({ paneId: `pane_${name.toLowerCase()}`, name });
       setPanes((v) => v.filter((n) => n !== name));
     } else {
-      chart.createIndicator({ name, calcParams: paramsFor(name) } as any, false, {
-        id: `pane_${name.toLowerCase()}`,
-      });
+      chart.createIndicator({ name, calcParams: paramsFor(name), paneId: `pane_${name.toLowerCase()}` });
       setPanes((v) => [...v, name]);
     }
   };
@@ -783,7 +789,7 @@ export function ResearchPage({ activeSession }: { activeSession: Session | null 
 
     const version = setCvdSeries(res.points);
     setCvdInfo({ coverage: res.coverage, suggestedAnchor: res.suggestedAnchor });
-    chart.overrideIndicator({ name: "CVD", calcParams: [version] } as any, "pane_cvd");
+    chart.overrideIndicator({ name: "CVD", calcParams: [version], paneId: "pane_cvd" });
   }, [symbol, intervalMin, panes]);
 
   useEffect(() => {
@@ -811,7 +817,7 @@ export function ResearchPage({ activeSession }: { activeSession: Session | null 
     const paneId = isOverlay ? "candle_pane" : `pane_${name.toLowerCase()}`;
     // Only touch it if it's actually on the chart.
     if ((isOverlay ? overlays : panes).includes(name)) {
-      chart.overrideIndicator({ name, calcParams: next } as any, paneId);
+      chart.overrideIndicator({ name, calcParams: next, paneId });
     }
   };
 
@@ -828,7 +834,7 @@ export function ResearchPage({ activeSession }: { activeSession: Session | null 
 
     const anchorTs = crosshairTs.current ?? data[Math.max(0, data.length - 100)]?.timestamp ?? data[0]!.timestamp;
 
-    chart.createIndicator({ name: "AVWAP", calcParams: [anchorTs, 0] } as any, true, { id: "candle_pane" });
+    chart.createIndicator({ name: "AVWAP", calcParams: [anchorTs, 0], paneId: "candle_pane" }, true);
     setIndicatorMenu(false);
     setStatus(`anchored VWAP from ${new Date(anchorTs).toLocaleString()}`);
   };
@@ -848,7 +854,7 @@ export function ResearchPage({ activeSession }: { activeSession: Session | null 
     if (!data.length) return;
     const start = Math.max(20, Math.floor(data.length * 0.7));
     setReplayIdx(start);
-    chartRef.current?.applyNewData(data.slice(0, start));
+    feedRef.current?.replace(data.slice(0, start));
   };
 
   const stepReplay = useCallback(() => {
@@ -857,7 +863,7 @@ export function ResearchPage({ activeSession }: { activeSession: Session | null 
       if (idx === null || idx >= data.length) return idx;
       const next = idx + 1;
       const bar = data[idx];
-      if (bar) chartRef.current?.updateData(bar);
+      if (bar) feedRef.current?.update(bar);
       return next;
     });
   }, []);
@@ -871,7 +877,7 @@ export function ResearchPage({ activeSession }: { activeSession: Session | null 
   const exitReplay = () => {
     setReplaying(false);
     setReplayIdx(null);
-    chartRef.current?.applyNewData(allDataRef.current);
+    feedRef.current?.replace(allDataRef.current);
   };
 
   const grouped = useMemo(
