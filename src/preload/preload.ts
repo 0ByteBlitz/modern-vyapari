@@ -71,6 +71,8 @@ const api = {
     return () => ipcRenderer.removeListener("chat:error", handler);
   },
   usageReport: () => ipcRenderer.invoke("usage:report"),
+  reviewModel: () => ipcRenderer.invoke("agent:reviewModel"),
+  setReviewModel: (model: string | null) => ipcRenderer.invoke("agent:setReviewModel", model),
   paperAccount: () => ipcRenderer.invoke("paper:account"),
   setPaperBalance: (v: number) => ipcRenderer.invoke("paper:setBalance", v),
   appModeStatus: () => ipcRenderer.invoke("mode:get"),

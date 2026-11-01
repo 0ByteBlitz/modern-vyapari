@@ -255,6 +255,7 @@ export function buildUsageReport(): UsageReport {
     byMode,
     cacheSavedUsd,
     /* The UI must never render this as a balance. */
-    scope: "What this app has spent, across both modes — one Anthropic bill. Anthropic exposes no account balance to a normal API key.",
+    /* Provider-neutral: the readout is measured per call, whoever bills it. */
+    scope: "Measured from each call, across both modes. This is what was spent, not an account balance.",
   };
 }

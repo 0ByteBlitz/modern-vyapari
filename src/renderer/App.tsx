@@ -50,9 +50,9 @@ function surfaceMeta(surface: Surface, session: Session | null): { title: string
     case "browser":
       return { title: "Research browser", sub: "external pages · not a trigger source" };
     case "approvals":
-      return { title: "Approvals & safety", sub: "risk engine not built — Phase 4" };
+      return { title: "Approvals & safety", sub: "no orders to approve until live trading exists" };
     case "settings":
-      return { title: "Settings", sub: "credentials · models · risk limits" };
+      return { title: "Settings", sub: "how the app trades, thinks and reaches you" };
   }
 }
 
@@ -305,7 +305,7 @@ export default function App() {
           onSessionsChanged={() => void syncSelectedSession()}
         />
         <div className="stage">
-          <ContextBar title={meta.title} subtitle={surface === "settings" ? dbStatus : meta.sub} />
+          <ContextBar title={meta.title} subtitle={meta.sub} />
           <div className="stage-body vy-scroll">
             {surface === "home" && (
               <HomePage

@@ -407,6 +407,7 @@ body {
 .badge-supervised  { background: rgba(47, 204, 139, 0.12); color: var(--up); border-color: rgba(47, 204, 139, 0.35); }
 .badge-auto        { background: rgba(139, 92, 246, 0.14); color: var(--ai-bright); border-color: rgba(139, 92, 246, 0.35); }
 .badge-retired     { background: transparent; color: var(--text-ghost); border-color: var(--border); }
+.badge-down        { background: transparent; color: var(--down); border-color: var(--down); }
 
 /* ── Semantic value colours ── */
 .v-up { color: var(--up); }
@@ -1533,6 +1534,17 @@ ol.md-list li { list-style: decimal; }
 }
 
 .settings-nav-item:hover { background: var(--surface-3); color: var(--foreground); }
+
+.settings-nav-group { display: flex; flex-direction: column; gap: 1px; }
+.settings-nav-group + .settings-nav-group { margin-top: 10px; }
+.settings-nav-heading {
+  padding: 2px 9px 4px;
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
 .settings-nav-item-active { background: rgba(34, 211, 238, 0.1); color: var(--accent); }
 
 .settings-pane {

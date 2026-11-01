@@ -496,6 +496,9 @@ export interface RendererApi {
   /** Simulated or live. `pending` is what the NEXT launch will use. */
   /** What this app has spent. Not an account balance — none is exposed. */
   usageReport(): Promise<Result<UsageReport>>;
+  /** The saved review model (null = the provider's fast model) and the one reviews will use. */
+  reviewModel(): Promise<Result<{ saved: string | null; effective: string | null }>>;
+  setReviewModel(model: string | null): Promise<Result<{ ok: true }>>;
   /** The one paper balance. Sessions are workspaces; cash is not theirs. */
   paperAccount(): Promise<Result<{ balance: number; initialBalance: number; updatedAt: number }>>;
   setPaperBalance(startingBalance: number): Promise<Result<{ ok: true }>>;
