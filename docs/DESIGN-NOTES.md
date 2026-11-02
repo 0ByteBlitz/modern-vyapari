@@ -136,6 +136,15 @@ see. Three changes, and the first is the crux:
 - **The calibration record is now evidence.** "Your range-reclaim theses trigger
   3 of 11 times" is exactly what a durable lesson should rest on, and
   distillation never saw it.
+- **Distillation follows the pair's reviewed trades, not one session's trade
+  counter.** It excludes no-trade plan resolutions even though they share the
+  `trade_review` journal kind, requires multiple closed-trade reviews, and runs
+  after recovered reviews as well as live close events. A per-mode, per-pair
+  journal-ID cursor prevents the same evidence being distilled repeatedly.
+- **Each generated lesson must cite its supporting review rows.** Invalid or
+  unsupported citations are discarded; the stored count and date span come
+  from the cited rows, not a number written by the model. The output remains in
+  the shared lesson store, not as extra journal entries.
 
 **Two fixture lessons, both the same shape as the S3-5 one:** a noise-free ramp
 and a perfect zigzag both produce **ADX 100** — pathological for a directional
