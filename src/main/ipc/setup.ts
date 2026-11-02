@@ -107,7 +107,16 @@ ipcMain.handle("setup:clearBrowserbaseKey", () =>
   );
 
   /* ── Security (app-launch gate) ────────────────────────────── */
-ipcMain.handle("security:checkWindowsHello", () => safe(() => windowsHello.checkAvailability(), "security:checkWindowsHello"));
+  /* Development only: `VYAPARI_SKIP_HELLO=1` on an UNPACKAGED run skips the
+     launch gate, so the app can be driven and screenshotted without a person at
+     the fingerprint reader. A packaged build ignores the variable — the
+     installed app always asks. Opt-in per launch, never stored. */
+ipcMain.handle("security:checkWindowsHello", () =>
+    safe(() => {
+      if (!app.isPackaged && process.env.VYAPARI_SKIP_HELLO === "1") return "unavailable" as const;
+      return windowsHello.checkAvailability();
+    }, "security:checkWindowsHello")
+  );
 
 ipcMain.handle("security:requestWindowsHello", (_e, reason: string) =>
     safe(() => {

@@ -176,8 +176,23 @@ export function describeActivity(ev: ActivityEvent): DescribedActivity {
       return { tag: "alert", tone: "decision", chore: false, text: `alert fired: ${str(d.label) ?? "an alert"}` };
     case "venue_changed":
       return { tag: "venue", tone: "warning", chore: false, text: `venue changed to ${str(d.to) ?? "?"}` };
+    /* Loud only in the direction that matters: choosing live is a warning,
+       choosing simulated is the safe default and reads as a decision. Both
+       were red, so the safe choice looked like an alarm. */
     case "app_mode_selected":
-      return { tag: "mode", tone: "warning", chore: false, text: `${str(d.mode) ?? "?"} mode selected — takes effect on the next launch` };
+      return {
+        tag: "mode",
+        tone: d.mode === "live" ? "warning" : "decision",
+        chore: false,
+        text: `${str(d.mode) ?? "?"} mode selected — takes effect on the next launch`,
+      };
+    case "app_mode_reset":
+      return {
+        tag: "mode",
+        tone: "decision",
+        chore: false,
+        text: `saved live choice cleared — live trading isn't available, so the app runs simulated`,
+      };
 
     /* ── Lifecycle. True, and not what a feed is for. ────────────── */
     case "app_started":

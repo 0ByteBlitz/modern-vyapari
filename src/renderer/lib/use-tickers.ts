@@ -88,16 +88,25 @@ export function useTickers() {
         setError("");
         // Main process already filters to comparable USDT spot pairs
         // (binance-ws.ts); the endsWith check is defence-in-depth.
-        setRawTickers(
-          data
-            .filter((t: any) => typeof t.s === "string" && t.s.endsWith("USDT"))
-            .map((t: any) => ({
-              symbol: `${t.s.slice(0, -4)}-USD`, // "BTCUSDT" -> "BTC-USD"
-              price: parseFloat(t.c),
-              change24h: parseFloat(t.P),
-              volume24h: parseFloat(t.q),
-            }))
-        );
+        const updates = data
+          .filter((t: any) => typeof t.s === "string" && t.s.endsWith("USDT"))
+          .map((t: any) => ({
+            symbol: `${t.s.slice(0, -4)}-USD`, // "BTCUSDT" -> "BTC-USD"
+            price: parseFloat(t.c),
+            change24h: parseFloat(t.P),
+            volume24h: parseFloat(t.q),
+          }))
+          .filter((t: { price: number; change24h: number; volume24h: number }) =>
+            Number.isFinite(t.price) && Number.isFinite(t.change24h) && Number.isFinite(t.volume24h)
+          );
+        /* A frame carries only the pairs that changed this second, so it
+           PATCHES the list. Replacing the list with it would show 50 pairs
+           one second and 60 the next, and drop the selected one. */
+        setRawTickers((prev) => {
+          const next = new Map(prev.map((t) => [t.symbol, t]));
+          for (const u of updates) next.set(u.symbol, u);
+          return Array.from(next.values());
+        });
       } catch {
         /* malformed frame — drop it, the next tick replaces the snapshot */
       }

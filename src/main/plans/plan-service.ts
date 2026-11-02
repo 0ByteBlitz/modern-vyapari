@@ -23,6 +23,7 @@ import { getDb, auditLog, withTransaction } from "../db/database";
 import { compileIntent, type ConditionIntent } from "./condition-intent";
 import { createLogger } from "../logger";
 import { enqueueWithin, type NotificationDraft } from "../notify/outbox";
+import { announce } from "../notify/announce";
 import { levelResolver } from "../insights/level-resolver";
 import { extractRequiredLevels } from "../strategy/strategy-spec";
 import type { ConditionGroup, EvalInterval } from "../strategy/strategy-spec";
@@ -222,6 +223,8 @@ export function recordBranchTrigger(
     }
     if (notify) enqueueWithin(db, notify);
   });
+  // After the commit: the Windows notification and the in-app toast.
+  if (notify) announce(notify);
 }
 
 export function getPlan(rowId: number): StoredPlan | null {
@@ -596,6 +599,43 @@ export function armPlan(rowId: number, now: number = Date.now()): ArmResult {
  * value depends on knowing *why* a plan ended — "never fired" and "fired and was
  * wrong" are the distinction the whole thing exists to measure.
  */
+/** Why a plan ended when its session was archived. One wording, both paths. */
+export const ARCHIVED_PLAN_REASON = "session archived — the plan was no longer watched";
+
+/**
+ * End a session's armed plans because it is being archived.
+ *
+ * The monitor skips archived sessions, so an armed plan left behind is never
+ * watched, never expires and never resolves — while every Plans page counted
+ * it as "still running". Expired is the honest end state: the thesis was never
+ * tested, and calibration counts it as not fired, never as wrong.
+ */
+export function endArmedPlans(sessionId: number): number {
+  let ended = 0;
+  for (const p of listPlans(sessionId, ["planned"])) {
+    if (transitionPlan(p.rowId, "expired", ARCHIVED_PLAN_REASON).ok) ended += 1;
+  }
+  return ended;
+}
+
+/**
+ * Startup pass: armed plans already stranded in archived sessions.
+ *
+ * Archiving didn't end plans until 2026-11-02, so sessions archived before then
+ * can still hold `planned` rows (two ARB-USD plans had sat "running" since
+ * August). Idempotent — after the first run there is nothing to find.
+ */
+export function endPlansInArchivedSessions(): number {
+  const rows = getDb()
+    .prepare(
+      `SELECT DISTINCT p.session_id AS id FROM trade_plans p
+       JOIN sessions s ON s.id = p.session_id
+       WHERE p.state = 'planned' AND s.status = 'archived'`
+    )
+    .all() as Array<{ id: number }>;
+  return rows.reduce((n, r) => n + endArmedPlans(r.id), 0);
+}
+
 export function transitionPlan(
   rowId: number,
   to: PlanState,
@@ -622,6 +662,8 @@ export function transitionPlan(
       .run(to, reason ?? plan.outcomeReason ?? null, terminal ? now : plan.armedAt, now, rowId);
     if (notify) enqueueWithin(db, notify);
   });
+  // After the commit: the Windows notification and the in-app toast.
+  if (notify) announce(notify);
 
   auditLog("plan_state_changed", { planId: rowId, slug: plan.slug, from: plan.state, to, reason });
   return { ok: true };

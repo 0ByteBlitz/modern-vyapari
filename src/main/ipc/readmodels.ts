@@ -40,6 +40,10 @@ ipcMain.handle("journal:counts", (_e, sessionId: number) => safe(() => queries.j
 
 ipcMain.handle("activity:list", (_e, limit?: number) => safe(() => queries.listActivity(limit), "activity:list"));
 
+ipcMain.handle("activity:listForSession", (_e, sessionId: number, limit?: number) =>
+    safe(() => queries.listSessionActivity(sessionId, limit), "activity:listForSession")
+  );
+
 ipcMain.handle("portfolio:summary", (_e, includeArchived?: boolean) =>
     safe(() => queries.portfolioSummary(includeArchived ?? false), "portfolio:summary")
   );

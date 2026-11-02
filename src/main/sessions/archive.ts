@@ -13,6 +13,9 @@
  *   1. close positions   — must happen while the session is still active, so
  *                          the engine's own close path (fees, PnL, review
  *                          listener) runs exactly as it would normally
+ *   1b. end armed plans  — an archived session is never monitored, so a plan
+ *                          left armed would read "running" for ever (added
+ *                          2026-11-02; two ARB-USD plans did exactly that)
  *   2. retire strategies — nothing can arm afterwards
  *   3. clear alerts      — releases their stream subscriptions
  *   4. release streams   — engine reload drops what's no longer wanted
@@ -28,6 +31,7 @@ import { AppError } from "../../shared/errors";
 import { createLogger } from "../logger";
 import type { ArchivePlan, ArchiveStepId, ArchiveSummary } from "../../shared/ipc-types";
 import { getSessionById, setSessionStatus } from "./service";
+import { endArmedPlans, listPlans } from "../plans/plan-service";
 import { listStrategies, setStrategyState } from "../strategy/strategy-service";
 import { DEFAULT_BACKTEST_CONFIG } from "../backtest/backtest-types";
 import { FEED_SCOPE_SQL } from "../integrations/feed/symbols";
@@ -109,6 +113,7 @@ export function planArchive(sessionId: number): ArchivePlan {
     pair: session.pair,
     status: session.status,
     openPositions,
+    armedPlans: listPlans(sessionId, ["planned"]).length,
     armedStrategies: strategies.filter((s) => s.state === "paper").length,
     retirableStrategies: strategies.filter((s) => s.state !== "retired").length,
     totalStrategies: strategies.length,
@@ -146,7 +151,15 @@ export async function archiveSession(sessionId: number, report: StepReporter): P
   const { paperEngine } = require("../paper/paper-exchange") as typeof import("../paper/paper-exchange");
   const { alertEngine } = require("../insights/alert-engine") as typeof import("../insights/alert-engine");
 
-  const summary: ArchiveSummary = { sessionId, pair: session.pair, closed: 0, retired: 0, alertsCleared: 0, realizedOnClose: 0 };
+  const summary: ArchiveSummary = {
+    sessionId,
+    pair: session.pair,
+    closed: 0,
+    plansEnded: 0,
+    retired: 0,
+    alertsCleared: 0,
+    realizedOnClose: 0,
+  };
 
   /* ── 1. Close open positions ── */
   report("close_positions", "running");
@@ -179,6 +192,17 @@ export async function archiveSession(sessionId: number, report: StepReporter): P
   } catch (err) {
     log.error("archive: closing positions failed", err);
     report("close_positions", "failed", err instanceof AppError ? err.userMessage : "Couldn't close the open positions.");
+    throw err;
+  }
+
+  /* ── 1b. End armed plans ── */
+  report("end_plans", "running");
+  try {
+    summary.plansEnded = endArmedPlans(sessionId);
+    report("end_plans", "done", summary.plansEnded === 0 ? "none armed" : `${summary.plansEnded} ended`);
+  } catch (err) {
+    log.error("archive: ending plans failed", err);
+    report("end_plans", "failed", "Couldn't end the armed plans.");
     throw err;
   }
 

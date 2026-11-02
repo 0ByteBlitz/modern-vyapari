@@ -17,7 +17,9 @@ const FILTERS: { id: string; label: string }[] = [
   { id: "lesson", label: "Lessons" },
   { id: "observation", label: "Observations" },
   { id: "strategy_note", label: "Strategy notes" },
-  { id: "backtest_review", label: "Backtests" },
+  /* No "Backtests" filter: backtests belong to the frozen strategy path, and
+     the agent's write_journal no longer accepts `backtest_review`. Old entries
+     still show under All, with their AI accent (AI_KINDS below). */
 ];
 
 /** Journal entries are either AI-authored or human-authored; the distinction
@@ -199,7 +201,7 @@ export function JournalPage({ activeSession }: { activeSession: Session | null }
           <div className="empty-state">
             <span>{search ? "No entries match that search." : `No journal entries for ${activeSession.pair} yet.`}</span>
             <span style={{ fontSize: "var(--text-sm)", color: "var(--text-ghost)" }}>
-              The bot writes one review automatically each time a paper position closes.
+              The bot writes one review automatically each time a position closes.
             </span>
           </div>
         )}

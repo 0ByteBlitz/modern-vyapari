@@ -12,7 +12,8 @@ import * as toolRegistry from "../agent/tool-registry";
 import { setResearchView, clearResearchView } from "../agent/research-view";
 import { createLogger } from "../logger";
 import { emitError } from "../events/outbound";
-import { buildUsageReport } from "../agent/usage";
+import { buildUsageReport, setDailyLimitUsd } from "../agent/usage";
+import { reviewModelStatus, setReviewModel } from "../agent/review";
 import { safe } from "./safe";
 
 const ipcLog = createLogger("ipc");
@@ -28,6 +29,10 @@ ipcMain.on("research:closed", () => clearResearchView());
 
   /* ── Chat (Phase 1) ─────────────────────────────────────────────── */
 ipcMain.handle("chat:history", (_e, sessionId: number | null) => safe(() => chat.getChatHistory(sessionId), "chat:history"));
+
+  /* Is a reply still being written in this conversation? A remounted chat
+     panel asks, so it shows "Thinking…" rather than an open composer. */
+ipcMain.handle("chat:busy", (_e, sessionId: number | null) => safe(() => chat.isChatBusy(sessionId), "chat:busy"));
 
 ipcMain.handle("chat:clear", (_e, sessionId: number | null) => safe(() => chat.clearChatHistory(sessionId), "chat:clear"));
 
@@ -56,6 +61,27 @@ ipcMain.handle("agent:resetTools", () =>
   );
 
 ipcMain.handle("usage:report", () => safe(() => buildUsageReport(), "usage:report"));
+
+  /* The daily AI spending limit, in USD; null clears it. */
+ipcMain.handle("usage:setDailyLimit", (_e, limit: number | null) =>
+    safe(() => {
+      setDailyLimitUsd(limit);
+      const { backgroundScheduler } = require("../services/scheduler") as typeof import("../services/scheduler");
+      void backgroundScheduler.retryPendingReviews();
+      return { ok: true as const };
+    }, "usage:setDailyLimit")
+  );
+
+  /* Which model writes post-trade reviews. Null returns to the provider's fast
+     model; the status says which one will actually run. */
+ipcMain.handle("agent:reviewModel", () => safe(() => reviewModelStatus(), "agent:reviewModel"));
+
+ipcMain.handle("agent:setReviewModel", (_e, model: string | null) =>
+    safe(() => {
+      setReviewModel(model);
+      return { ok: true as const };
+    }, "agent:setReviewModel")
+  );
 
 ipcMain.on("chat:send", (e, sessionId: number | null, messages: any[], params?: { model: string; effort: string; capabilities?: { adaptive: boolean; extended: boolean } }) => {
     /* Fire and forget over `on`, not `handle` — the reply streams back on its

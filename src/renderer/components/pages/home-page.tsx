@@ -10,6 +10,8 @@ import {
 } from "@/lib/api";
 import { formatUsd, formatPct } from "@/lib/format";
 import { describeActivity, ACTIVITY_TONE_COLOR } from "@/lib/activity";
+import { sessionState } from "@/lib/session-state";
+import { useAppMode, modeTitle } from "@/lib/mode";
 
 /**
  * Home — the landing surface.
@@ -43,14 +45,6 @@ function relTime(ms: number): string {
   return `${Math.floor(d / 86_400_000)}d ago`;
 }
 
-/** One word for a session card. An open position outranks an armed plan:
- *  it is the state with money in it. Never "idle" while either exists. */
-function sessionState(s: SessionSummary): string {
-  if (s.openCount > 0 && s.armedCount > 0) return "in position · armed";
-  if (s.openCount > 0) return "in position";
-  if (s.armedCount > 0) return "armed";
-  return "idle";
-}
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -64,11 +58,15 @@ export function HomePage({
   setup,
   onOpenSession,
   onNavigate,
+  onOpenMarket,
 }: {
   setup: SetupStatus | null;
   onOpenSession: (sessionId: number) => void;
   onNavigate: (surface: "markets" | "portfolio" | "settings" | "approvals") => void;
+  /** Open Markets on one pair — a Biggest movers tile. */
+  onOpenMarket: (symbol: string) => void;
 }) {
+  const mode = useAppMode();
   const [portfolio, setPortfolio] = useState<PortfolioSummary | null>(null);
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
   const [movers, setMovers] = useState<{ symbol: string; change24h: number; volume24h: number }[]>([]);
@@ -137,7 +135,7 @@ export function HomePage({
   if (unclosed.length > 0) {
     attention.push({
       tone: "info",
-      text: `${unclosed.length} session${unclosed.length === 1 ? "" : "s"} with an open paper position.`,
+      text: `${unclosed.length} session${unclosed.length === 1 ? "" : "s"} with an open position.`,
     });
   }
 
@@ -201,11 +199,11 @@ export function HomePage({
         </section>
       )}
 
-      {/* ── 2. paper state + what happened ── */}
+      {/* ── 2. trading state + what happened ── */}
       <div className="home-split">
         <section className="panel">
           <div className="panel-header">
-            <span className="label-micro">Paper performance · all sessions</span>
+            <span className="label-micro">{modeTitle(mode)} performance · all sessions</span>
           </div>
           <div className="stat-strip" style={{ border: "none", borderRadius: 0 }}>
             <div className="stat-cell">
@@ -238,8 +236,10 @@ export function HomePage({
           </div>
           <div className="panel-footer">
             {totals?.closedCount === 0
-              ? "No paper trades yet — these fill in once an armed plan takes a position."
-              : "Simulated fills, fee- and slippage-adjusted. Not live performance."}
+              ? "No trades yet — these fill in once an armed plan takes a position."
+              : mode === "live"
+                ? "Fills from the exchange, after fees."
+                : "Simulated fills, fee- and slippage-adjusted. Not live performance."}
           </div>
         </section>
 
@@ -337,12 +337,19 @@ export function HomePage({
         </div>
         <div className="home-movers">
           {movers.map((m) => (
-            <div key={m.symbol} className="home-mover">
+            /* A button, because it reads as one: the tiles looked clickable
+               and did nothing. Opens Markets on that pair. */
+            <button
+              key={m.symbol}
+              className="home-mover"
+              onClick={() => onOpenMarket(m.symbol)}
+              title={`Open ${m.symbol} in Markets`}
+            >
               <span style={{ fontWeight: 600 }}>{m.symbol}</span>
               <span className={`mono ${m.change24h >= 0 ? "v-up" : "v-down"}`}>
                 {formatPct(m.change24h, 2, true)}
               </span>
-            </div>
+            </button>
           ))}
           {movers.length === 0 && (
             <span style={{ fontSize: "var(--text-md)", color: "var(--text-faint)", padding: "10px 12px" }}>

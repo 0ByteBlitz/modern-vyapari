@@ -35,6 +35,10 @@ const log = createLogger("tools");
 const VALID_INTERVALS = [1, 5, 15, 30, 60, 240, 1440];
 const VALID_JOURNAL_KINDS = ["trade_review", "backtest_review", "strategy_note", "observation", "lesson"] as const;
 type JournalKind = (typeof VALID_JOURNAL_KINDS)[number];
+/* What the agent may WRITE. `backtest_review` is readable (old entries stay
+   searchable) but no longer written: backtests belong to the frozen strategy
+   path, and the Journal dropped its Backtests filter (2026-11-02). */
+const WRITABLE_JOURNAL_KINDS = VALID_JOURNAL_KINDS.filter((k) => k !== "backtest_review");
 
 /** Anthropic tool definitions — passed verbatim into the messages.stream() call. */
 export const SESSION_TOOLS = [
@@ -119,7 +123,7 @@ export const SESSION_TOOLS = [
         content: { type: "string", description: "The journal entry text." },
         kind: {
           type: "string",
-          enum: VALID_JOURNAL_KINDS,
+          enum: WRITABLE_JOURNAL_KINDS,
           description: "Entry category.",
         },
         tags: {
@@ -445,7 +449,7 @@ export const PHASE2_TOOLS = [
             "Alert condition (required for 'add'). Must include:\n" +
             '- indicator: string (e.g. "rsi", "price", "volume", "macd")\n' +
             '- params: object (e.g. { period: 14 }), use {} for price/volume\n' +
-            '- field?: string (for multi-output indicators, e.g. "histogram" for MACD)\n' +
+            '- field?: string (for multi-output indicators, e.g. "histogram" for MACD; for price, one of open/high/low/close — defaults to close)\n' +
             '- operator: "above"|"below"|"crosses_above"|"crosses_below"|"between"\n' +
             '- value: number (or [low, high] for "between")',
         },
@@ -581,8 +585,8 @@ function toolWriteJournal(sessionId: number, input: Record<string, unknown>): un
   const content = typeof input.content === "string" ? input.content.trim() : "";
   if (!content) throw new Error("content is required");
   const kind = typeof input.kind === "string" ? (input.kind as JournalKind) : null;
-  if (!kind || !VALID_JOURNAL_KINDS.includes(kind)) {
-    throw new Error(`kind must be one of: ${VALID_JOURNAL_KINDS.join(", ")}`);
+  if (!kind || !(WRITABLE_JOURNAL_KINDS as readonly string[]).includes(kind)) {
+    throw new Error(`kind must be one of: ${WRITABLE_JOURNAL_KINDS.join(", ")}`);
   }
   const tags = Array.isArray(input.tags) ? input.tags.filter((t): t is string => typeof t === "string").join(",") : "";
 
@@ -999,7 +1003,7 @@ function toolGetOrderFlow(sessionId: number, input: Record<string, unknown>): un
       coverage_note:
         cvd.coverage >= 0.999
           ? "Every bar has a known aggressor split."
-          : "Some bars have an UNKNOWN aggressor split. The gap is missing data, not flat aggression — say so, and point at Settings › Data & feeds to repair it.",
+          : "Some bars have an UNKNOWN aggressor split. The gap is missing data, not flat aggression — say so, and point at Settings › Analysis feed to repair it.",
       bars: points.length,
       first_known: first,
       last_known: last,

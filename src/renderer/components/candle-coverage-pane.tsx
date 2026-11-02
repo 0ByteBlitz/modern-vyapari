@@ -20,7 +20,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, isError, errorText } from "@/lib/api";
 import type { CandleCoverage, CandleRepairResult, CandleRepairProgress } from "@/lib/api";
-import { RefreshCw, Wrench, Check, AlertTriangle } from "lucide-react";
+import { Wrench, Check, AlertTriangle } from "lucide-react";
+import { RefreshButton } from "@/components/refresh-button";
 
 const MINUTE_LABEL: Record<number, string> = {
   1: "1m", 5: "5m", 15: "15m", 30: "30m", 60: "1h", 240: "4h", 1440: "1d",
@@ -52,10 +53,11 @@ export function CandleCoveragePane() {
     const res = await api.getCandleCoverage();
     if (isError(res)) {
       setError(errorText(res));
-      return;
+      return false;
     }
     setError(null);
     setRows(res);
+    return true;
   }, []);
 
   useEffect(() => {
@@ -89,9 +91,9 @@ export function CandleCoveragePane() {
     <section className="panel">
       <div className="panel-header">
         <span style={{ fontSize: "12.5px", fontWeight: 600 }}>Order-flow coverage</span>
-        <button className="btn ml-auto" onClick={() => void load()} disabled={busy}>
-          <RefreshCw size={13} /> Refresh
-        </button>
+        <span className="ml-auto">
+          <RefreshButton onRefresh={load} title="Refresh coverage" />
+        </span>
         <button
           className="btn"
           onClick={() => void repair()}
