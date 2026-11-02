@@ -11,7 +11,7 @@ import * as candleRepair from "../data/candle-repair";
 import * as derivatives from "../data/derivatives";
 import { binanceWS } from "../data/binance-ws";
 import { emitTo } from "../events/outbound";
-import { getAnalysisCandles, getTickerSnapshot } from "../data/analysis-candles";
+import { getAnalysisCandles, getTickerSnapshot, pingFeed } from "../data/analysis-candles";
 import { venue } from "../integrations/venue/registry";
 import { safe } from "./safe";
 
@@ -26,6 +26,9 @@ ipcMain.handle("candles:analysis", (_e, symbol: string, intervalMinutes: number,
   /* Binance 24h snapshot — first paint for the market list, and the fallback
      when the ticker websocket can't connect. */
 ipcMain.handle("candles:tickerSnapshot", () => safe(() => getTickerSnapshot(), "candles:tickerSnapshot"));
+
+  /* A real round trip to the analysis feed, for health readouts. */
+ipcMain.handle("feed:ping", () => safe(() => pingFeed(), "feed:ping"));
 
   /* Cross-venue derivatives (Binance futures + Hyperliquid perps). Already
      available to the agent as a tool; this exposes the same data to the UI. */

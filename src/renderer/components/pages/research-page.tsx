@@ -228,6 +228,10 @@ function IndicatorRow({
 export function ResearchPage({ activeSession }: { activeSession: Session | null }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<Chart | null>(null);
+  /** Increments per data request; a reply for an older one is dropped. */
+  const loadSeq = useRef(0);
+  /** The series the chart currently holds; live ticks apply only to it. */
+  const loadedKey = useRef<string | null>(null);
   const feedRef = useRef<ChartFeed | null>(null);
   /** overlayId → drawings row id, so an edit updates rather than duplicates. */
   const overlayDb = useRef<Map<string, number>>(new Map());
@@ -588,7 +592,14 @@ export function ResearchPage({ activeSession }: { activeSession: Session | null 
     if (!feed) return;
     setStatus("loading…");
 
+    /* Only the newest request may draw. Clicking 1m then 1D let the slower 1m
+       reply land last, so the 1D button sat highlighted over 1-minute bars —
+       and the 1D ticks then patched into them. Same class as the Markets fix
+       (#45), on the page that didn't get it. */
+    const seq = ++loadSeq.current;
+    loadedKey.current = null;
     const res = await api.getAnalysisCandles(symbol, intervalMin, 1000);
+    if (seq !== loadSeq.current || feedRef.current !== feed) return;
     if (isError(res)) {
       setStatus(errorText(res));
       feed.replace([]);
@@ -612,6 +623,7 @@ export function ResearchPage({ activeSession }: { activeSession: Session | null 
     // otherwise picks its own and the axis disagrees with the tables.
     const last = data[data.length - 1];
     feed.replace(data, { ticker: symbol, intervalMin, pricePrecision: priceDecimals(last?.close ?? 0) });
+    loadedKey.current = `${symbol}:${intervalMin}`;
 
     // Flag a stale window rather than drawing old bars as if they were live.
     const barMs = intervalMin * 60_000;
@@ -637,6 +649,9 @@ export function ResearchPage({ activeSession }: { activeSession: Session | null 
     api.subscribeBinanceCandles(symbol, intervalMin);
     const off = api.onCandleUpdate(({ symbol: s, intervalMin: iv, candle }) => {
       if (s !== symbol || iv !== intervalMin) return;
+      // Until this series' history has loaded, the chart still holds the
+      // previous one; a tick patched onto it would mix two series.
+      if (loadedKey.current !== `${symbol}:${intervalMin}`) return;
       // Replay is a frozen view of history; a live tick must not jump it.
       if (replayIdx !== null) return;
       feedRef.current?.update({
