@@ -3,7 +3,7 @@ import * as path from "path";
 import { registerIpcHandlers } from "./ipc";
 import { initDatabase, getDb, auditLog } from "./db/database";
 import { initSharedStore, adoptLegacyLessons, adoptLegacyUsage } from "./db/shared-store";
-import { readMode, resolveMode, lockMode, appMode } from "./modes/app-mode";
+import { readMode, resolveMode, lockMode, appMode, writeMode } from "./modes/app-mode";
 import { liveExecutionBuilt } from "./integrations/venue/registry";
 import { clearSelectionForLaunch } from "./sessions/service";
 import { initLogger, createLogger } from "./logger";
@@ -112,6 +112,9 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  /* Windows only shows an app's notifications under a stable app id; the
+     installer sets it from `build.appId`, an unpackaged run needs it here. */
+  if (process.platform === "win32") app.setAppUserModelId("com.modernvyapari.app");
   Menu.setApplicationMenu(null);   // hide native menu — app uses custom titlebar
   if (process.platform === "darwin" && !app.isPackaged) app.dock?.setIcon(ICON_PATH);
 
@@ -127,18 +130,36 @@ app.whenReady().then(() => {
      the mode decides which file opens. Anything unreadable resolves to
      simulated — a corrupt config must never be the reason the app comes up
      pointed at real money. A live choice runs simulated until some venue can
-     place orders (`resolveMode`). */
+     place orders (`resolveMode`).
+
+     And a live choice that cannot run is CLEARED, not kept (2026-11-01, owner
+     decision). Kept, it waited invisibly — the Mode pane showed Simulated
+     selected — and the first launch after live execution shipped would have
+     come up live on a choice made before live trading existed. Live must be
+     chosen when it can actually run. */
   const chosen = readMode(app.getPath("userData"));
   const mode = resolveMode(chosen, liveExecutionBuilt());
   lockMode(mode);
-  if (chosen !== mode) log.warn(`Live mode is selected but no venue can place orders; running ${mode}.`);
+  const resetStaleChoice = chosen !== mode;
+  if (resetStaleChoice) {
+    writeMode(app.getPath("userData"), mode);
+    log.warn(`A saved live choice was cleared: no venue can place orders, so the app runs ${mode}.`);
+  }
   log.info(`Starting in ${mode} mode.`);
 
   initDatabase(app.getPath("userData"));
   /* Audited AFTER the database opens, not before — `auditLog` writes to it.
      The first version of this block recorded the mode first, which read
      naturally and threw "Database not initialized" on every launch. */
+  if (resetStaleChoice) auditLog("app_mode_reset", { from: chosen, to: mode, reason: "live execution not built" });
   auditLog("app_started", { mode });
+  /* Armed plans stranded in archived sessions (archiving didn't end plans
+     before 2026-11-02): ended here, before any surface counts them. */
+  {
+    const { endPlansInArchivedSessions } = require("./plans/plan-service") as typeof import("./plans/plan-service");
+    const ended = endPlansInArchivedSessions();
+    if (ended > 0) log.info(`Ended ${ended} armed plan(s) left in archived sessions.`);
+  }
   /* The one store both modes open: lessons, because what you learn about a
      market is true in both worlds, and API spend, because there is one
      Anthropic bill. Everything else stays mode-owned — a hit rate must never

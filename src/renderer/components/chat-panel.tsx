@@ -139,6 +139,13 @@ export function ChatPanel({ sessionId, emptyState }: ChatPanelProps) {
         setMessages(res);
       }
     });
+    /* A panel that remounts mid-reply (session switch, Browser and back) must
+       not offer an open composer: a second message would start a second turn
+       on the same conversation. Main refuses that too; this keeps the screen
+       honest about it. `chat:complete` clears the flag as usual. */
+    api.isChatBusy(sessionId).then((res) => {
+      if (!isError(res) && res) setIsStreaming(true);
+    });
   }, [sessionId]);
 
   // Setup stream listeners
@@ -165,6 +172,7 @@ export function ChatPanel({ sessionId, emptyState }: ChatPanelProps) {
     const unsubComplete = api.onChatComplete(({ conversation }) => {
       if (!forMe(conversation)) return;
       setIsStreaming(false);
+      setNotice(null);
       // Optional: re-fetch history to get real DB IDs
       api.getChatHistory(sessionId).then((res) => {
         if (!isError(res)) setMessages(res);
@@ -426,7 +434,7 @@ export function ChatPanel({ sessionId, emptyState }: ChatPanelProps) {
           <div className="text-xs text-muted-foreground text-center p-3 bg-secondary/40 rounded-md border border-border/50 space-y-1">
             <div className="font-medium text-foreground">Chat log is clear.</div>
             <div className="text-text-faint">
-              Session journal entries & distilled lessons remain preserved in SQLite memory and system context.
+              The agent still reads this session's journal and lessons.
             </div>
           </div>
         )}

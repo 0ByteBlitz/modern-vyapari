@@ -20,7 +20,8 @@ import {
   SlidersHorizontal,
   X,
 } from "lucide-react";
-import { api, isError, type Session, type PaperStats, errorText } from "@/lib/api";
+import { api, isError, type Session, type PaperStats, type SessionSummary, errorText } from "@/lib/api";
+import { sessionState } from "@/lib/session-state";
 import { ArchiveSessionDialog } from "@/components/archive-session-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatUsd } from "@/lib/format";
@@ -79,6 +80,7 @@ export function SessionRail({ activeSessionId, surface, onSelectSession, onNavig
   const [showArchived, setShowArchived] = useState(false);
   const [stats, setStats] = useState<PaperStats | null>(null);
   const [planCount, setPlanCount] = useState<number | null>(null);
+  const [armedCount, setArmedCount] = useState<number | null>(null);
   const [pairs, setPairs] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
   const [newPair, setNewPair] = useState("");
@@ -105,6 +107,24 @@ export function SessionRail({ activeSessionId, surface, onSelectSession, onNavig
     };
   }, [menuFor]);
 
+  /* What each session is doing, for the dots — the same summary Home reads, so
+     a dot and a Home card can never disagree. */
+  const [summaries, setSummaries] = useState<Map<number, SessionSummary>>(new Map());
+  const loadSummaries = useCallback(async () => {
+    const res = await api.portfolioSummary(false);
+    if (!isError(res)) setSummaries(new Map(res.sessions.map((s) => [s.id, s])));
+  }, []);
+
+  useEffect(() => {
+    void loadSummaries();
+    const id = setInterval(() => void loadSummaries(), 20_000);
+    const off = api.onDataUpdated(() => void loadSummaries());
+    return () => {
+      clearInterval(id);
+      off();
+    };
+  }, [loadSummaries, activeSessionId, surface]);
+
   const load = useCallback(async () => {
     const [all, active] = await Promise.all([api.listSessions(true), api.listSessions(false)]);
     if (isError(all) || isError(active)) {
@@ -126,6 +146,7 @@ export function SessionRail({ activeSessionId, surface, onSelectSession, onNavig
     if (activeSessionId === null) {
       setStats(null);
       setPlanCount(null);
+      setArmedCount(null);
       return;
     }
     void (async () => {
@@ -137,6 +158,7 @@ export function SessionRail({ activeSessionId, surface, onSelectSession, onNavig
       ]);
       setStats(isError(s) ? null : s);
       setPlanCount(isError(plans) ? null : plans.length);
+      setArmedCount(isError(plans) ? null : plans.filter((p) => p.state === "planned").length);
     })();
   }, [activeSessionId, surface]);
 
@@ -276,8 +298,8 @@ export function SessionRail({ activeSessionId, surface, onSelectSession, onNavig
           const open = isSelected && isSessionSurface(surface);
           const pnl = open && stats ? stats.realizedPnl : null;
           const pnlText = pnl === null ? "" : formatUsd(pnl, { sign: true });
-          const dotClass =
-            session.status === "paused" ? "rail-dot-paused" : "rail-dot-active";
+          const summary = summaries.get(session.id);
+          const paused = session.status === "paused";
 
           return (
             <div key={session.id} className="flex flex-col">
@@ -290,7 +312,10 @@ export function SessionRail({ activeSessionId, surface, onSelectSession, onNavig
                   onClick={() => onSelectSession(session)}
                   title={open ? undefined : isSelected ? "Selected session — click to return to it" : undefined}
                 >
-                  <span className={`rail-dot ${dotClass}`} />
+                  <span
+                    className={`rail-dot ${paused ? "rail-dot-paused" : "rail-dot-active"}`}
+                    title={paused ? "paused" : summary ? `active · ${sessionState(summary)}` : "active"}
+                  />
                   <span className="rail-session-pair">{session.pair}</span>
                   {pnlText && (
                     <span
@@ -342,8 +367,12 @@ export function SessionRail({ activeSessionId, surface, onSelectSession, onNavig
               {open && (
                 <>
                   <div className="rail-session-meta">
+                    {/* What this session is doing, in Home's words. It used to
+                        end in "$10,000.00 cash" — the one shared account
+                        balance, shown under every session as if it were the
+                        session's own money. */}
                     {stats
-                      ? `${stats.openCount} open · ${stats.closedCount} closed · $${formatUsd(stats.cashBalance)} cash`
+                      ? `${armedCount ?? 0} armed · ${stats.openCount} open · ${stats.closedCount} closed`
                       : session.status}
                   </div>
                   <div className="rail-surfaces">

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, isError, type PortfolioSummary } from "@/lib/api";
 import { BalancesCard } from "@/components/balances-card";
 import { formatUsd, formatPct } from "@/lib/format";
+import { useAppMode } from "@/lib/mode";
 
 /**
  * Portfolio — the only surface that crosses sessions.
@@ -34,6 +35,7 @@ function StatCell({
 }
 
 export function PortfolioPage({ onOpenSession }: { onOpenSession: (s: { id: number; pair: string }) => void }) {
+  const mode = useAppMode();
   const [data, setData] = useState<PortfolioSummary | null>(null);
   const [includeArchived, setIncludeArchived] = useState(false);
 
@@ -66,7 +68,7 @@ export function PortfolioPage({ onOpenSession }: { onOpenSession: (s: { id: numb
           label="Realised PnL"
           value={formatUsd(totals.realizedPnl, { sign: true })}
           tone={totals.realizedPnl > 0 ? "up" : totals.realizedPnl < 0 ? "down" : "neutral"}
-          sub="paper, all sessions"
+          sub={`${mode}, all sessions`}
         />
         {/* Equity first: it is what the account is worth. Cash beside it,
             because they diverge the moment a position opens — the money is
@@ -104,13 +106,13 @@ export function PortfolioPage({ onOpenSession }: { onOpenSession: (s: { id: numb
       </div>
 
       {/* Real account holdings, valued from the venue's tickers — execution-side
-          truth, deliberately kept separate from the paper figures above so the
+          truth, deliberately kept separate from the simulated figures above so the
           two can never be mistaken for each other. */}
       <section className="panel">
         <div className="panel-header">
           <span className="label-micro">Exchange account · real holdings</span>
           <span className="ml-auto" style={{ fontSize: "var(--text-xs)", color: "var(--text-faint)" }}>
-            not paper — this is your actual balance
+            not simulated — this is your actual balance
           </span>
         </div>
         <div className="panel-body">
@@ -120,7 +122,7 @@ export function PortfolioPage({ onOpenSession }: { onOpenSession: (s: { id: numb
 
       <section className="panel">
         <div className="panel-header">
-          <span className="label-micro">Sessions · paper results</span>
+          <span className="label-micro">Sessions · {mode} results</span>
           <label className="ml-auto flex cursor-pointer select-none items-center gap-1.5" style={{ fontSize: "var(--text-xs)", color: "var(--text-faint)" }}>
             <input type="checkbox" className="accent-primary" checked={includeArchived} onChange={(e) => setIncludeArchived(e.target.checked)} />
             include archived
@@ -170,7 +172,9 @@ export function PortfolioPage({ onOpenSession }: { onOpenSession: (s: { id: numb
         )}
         <div className="panel-footer">
           <span>
-            All figures are paper results, fee- and slippage-adjusted — not live performance.
+            {mode === "live"
+              ? "All figures are live results, after fees."
+              : "All figures are simulated results, fee- and slippage-adjusted — not live performance."}
           </span>
         </div>
       </section>

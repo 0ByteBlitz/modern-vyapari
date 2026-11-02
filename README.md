@@ -213,6 +213,9 @@ analysis comes from Binance's **public** endpoints — no Binance account needed
 | `npm run package:linux` / `package:mac` | AppImage / dmg — built in CI, not yet run on real machines |
 | `npm run inspect-db` | Read-only look at your local database |
 
+For automated testing of a dev build, `VYAPARI_SKIP_HELLO=1 npm start` skips the Windows Hello
+launch lock. It applies only to unpackaged runs; an installed build always asks.
+
 ## Architecture
 
 Electron + TypeScript · React + Vite + Tailwind v4 + shadcn/ui · `node:sqlite` (zero native

@@ -17,6 +17,8 @@ export class BackgroundSchedulerService {
    *  already gone away. A stop that doesn't stop everything is worse than no
    *  stop, because the caller believes teardown is complete. */
   private startupCatchUpTimer: NodeJS.Timeout | null = null;
+  private dailyReviewCatchUpTimer: NodeJS.Timeout | null = null;
+  private reviewCatchUpInFlight = false;
   private active = false;
 
   public start(): void {
@@ -38,6 +40,8 @@ export class BackgroundSchedulerService {
       this.startupCatchUpTimer = null;
       void this.runMissedAlertCheck();
     }, 5000);
+
+    this.scheduleDailyReviewCatchUp();
   }
 
   public stop(): void {
@@ -48,13 +52,43 @@ export class BackgroundSchedulerService {
     if (this.equitySnapshotTimer) clearInterval(this.equitySnapshotTimer);
     if (this.feedWatchdogTimer) clearInterval(this.feedWatchdogTimer);
     if (this.startupCatchUpTimer) clearTimeout(this.startupCatchUpTimer);
+    if (this.dailyReviewCatchUpTimer) clearTimeout(this.dailyReviewCatchUpTimer);
 
     this.alertCheckTimer = null;
     this.equitySnapshotTimer = null;
     this.feedWatchdogTimer = null;
     this.startupCatchUpTimer = null;
+    this.dailyReviewCatchUpTimer = null;
 
     log.info("Background Job Scheduler STOPPED.");
+  }
+
+  /** Retry deferred AI reviews when the local-day spending window resets. */
+  private scheduleDailyReviewCatchUp(): void {
+    const nextReset = new Date();
+    nextReset.setHours(24, 0, 0, 25);
+    this.dailyReviewCatchUpTimer = setTimeout(() => {
+      this.dailyReviewCatchUpTimer = null;
+      if (!this.active) return;
+      void this.retryPendingReviews().finally(() => {
+        if (this.active) this.scheduleDailyReviewCatchUp();
+      });
+    }, Math.max(1, nextReset.getTime() - Date.now()));
+  }
+
+  /** Run the existing sequential catch-up after the owner changes the limit. */
+  public async retryPendingReviews(): Promise<void> {
+    if (this.reviewCatchUpInFlight) return;
+    this.reviewCatchUpInFlight = true;
+    try {
+      const { reviewPendingPositions, reviewPendingPlans } = require("../agent/review") as typeof import("../agent/review");
+      await reviewPendingPositions();
+      await reviewPendingPlans();
+    } catch (err) {
+      log.error("Deferred AI review catch-up failed", err);
+    } finally {
+      this.reviewCatchUpInFlight = false;
+    }
   }
 
   /**
