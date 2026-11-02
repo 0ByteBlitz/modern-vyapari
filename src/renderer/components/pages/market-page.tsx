@@ -3,6 +3,7 @@ import { CandlesCard } from "@/components/candles-card";
 import { DerivativesStrip } from "@/components/derivatives-strip";
 import { Input } from "@/components/ui/input";
 import { useTickers } from "@/lib/use-tickers";
+import { formatPrice } from "@/lib/format";
 import { ArrowDownRight, ArrowUpRight, Search, Flame, Zap } from "lucide-react";
 
 // Below this 24h quote volume (USDT), a ticker is too illiquid to trust for
@@ -139,7 +140,9 @@ export function MarketPage({ lockedSymbol }: { lockedSymbol?: string } = {}) {
                         )}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        ${t.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}
+                        {/* The app-wide price rule. Six fixed decimals showed PEPE as
+                            $0.000005 and would show anything smaller as $0.00. */}
+                        ${formatPrice(t.price)}
                       </div>
                       <div className="text-[10px] text-muted-foreground/60">Vol ${formatVolume(t.volume24h)}</div>
                     </div>

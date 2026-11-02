@@ -27,6 +27,8 @@ export function ContextBar({ title, subtitle }: { title: string; subtitle?: stri
      reports *execution* health, so labelling it "RevX" when the venue is
      something else would be a status line about a system that isn't running. */
   const [venueName, setVenueName] = useState("Venue");
+  /* The simulated venue has no connection, so it has no latency to show. */
+  const [simulatedVenue, setSimulatedVenue] = useState(false);
   const [feeds, setFeeds] = useState<Feed[]>([
     { name: "Binance", tone: "idle", value: "…" },
     { name: "Venue", tone: "idle", value: "…" },
@@ -36,7 +38,10 @@ export function ContextBar({ title, subtitle }: { title: string; subtitle?: stri
     let cancelled = false;
     void (async () => {
       const info = await api.getVenueInfo();
-      if (!cancelled && !isError(info)) setVenueName(info.active.displayName);
+      if (!cancelled && !isError(info)) {
+        setVenueName(info.active.displayName);
+        setSimulatedVenue(info.active.id === "simulated");
+      }
     })();
     return () => {
       cancelled = true;
@@ -50,21 +55,31 @@ export function ContextBar({ title, subtitle }: { title: string; subtitle?: stri
       // Both feeds are measured by an actual round trip, not assumed. This
       // bar previously hardcoded Binance as healthy, which made it worse than
       // useless: it read green while the market page couldn't load at all.
-      const t0 = Date.now();
-      const [binance, venueHealth] = await Promise.all([
-        api.getAnalysisCandles("BTC-USD", 60, 1),
-        api.getTickers(),
+      //
+      // And measured SEPARATELY, against the feed itself (2026-11-02). It timed
+      // a candle read, which the local cache answers in ~0 ms whether or not
+      // Binance is reachable, and gave both chips one shared time.
+      const timed = async <T,>(call: () => Promise<T>): Promise<[T, number]> => {
+        const t0 = Date.now();
+        const r = await call();
+        return [r, Date.now() - t0];
+      };
+      const [[binance, binanceMs], [venueHealth, venueMs]] = await Promise.all([
+        timed(() => api.pingFeed()),
+        timed(() => api.getTickers()),
       ]);
       if (cancelled) return;
-      const ms = Date.now() - t0;
+
+      const chip = (name: string, failed: boolean, ms: number): Feed =>
+        failed
+          ? { name, tone: "down", value: "error" }
+          : { name, tone: ms > 3000 ? "caution" : "up", value: `${(ms / 1000).toFixed(1)}s` };
 
       setFeeds([
-        isError(binance)
-          ? { name: "Binance", tone: "down", value: "error" }
-          : { name: "Binance", tone: ms > 3000 ? "caution" : "up", value: `${(ms / 1000).toFixed(1)}s` },
-        isError(venueHealth)
-          ? { name: venueName, tone: "down", value: "error" }
-          : { name: venueName, tone: ms > 3000 ? "caution" : "up", value: `${(ms / 1000).toFixed(1)}s` },
+        chip("Binance", isError(binance), binanceMs),
+        simulatedVenue
+          ? { name: "Venue", tone: "idle", value: "simulated" }
+          : chip(venueName, isError(venueHealth), venueMs),
       ]);
     };
 
@@ -77,7 +92,7 @@ export function ContextBar({ title, subtitle }: { title: string; subtitle?: stri
     /* `venueName` is a real dependency: without it this effect would close over
        the initial placeholder and the health row would read "Venue" forever,
        even after the adapter's name arrived. */
-  }, [venueName]);
+  }, [venueName, simulatedVenue]);
 
   return (
     <div className="context-bar">

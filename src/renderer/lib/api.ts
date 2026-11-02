@@ -403,6 +403,8 @@ export interface RendererApi {
   getAnalysisCandles(symbol: string, intervalMinutes: number, limit?: number): Promise<Result<Candle[]>>;
   /** One-shot Binance 24h snapshot — first paint for the market list. */
   getTickerSnapshot(): Promise<Result<{ symbol: string; price: number; change24h: number; volume24h: number }[]>>;
+  /** Milliseconds for one round trip to the analysis feed; an error when it doesn't answer. */
+  pingFeed(): Promise<Result<number>>;
   /** Cross-venue derivatives: Binance futures + Hyperliquid perps, never blended. */
   getDerivatives(symbol: string): Promise<Result<DerivativesMetrics>>;
   /** Measured Revolut X vs. Binance spread for a pair. */

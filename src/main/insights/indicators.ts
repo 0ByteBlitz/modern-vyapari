@@ -862,6 +862,74 @@ export function computeFromCandles(
 /* ── DB-backed computation (with backfill) ──────────────────────────── */
 
 /**
+ * The newest `bars` cached candles for a symbol/interval, oldest first, after
+ * making sure the cache actually reaches the present.
+ *
+ * **This read `ORDER BY start_ms ASC LIMIT n` until 2026-11-02** — the OLDEST n
+ * bars in the cache, not the newest. Every indicator the agent quoted as
+ * "current" was computed on whatever history happened to be cached first:
+ * BTC-USD 1h RSI ended on 12 July while the cache ran to 1 November; PENDLE
+ * 1h was nine months stale. Nothing noticed, because a plausible RSI from July
+ * looks exactly like a plausible RSI from today.
+ *
+ * Freshness follows `getAnalysisCandles`: a window that is patchy (under 90%
+ * of the bars it should hold) or whose newest bar is more than two bars old is
+ * re-synced from the feed before it is read. A sync failure is logged and the
+ * cache is served — the result's timestamps still say how old it is.
+ */
+async function loadRecentCandles(symbol: string, intervalMin: number, bars: number): Promise<CandleNumeric[]> {
+  const db = getDb();
+  const barMs = intervalMin * 60_000;
+
+  const countRow = db
+    .prepare(
+      `SELECT COUNT(*) AS c, MIN(start_ms) AS oldest FROM candles
+       WHERE symbol = ? AND interval_min = ? AND ${FEED_SCOPE_SQL}`
+    )
+    .get(symbol, intervalMin) as { c: number; oldest: number | null } | undefined;
+
+  if ((countRow?.c ?? 0) < bars) {
+    const shortfall = bars - (countRow?.c ?? 0) + 50; // fetch a bit extra
+    await backfillFromBinance(symbol, intervalMin, shortfall, countRow?.oldest ?? null);
+  }
+
+  const windowStart = Date.now() - bars * barMs;
+  const coverage = db
+    .prepare(
+      `SELECT COUNT(*) AS c, MAX(start_ms) AS newest FROM candles
+       WHERE symbol = ? AND interval_min = ? AND ${FEED_SCOPE_SQL} AND start_ms >= ?`
+    )
+    .get(symbol, intervalMin, windowStart) as { c: number; newest: number | null } | undefined;
+  const patchy = (coverage?.c ?? 0) < bars * 0.9;
+  const stale = coverage?.newest == null || Date.now() - coverage.newest > barMs * 2;
+  if (patchy || stale) {
+    try {
+      await syncRecentFromBinance(symbol, intervalMin, windowStart);
+    } catch (err) {
+      log.warn(`Indicator window sync failed for ${symbol} ${intervalMin}m — using the cache as it is`, err);
+    }
+  }
+
+  const rows = db
+    .prepare(
+      `SELECT start_ms, open, high, low, close, volume FROM candles
+       WHERE symbol = ? AND interval_min = ? AND ${FEED_SCOPE_SQL}
+       ORDER BY start_ms DESC
+       LIMIT ?`
+    )
+    .all(symbol, intervalMin, bars) as unknown as Omit<CandleRow, "symbol" | "interval_min" | "source">[];
+
+  return rows.reverse().map((r) => ({
+    timestamp: r.start_ms,
+    open: parseFloat(r.open),
+    high: parseFloat(r.high),
+    low: parseFloat(r.low),
+    close: parseFloat(r.close),
+    volume: parseFloat(r.volume),
+  }));
+}
+
+/**
  * Compute a single indicator for a symbol/interval, reading candles from the
  * SQLite cache. If the cache doesn't have enough history, auto-fetches from
  * the Binance REST API and caches the result.
@@ -876,42 +944,7 @@ export async function computeIndicator(
   const warmup = estimateWarmupBars(indicatorName, params);
   const desiredBars = (options?.limit ?? 100) + warmup;
 
-  const db = getDb();
-
-  // Check how many cached candles we have
-  const countRow = db
-    .prepare(
-      `SELECT COUNT(*) AS c, MIN(start_ms) AS oldest FROM candles
-       WHERE symbol = ? AND interval_min = ? AND ${FEED_SCOPE_SQL}`
-    )
-    .get(symbol, intervalMin) as { c: number; oldest: number | null } | undefined;
-
-  const cachedCount = countRow?.c ?? 0;
-
-  if (cachedCount < desiredBars) {
-    // Auto-fetch from Binance REST
-    const shortfall = desiredBars - cachedCount + 50; // fetch a bit extra
-    await backfillFromBinance(symbol, intervalMin, shortfall, countRow?.oldest ?? null);
-  }
-
-  // Read candles from cache
-  const rows = db
-    .prepare(
-      `SELECT start_ms, open, high, low, close, volume FROM candles
-       WHERE symbol = ? AND interval_min = ? AND ${FEED_SCOPE_SQL}
-       ORDER BY start_ms ASC
-       LIMIT ?`
-    )
-    .all(symbol, intervalMin, desiredBars) as unknown as Omit<CandleRow, "symbol" | "interval_min" | "source">[];
-
-  const candles: CandleNumeric[] = rows.map((r) => ({
-    timestamp: r.start_ms,
-    open: parseFloat(r.open),
-    high: parseFloat(r.high),
-    low: parseFloat(r.low),
-    close: parseFloat(r.close),
-    volume: parseFloat(r.volume),
-  }));
+  const candles = await loadRecentCandles(symbol, intervalMin, desiredBars);
 
   if (candles.length === 0) {
     return {
@@ -940,38 +973,7 @@ export async function computeIndicatorBatch(
   const maxWarmup = Math.max(...indicators.map((i) => estimateWarmupBars(i.name, i.params)));
   const desiredBars = (options?.limit ?? 100) + maxWarmup;
 
-  const db = getDb();
-
-  // Check cache + backfill
-  const countRow = db
-    .prepare(
-      `SELECT COUNT(*) AS c, MIN(start_ms) AS oldest FROM candles
-       WHERE symbol = ? AND interval_min = ? AND ${FEED_SCOPE_SQL}`
-    )
-    .get(symbol, intervalMin) as { c: number; oldest: number | null } | undefined;
-
-  if ((countRow?.c ?? 0) < desiredBars) {
-    const shortfall = desiredBars - (countRow?.c ?? 0) + 50;
-    await backfillFromBinance(symbol, intervalMin, shortfall, countRow?.oldest ?? null);
-  }
-
-  const rows = db
-    .prepare(
-      `SELECT start_ms, open, high, low, close, volume FROM candles
-       WHERE symbol = ? AND interval_min = ? AND ${FEED_SCOPE_SQL}
-       ORDER BY start_ms ASC
-       LIMIT ?`
-    )
-    .all(symbol, intervalMin, desiredBars) as unknown as Omit<CandleRow, "symbol" | "interval_min" | "source">[];
-
-  const candles: CandleNumeric[] = rows.map((r) => ({
-    timestamp: r.start_ms,
-    open: parseFloat(r.open),
-    high: parseFloat(r.high),
-    low: parseFloat(r.low),
-    close: parseFloat(r.close),
-    volume: parseFloat(r.volume),
-  }));
+  const candles = await loadRecentCandles(symbol, intervalMin, desiredBars);
 
   if (candles.length === 0) {
     return indicators.map((i) => ({ name: i.name, params: i.params, values: [], timestamps: [] }));

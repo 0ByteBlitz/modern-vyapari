@@ -79,7 +79,10 @@ export function toFeedSymbol(symbol: string): string | null {
 export function fromFeedSymbol(feedSymbol: string): string | null {
   if (!feedSymbol?.endsWith(FEED_QUOTE)) return null;
   const base = feedSymbol.slice(0, -FEED_QUOTE.length);
-  if (!base) return null;
+  /* The app's pair format, enforced where symbols enter rather than where a
+     chart loads. The feed lists bases like "牛来"; they reached Markets and Home,
+     and selecting one failed with "That input isn't valid." */
+  if (!/^[A-Z0-9]+$/.test(base)) return null;
   return `${base}-USD`;
 }
 
