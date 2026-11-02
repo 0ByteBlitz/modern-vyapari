@@ -65,14 +65,25 @@ CREATE TABLE IF NOT EXISTS lessons (
   -- Retrieval prefers lessons whose regime matches the market now: a lesson
   -- without its conditions is either overgeneralised or wrong.
   regime     TEXT NOT NULL DEFAULT 'unknown',
-  -- What it rests on, so a reader can weigh it. Recorded because "seen in 4 of
-  -- 6 winners" in the text is the model's own claim and nothing checks it.
+  -- Number of distinct closed-trade reviews directly cited by this lesson.
   evidence_trades INTEGER NOT NULL DEFAULT 0,
+  -- Source journal row IDs, retained so the lesson can be audited.
+  evidence_review_ids TEXT NOT NULL DEFAULT '[]',
   evidence_from   INTEGER,
   evidence_to     INTEGER,
   created_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_lessons_pair ON lessons(pair, created_at DESC);
+
+-- Per-mode progress, because each mode has its own journal even though the
+-- resulting market lessons are shared. The journal row id is a stable cursor.
+CREATE TABLE IF NOT EXISTS lesson_distillation_state (
+  pair             TEXT NOT NULL,
+  mode             TEXT NOT NULL,
+  last_review_id   INTEGER NOT NULL,
+  updated_at       INTEGER NOT NULL,
+  PRIMARY KEY (pair, mode)
+);
 
 -- One Anthropic bill, not one per mode. No session_id: session ids are
 -- mode-local and would point at a different session in each database file.
@@ -106,7 +117,14 @@ export function initSharedStore(userDataPath: string): void {
   shared.exec("PRAGMA journal_mode = WAL;");
   shared.exec(SHARED_SQL);
   migrateUsageProvider(shared);
+  migrateLessonEvidenceIds(shared);
   log.info("Shared lesson store ready.");
+}
+
+function migrateLessonEvidenceIds(db: DatabaseSync): void {
+  const cols = db.prepare("PRAGMA table_info(lessons)").all() as Array<{ name: string }>;
+  if (cols.some((c) => c.name === "evidence_review_ids")) return;
+  db.exec("ALTER TABLE lessons ADD COLUMN evidence_review_ids TEXT NOT NULL DEFAULT '[]'");
 }
 
 /**
@@ -134,6 +152,7 @@ export interface SharedLesson {
   /** Measured from the evidence, not asserted by the model. */
   regime: string;
   evidence_trades: number;
+  evidence_review_ids: string;
   evidence_from: number | null;
   evidence_to: number | null;
   created_at: number;
@@ -143,12 +162,17 @@ export interface SharedLesson {
 export interface LessonDraft {
   text: string;
   regime: string;
+  /** Exact trade-review journal rows the lesson cites. */
+  evidenceReviewIds?: number[];
+  evidenceFrom?: number | null;
+  evidenceTo?: number | null;
 }
 
 export function getLessonsForPair(pair: string, limit = 5): SharedLesson[] {
   return getSharedStore()
     .prepare(
-      `SELECT content, tags, origin, regime, evidence_trades, evidence_from, evidence_to, created_at
+      `SELECT content, tags, origin, regime, evidence_trades, evidence_review_ids,
+              evidence_from, evidence_to, created_at
        FROM lessons WHERE pair = ? ORDER BY created_at DESC LIMIT ?`
     )
     .all(pair, limit) as unknown as SharedLesson[];
@@ -173,8 +197,9 @@ export function replaceLessonsForPair(
   try {
     db.prepare(`DELETE FROM lessons WHERE pair = ?`).run(pair);
     const insert = db.prepare(
-      `INSERT INTO lessons (pair, content, tags, origin, regime, evidence_trades, evidence_from, evidence_to, created_at)
-       VALUES (?, ?, 'distilled', ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO lessons (pair, content, tags, origin, regime, evidence_trades,
+                            evidence_review_ids, evidence_from, evidence_to, created_at)
+       VALUES (?, ?, 'distilled', ?, ?, ?, ?, ?, ?, ?)`
     );
     for (const entry of lessons) {
       const draft: LessonDraft = typeof entry === "string" ? { text: entry, regime: "unknown" } : entry;
@@ -185,9 +210,10 @@ export function replaceLessonsForPair(
         trimmed,
         origin,
         draft.regime || "unknown",
-        evidence.trades,
-        evidence.from,
-        evidence.to,
+        draft.evidenceReviewIds?.length ?? evidence.trades,
+        JSON.stringify(draft.evidenceReviewIds ?? []),
+        draft.evidenceFrom ?? evidence.from,
+        draft.evidenceTo ?? evidence.to,
         now
       );
     }
@@ -196,6 +222,25 @@ export function replaceLessonsForPair(
     db.exec("ROLLBACK;");
     throw err;
   }
+}
+
+export function getLessonDistillationCursor(pair: string, mode: string): number | null {
+  const row = getSharedStore()
+    .prepare(`SELECT last_review_id FROM lesson_distillation_state WHERE pair = ? AND mode = ?`)
+    .get(pair, mode) as { last_review_id: number } | undefined;
+  return row?.last_review_id ?? null;
+}
+
+export function markLessonsDistilledThrough(pair: string, mode: string, reviewId: number, now = Date.now()): void {
+  getSharedStore()
+    .prepare(
+      `INSERT INTO lesson_distillation_state (pair, mode, last_review_id, updated_at)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT(pair, mode) DO UPDATE SET
+         last_review_id = MAX(lesson_distillation_state.last_review_id, excluded.last_review_id),
+         updated_at = excluded.updated_at`
+    )
+    .run(pair, mode, reviewId, now);
 }
 
 /**

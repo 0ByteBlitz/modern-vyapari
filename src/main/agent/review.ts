@@ -17,7 +17,13 @@
  */
 import { getDb } from "../db/database";
 import { recordUsage, dailyLimitReached } from "./usage";
-import { getLessonsForPair, replaceLessonsForPair, type LessonDraft } from "../db/shared-store";
+import {
+  getLessonDistillationCursor,
+  getLessonsForPair,
+  markLessonsDistilledThrough,
+  replaceLessonsForPair,
+  type LessonDraft,
+} from "../db/shared-store";
 import { appMode } from "../modes/app-mode";
 import { classifyRegime, type TrendRegime } from "../insights/regime";
 import { dbCandleSource } from "../insights/level-resolver";
@@ -669,6 +675,7 @@ export async function reviewPendingPositions(limit = 20): Promise<void> {
   for (const row of rows) {
     await reviewClosedPosition(row.id);
   }
+  await distillPendingLessons();
 }
 
 /* ── Lessons distillation ─────────────────────────────────────────────── */
@@ -684,6 +691,10 @@ export async function reviewPendingPositions(limit = 20): Promise<void> {
  * the honest answer.
  */
 export const MIN_REVIEWS_FOR_LESSONS = 3;
+/** New closed-trade reviews between successful distillation passes. */
+const DISTILL_EVERY_N_REVIEWS = 5;
+const NO_TRADE_TAG_FILTER = "(j.tags IS NULL OR instr(',' || j.tags || ',', ',no-trade,') = 0)";
+const distillationsInFlight = new Set<string>();
 
 /** Interval the regime is measured on. 4h is the plan default and coarse
  *  enough that a single noisy session does not reclassify the market. */
@@ -694,20 +705,21 @@ const REGIME_BARS = 150;
 
 const LESSONS_SYSTEM_PROMPT = `You maintain the durable "lessons" memory for a personal crypto trading bot, for one trading pair.
 
-You are given the recent trade reviews and observations for this pair, plus the lessons currently stored. Produce the updated lesson set.
+You are given recent closed-trade reviews for this pair and the lessons currently stored. Produce the updated lesson set. No-position plan resolutions are excluded from trade evidence.
 
 Rules:
 - A lesson must be supported by a PATTERN across multiple trades, not a single result. If the evidence is thin, keep the lesson set small — an empty or one-item set is a valid and honest answer.
 - **Every lesson names the market conditions it holds under.** Each piece of evidence carries a measured \`regime\` (trending_up, trending_down, ranging, transitional, or unknown), computed from ADX and ATR at the time of that trade — you are not being asked to judge the market yourself. A lesson stated without conditions is either overgeneralised or wrong: "exits fire while the move is still extending" can be true in a trend and false in a range, and it will be injected into every future conversation.
 - Assign each lesson the regime its supporting evidence actually came from. Use \`mixed\` ONLY when the lesson held across several different regimes — that is the strongest kind of lesson and the claim has to be earned. Never invent a regime that does not appear in the evidence.
-- Prefer lessons about process and conditions ("exits on this strategy fire while the move is still extending, seen in 4 of 6 winners") over outcome summaries ("we lost money on Tuesday").
+- Prefer lessons about repeatable process and conditions over one-off outcome summaries. Do not invent frequencies, percentages, or counts in lesson text; the app records the verified number of cited reviews separately.
 - Merge duplicates. Drop lessons the newer evidence contradicts. Keep the total to at most 5.
-- Each lesson: one sentence, specific, and it must state the evidence it rests on.
+- Each lesson: one sentence, specific, and supported by the cited reviews.
+- Return evidence_review_ids: at least two distinct IDs of closed-trade reviews that directly support this lesson. Never cite a no-trade plan review. If fewer than two reviews support a pattern, omit it.
 - These lessons are injected into every future conversation, so a wrong or overconfident lesson does lasting damage. When in doubt, leave it out.
 - Evidence origin is stated in the payload as \`evidence_origin\`. When it is "simulated", the fills had no real slippage, no queue position and no partial fills — do not let a simulated result become a lesson about live execution. When it is "live", the fills are real and may be judged as such.
 - Evidence may span several sessions on the same pair. Treat it as one body of evidence about that market; do not write a lesson about a session.
 
-Output ONLY a JSON array of objects, each {"text": "...", "regime": "..."}. No prose, no markdown fence.`;
+Output ONLY a JSON array of objects, each {"text": "...", "regime": "...", "evidence_review_ids": [1, 2]}. No prose, no markdown fence.`;
 
 
 /**
@@ -781,38 +793,41 @@ function calibrationSummary(): unknown {
  * result, and a lesson drawn from one trade goes into every future prompt.
  */
 export async function distillLessons(sessionId: number, minReviews = MIN_REVIEWS_FOR_LESSONS): Promise<void> {
+  let lockKey: string | null = null;
   try {
     if (!aiProvider().isConfigured()) return;
 
     const db = getDb();
     const session = getSessionById(sessionId);
     if (!session) return;
+    const mode = appMode();
+    const candidateLockKey = `${mode}:${session.pair}`;
+    if (distillationsInFlight.has(candidateLockKey)) return;
+    lockKey = candidateLockKey;
+    distillationsInFlight.add(lockKey);
 
-    /* Trade reviews are the evidence; observations are supporting colour.
-       They must be counted separately and the automated ones excluded.
-
-       The background scheduler writes an hourly `observation` equity snapshot
-       per active session — 24 a day, forever. Those used to be pulled in here
-       and counted toward `minReviews`, which broke distillation two ways: the
-       gate passed on a session that had never closed a single trade (five
-       snapshots is not five reviews), and once running, the 40-row window
-       filled with snapshots that pushed the actual trade reviews out of the
-       prompt. The model was then asked to distill durable lessons from a list
-       of hourly cash balances — and these lessons go into every future
-       conversation. */
-    /* Every session on this pair, not just this one — see the note above. */
+    /* Only reviews of positions count as trade evidence. No-position plan
+       resolutions share the journal kind but carry a `no-trade` tag. */
     const reviews = db
       .prepare(
-        `SELECT j.content AS content, j.created_at AS created_at
+        `SELECT j.id AS id, j.content AS content, j.created_at AS created_at
          FROM journal j JOIN sessions s ON s.id = j.session_id
-         WHERE s.pair = ? AND j.kind = 'trade_review'
-         ORDER BY j.created_at DESC LIMIT 40`
+         WHERE s.pair = ? AND j.kind = 'trade_review' AND ${NO_TRADE_TAG_FILTER}
+         ORDER BY j.id DESC LIMIT 40`
       )
-      .all(session.pair) as { content: string; created_at: number }[];
+      .all(session.pair) as { id: number; content: string; created_at: number }[];
 
-    if (reviews.length < minReviews) {
-      log.info(`${session.pair}: only ${reviews.length} trade reviews — need ${minReviews}. Skipping.`);
-      return;
+    if (reviews.length < minReviews) return;
+
+    const cursor = getLessonDistillationCursor(session.pair, mode);
+    if (cursor !== null) {
+      const pending = db
+        .prepare(
+          `SELECT COUNT(*) AS n FROM journal j JOIN sessions s ON s.id = j.session_id
+           WHERE s.pair = ? AND j.kind = 'trade_review' AND ${NO_TRADE_TAG_FILTER} AND j.id > ?`
+        )
+        .get(session.pair, cursor) as { n: number };
+      if (pending.n < DISTILL_EVERY_N_REVIEWS) return;
     }
 
     /* Hand-written notes and genuine events only: `automated` tags the
@@ -833,7 +848,7 @@ export async function distillLessons(sessionId: number, minReviews = MIN_REVIEWS
 
     /* The regimes actually present in this evidence. Used to constrain what the
        model may claim — see the validation below. */
-    const evidenceRegimes = new Set(reviews.map((r) => regimeAt(session.pair, r.created_at)));
+    const regimes = new Map(reviews.map((r) => [r.id, regimeAt(session.pair, r.created_at)] as const));
 
     /* The owner's daily AI limit holds for unattended work too. */
     if (dailyLimitReached().reached) {
@@ -850,13 +865,14 @@ export async function distillLessons(sessionId: number, minReviews = MIN_REVIEWS
               current_lessons: existing.map((e) => e.content),
               /* Told, not assumed: the same prompt runs in both modes and the
                  caveat about slippage is only true in one of them. */
-              evidence_origin: appMode(),
+              evidence_origin: mode,
               /* Each review carries the MEASURED regime at the time of that
                  trade, so the model attributes lessons to conditions rather
                  than judging the market itself. */
               recent_reviews: reviews.map((r) => ({
+                review_id: r.id,
                 review: r.content,
-                regime: regimeAt(session.pair, r.created_at),
+                regime: regimes.get(r.id),
               })),
               /* The planner's own track record, which distillation never saw.
                  "Your range-reclaim theses trigger 3 of 11 times" is exactly
@@ -878,25 +894,40 @@ export async function distillLessons(sessionId: number, minReviews = MIN_REVIEWS
     try {
       const parsed = JSON.parse(text.replace(/^```(?:json)?|```$/g, "").trim());
       if (!Array.isArray(parsed)) throw new Error("not an array");
-      /* Regimes are VALIDATED against the ones actually present in the
-         evidence. The attribution is the model's judgement, but it cannot
-         stamp a lesson with conditions the evidence never contained — that
-         would be a fabricated qualifier on a memory injected into every
-         future prompt. Anything unrecognised degrades to `unknown`, which is
-         honest, rather than to a plausible-looking default. */
-      const allowed = new Set<string>([...evidenceRegimes, "mixed"]);
+      const reviewById = new Map(reviews.map((r) => [r.id, r] as const));
       lessons = parsed
         .map((l): LessonDraft | null => {
-          if (typeof l === "string") return l.trim() ? { text: l.trim(), regime: "unknown" } : null;
           if (l && typeof l === "object" && typeof (l as any).text === "string") {
             const t = ((l as any).text as string).trim();
-            const r = String((l as any).regime ?? "unknown");
-            return t ? { text: t, regime: allowed.has(r) ? r : "unknown" } : null;
+            const rawIds = Array.isArray((l as any).evidence_review_ids)
+              ? (l as any).evidence_review_ids.filter((id: unknown): id is number => Number.isSafeInteger(id))
+              : [];
+            const ids = [...new Set<number>(rawIds)].filter((id) => reviewById.has(id));
+            if (!t || ids.length < 2 || /\b\d+\s+(?:of|out of)\s+\d+\b|\b\d+\s*\/\s*\d+\b/i.test(t)) return null;
+
+            const cited = ids.map((id) => reviewById.get(id)!);
+            const citedRegimes = cited.map((r) => regimes.get(r.id) ?? "unknown");
+            const knownRegimes = new Set(citedRegimes.filter((r) => r !== "unknown"));
+            const requested = String((l as any).regime ?? "unknown");
+            const regime = requested === "mixed"
+              ? (knownRegimes.size > 1 ? "mixed" : "unknown")
+              : citedRegimes.includes(requested as TrendRegime) ? requested : "unknown";
+            return {
+              text: t,
+              regime,
+              evidenceReviewIds: ids,
+              evidenceFrom: Math.min(...cited.map((r) => r.created_at)),
+              evidenceTo: Math.max(...cited.map((r) => r.created_at)),
+            };
           }
           return null;
         })
         .filter((l): l is LessonDraft => l !== null)
         .slice(0, 5);
+      if (parsed.length > 0 && lessons.length === 0) {
+        log.warn(`${session.pair}: returned lessons had no valid evidence citations; keeping existing lessons.`);
+        return;
+      }
     } catch (err) {
       log.error("Model did not return the expected JSON — keeping existing lessons.", err);
       return;
@@ -905,22 +936,36 @@ export async function distillLessons(sessionId: number, minReviews = MIN_REVIEWS
     /* Replace, not append: distillation returns the WHOLE set each pass — it
        merges duplicates and drops what newer evidence contradicts, so appending
        would resurrect lessons the model just decided were wrong. */
-    replaceLessonsForPair(session.pair, lessons, appMode(), {
+    const throughId = Math.max(...reviews.map((r) => r.id));
+    replaceLessonsForPair(session.pair, lessons, mode, {
       trades: reviews.length,
       from: reviews[reviews.length - 1]?.created_at ?? null,
       to: reviews[0]?.created_at ?? null,
     });
+    markLessonsDistilledThrough(session.pair, mode, throughId);
 
     log.info(`${session.pair}: distilled ${lessons.length} lessons from ${reviews.length} reviews.`);
   } catch (err) {
     log.error(`Distillation failed for session ${sessionId}`, err);
+  } finally {
+    if (lockKey) distillationsInFlight.delete(lockKey);
   }
 }
 
 /* ── Wiring ───────────────────────────────────────────────────────────── */
 
-/** Number of closed positions between automatic lesson-distillation passes. */
-const DISTILL_EVERY_N_TRADES = 5;
+/** Catch up due lesson passes after reviews were recovered or a prior call failed. */
+export async function distillPendingLessons(): Promise<void> {
+  const rows = getDb()
+    .prepare(
+      `SELECT MIN(s.id) AS session_id
+         FROM journal j JOIN sessions s ON s.id = j.session_id
+        WHERE j.kind = 'trade_review' AND ${NO_TRADE_TAG_FILTER}
+        GROUP BY s.pair`
+    )
+    .all() as Array<{ session_id: number }>;
+  for (const row of rows) await distillLessons(row.session_id);
+}
 
 /**
  * Attach the review loop to the paper engine. Called once at startup.
@@ -933,14 +978,7 @@ export function attachReviewAgent(engine: { onPositionClosed: (cb: (id: number) 
 
       const pos = getClosedPosition(positionId);
       if (!pos) return;
-
-      const { n } = getDb()
-        .prepare(`SELECT COUNT(*) AS n FROM paper_positions WHERE session_id = ? AND status = 'closed'`)
-        .get(pos.session_id) as { n: number };
-
-      if (n > 0 && n % DISTILL_EVERY_N_TRADES === 0) {
-        await distillLessons(pos.session_id);
-      }
+      await distillLessons(pos.session_id);
     })();
   });
 }
