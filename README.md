@@ -8,6 +8,8 @@
 
 *जानेर मात्र, किनबेच* — *jaanera matra, kinbech* — "trade only knowingly."
 
+[Website source](site/) · [GitHub repository](https://github.com/0ByteBlitz/modern-vyapari) · [Buy me a coffee](https://buymeacoffee.com/0ByteBlitz)
+
 [![CI](https://github.com/0ByteBlitz/modern-vyapari/actions/workflows/ci.yml/badge.svg)](https://github.com/0ByteBlitz/modern-vyapari/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![Status: alpha, paper only](https://img.shields.io/badge/status-alpha%20%C2%B7%20paper%20only-orange)
