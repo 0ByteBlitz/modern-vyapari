@@ -456,6 +456,8 @@ export interface RendererApi {
   onCandleUpdate(callback: (data: { symbol: string; intervalMin: number; candle: Candle }) => void): () => void;
   // Chat
   getChatHistory(sessionId: number | null): Promise<Result<ChatMessage[]>>;
+  /** True while a reply is being written in this conversation. */
+  isChatBusy(sessionId: number | null): Promise<Result<boolean>>;
   clearChatHistory(sessionId: number | null): Promise<Result<{ ok: true }>>;
   compactChatHistory(sessionId: number | null): Promise<Result<{ ok: boolean; summary?: string; error?: string }>>;
   getAiModels(): Promise<Result<AiModelInfo[]>>;
@@ -471,6 +473,8 @@ export interface RendererApi {
   /** Simulated or live. `pending` is what the NEXT launch will use. */
   /** What this app has spent. Not an account balance — none is exposed. */
   usageReport(): Promise<Result<UsageReport>>;
+  /** Set the daily AI spending limit in USD; null clears it. */
+  setDailyAiLimit(limit: number | null): Promise<Result<{ ok: true }>>;
   /** The saved review model (null = the provider's fast model) and the one reviews will use. */
   reviewModel(): Promise<Result<{ saved: string | null; effective: string | null }>>;
   setReviewModel(model: string | null): Promise<Result<{ ok: true }>>;
@@ -586,6 +590,8 @@ export interface RendererApi {
   listAlerts(sessionId?: number): Promise<Result<AlertRecord[]>>;
   removeAlert(alertId: number): Promise<Result<{ ok: true }>>;
   onAlertTriggered(callback: (event: AlertEvent) => void): () => void;
+  /** A plan event the owner is told about on every channel — shown as a toast. */
+  onNotifyEvent(callback: (event: { kind: string; title: string; body: string; at: number }) => void): () => void;
   /** Agent-driven navigation — the agent switches the UI to the surface it's
    *  working on so the user sees what the agent is doing in real time. */
   onAgentNavigate(callback: (surface: string) => void): () => void;

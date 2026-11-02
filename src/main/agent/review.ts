@@ -16,7 +16,7 @@
  * every chat system prompt.
  */
 import { getDb } from "../db/database";
-import { recordUsage } from "./usage";
+import { recordUsage, dailyLimitReached } from "./usage";
 import { getLessonsForPair, replaceLessonsForPair, type LessonDraft } from "../db/shared-store";
 import { appMode } from "../modes/app-mode";
 import { classifyRegime, type TrendRegime } from "../insights/regime";
@@ -429,6 +429,11 @@ export async function reviewClosedPosition(positionId: number): Promise<void> {
       return;
     }
 
+    /* The owner's daily AI limit holds for unattended work too. */
+    if (dailyLimitReached().reached) {
+      log.info("Review skipped: today's AI spending limit is reached.");
+      return;
+    }
     const res = await aiProvider().complete({
       model,
       maxTokens: 500,
@@ -597,6 +602,11 @@ export async function reviewResolvedPlan(planId: number): Promise<void> {
       watched_throughout: watchedThroughout(from, to),
     };
 
+    /* The owner's daily AI limit holds for unattended work too. */
+    if (dailyLimitReached().reached) {
+      log.info("Review skipped: today's AI spending limit is reached.");
+      return;
+    }
     const res = await aiProvider().complete({
       model,
       maxTokens: 400,
@@ -825,6 +835,11 @@ export async function distillLessons(sessionId: number, minReviews = MIN_REVIEWS
        model may claim — see the validation below. */
     const evidenceRegimes = new Set(reviews.map((r) => regimeAt(session.pair, r.created_at)));
 
+    /* The owner's daily AI limit holds for unattended work too. */
+    if (dailyLimitReached().reached) {
+      log.info("Review skipped: today's AI spending limit is reached.");
+      return;
+    }
     const res = await aiProvider().complete({
       model,
       maxTokens: 1000,

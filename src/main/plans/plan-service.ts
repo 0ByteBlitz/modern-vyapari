@@ -23,6 +23,7 @@ import { getDb, auditLog, withTransaction } from "../db/database";
 import { compileIntent, type ConditionIntent } from "./condition-intent";
 import { createLogger } from "../logger";
 import { enqueueWithin, type NotificationDraft } from "../notify/outbox";
+import { announce } from "../notify/announce";
 import { levelResolver } from "../insights/level-resolver";
 import { extractRequiredLevels } from "../strategy/strategy-spec";
 import type { ConditionGroup, EvalInterval } from "../strategy/strategy-spec";
@@ -222,6 +223,8 @@ export function recordBranchTrigger(
     }
     if (notify) enqueueWithin(db, notify);
   });
+  // After the commit: the Windows notification and the in-app toast.
+  if (notify) announce(notify);
 }
 
 export function getPlan(rowId: number): StoredPlan | null {
@@ -659,6 +662,8 @@ export function transitionPlan(
       .run(to, reason ?? plan.outcomeReason ?? null, terminal ? now : plan.armedAt, now, rowId);
     if (notify) enqueueWithin(db, notify);
   });
+  // After the commit: the Windows notification and the in-app toast.
+  if (notify) announce(notify);
 
   auditLog("plan_state_changed", { planId: rowId, slug: plan.slug, from: plan.state, to, reason });
   return { ok: true };

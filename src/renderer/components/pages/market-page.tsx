@@ -174,41 +174,44 @@ export function MarketPage({
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-h-0 min-w-0">
         {/* Highlights Bar — Binance data (the single market-data feed) */}
-        <div className="h-24 border-b border-border bg-card/20 flex items-center px-6 gap-6 shrink-0 overflow-x-auto">
+        {/* The three highlights share the width and shrink (long symbols
+            truncate). Fixed 200px minimums made the bar scroll sideways
+            whenever the agent drawer narrowed the page. */}
+        <div className="h-24 border-b border-border bg-card/20 flex items-center px-6 gap-6 shrink-0 overflow-hidden">
           {topGainer && (
-            <div className="flex flex-col gap-1 min-w-[200px]">
+            <div className="flex flex-col gap-1 min-w-0 flex-1">
               <div className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground uppercase tracking-widest">
                 <ArrowUpRight className="h-3.5 w-3.5 text-green-500" />
                 Top Gainer
               </div>
               <div className="flex items-baseline gap-2 cursor-pointer hover:opacity-80" onClick={() => setSymbol(topGainer.symbol)}>
-                <span className="text-lg font-bold">{topGainer.symbol}</span>
+                <span className="text-lg font-bold truncate">{topGainer.symbol}</span>
                 <span className="text-sm font-medium text-green-500">+{topGainer.change24h.toFixed(2)}%</span>
               </div>
             </div>
           )}
           {topGainer && topLoser && <div className="w-px h-10 bg-border/50" />}
           {topLoser && (
-            <div className="flex flex-col gap-1 min-w-[200px]">
+            <div className="flex flex-col gap-1 min-w-0 flex-1">
               <div className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground uppercase tracking-widest">
                 <ArrowDownRight className="h-3.5 w-3.5 text-destructive" />
                 Top Loser
               </div>
               <div className="flex items-baseline gap-2 cursor-pointer hover:opacity-80" onClick={() => setSymbol(topLoser.symbol)}>
-                <span className="text-lg font-bold">{topLoser.symbol}</span>
+                <span className="text-lg font-bold truncate">{topLoser.symbol}</span>
                 <span className="text-sm font-medium text-destructive">{topLoser.change24h.toFixed(2)}%</span>
               </div>
             </div>
           )}
           {topLoser && trending && <div className="w-px h-10 bg-border/50" />}
           {trending && (
-            <div className="flex flex-col gap-1 min-w-[200px]">
+            <div className="flex flex-col gap-1 min-w-0 flex-1">
               <div className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground uppercase tracking-widest">
                 <Flame className="h-3.5 w-3.5 text-amber-500" />
                 Trending
               </div>
               <div className="flex items-baseline gap-2 cursor-pointer hover:opacity-80" onClick={() => setSymbol(trending.symbol)}>
-                <span className="text-lg font-bold">{trending.symbol}</span>
+                <span className="text-lg font-bold truncate">{trending.symbol}</span>
                 <span className="text-sm font-medium text-muted-foreground">Vol: ${formatVolume(trending.volume24h)}</span>
               </div>
             </div>

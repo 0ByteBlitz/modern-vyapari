@@ -14,6 +14,7 @@ import { venue, venueCapabilities } from "../integrations/venue/registry";
 import { appMode } from "../modes/app-mode";
 import { tradablePairs } from "./venue";
 import { safe } from "./safe";
+import { AppError } from "../../shared/errors";
 
 export function registerSessions(): void {
   /* ── Sessions (Phase 1) ─────────────────────────────────────── */
@@ -24,24 +25,29 @@ ipcMain.handle("sessions:list", (_e, includeArchived?: boolean) =>
 ipcMain.handle("sessions:create", (_e, pair: string) =>
     safe(async () => {
       // Validate against the venue's live pair list (renderer filtering is
-      // convenience only — main must not trust it). Fail open when the venue
-      // config is unreachable (offline/setup-incomplete): regex still applies.
+      // convenience only — main must not trust it). Fail open when the list
+      // is unreachable (offline/setup-incomplete): the format check still applies.
+      /* The SAME universe the picker offers. Validating against the venue
+         while the picker listed feed symbols is how simulated mode ended up
+         offering pairs it then refused to create. */
+      let known: Set<string> | null = null;
       try {
-        /* The SAME universe the picker offers. Validating against the venue
-           while the picker listed feed symbols is how simulated mode ended up
-           offering pairs it then refused to create. */
         const tradable = await tradablePairs();
-        const known = new Set(Object.keys(tradable).map((k) => k.replace("/", "-")));
-        if (!known.has(pair)) {
-          throw new Error(
-            appMode() === "simulated"
-              ? `${pair} has no analysis feed, so nothing could chart or trade it.`
-              : `Pair ${pair} is not traded on ${venueCapabilities().displayName}`
-          );
-        }
-      } catch (err) {
-        if (err instanceof Error && err.message.includes("not traded")) throw err;
-        // venue unreachable — proceed with format-only validation
+        known = new Set(Object.keys(tradable).map((k) => k.replace("/", "-")));
+      } catch {
+        // unreachable — proceed with format-only validation
+      }
+      /* Refused OUTSIDE the try. The refusal used to be thrown inside it and
+         rethrown only if its message contained "not traded" — the simulated
+         wording ("has no analysis feed") didn't, so it was swallowed and the
+         pair was created anyway. (2026-11-02) */
+      if (known && !known.has(pair)) {
+        throw new AppError(
+          "VALIDATION",
+          appMode() === "simulated"
+            ? `${pair} has no analysis feed, so nothing could chart or trade it.`
+            : `${pair} isn't traded on ${venueCapabilities().displayName}.`
+        );
       }
       return sessions.createSession(pair);
     }, "sessions:create")

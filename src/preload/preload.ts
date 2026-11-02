@@ -50,6 +50,7 @@ const api = {
   },
   // Chat (Phase 1)
   getChatHistory: (sessionId: number | null) => ipcRenderer.invoke("chat:history", sessionId),
+  isChatBusy: (sessionId: number | null) => ipcRenderer.invoke("chat:busy", sessionId),
   clearChatHistory: (sessionId: number | null) => ipcRenderer.invoke("chat:clear", sessionId),
   compactChatHistory: (sessionId: number | null) => ipcRenderer.invoke("chat:compact", sessionId),
   getAiModels: () => ipcRenderer.invoke("chat:models"),
@@ -71,6 +72,7 @@ const api = {
     return () => ipcRenderer.removeListener("chat:error", handler);
   },
   usageReport: () => ipcRenderer.invoke("usage:report"),
+  setDailyAiLimit: (limit: number | null) => ipcRenderer.invoke("usage:setDailyLimit", limit),
   reviewModel: () => ipcRenderer.invoke("agent:reviewModel"),
   setReviewModel: (model: string | null) => ipcRenderer.invoke("agent:setReviewModel", model),
   paperAccount: () => ipcRenderer.invoke("paper:account"),
@@ -124,6 +126,11 @@ const api = {
     return () => ipcRenderer.removeListener("browser:state", handler);
   },
   // Phase 2: Alert triggers (pushed live from the alert engine)
+  onNotifyEvent: (callback: (event: any) => void) => {
+    const handler = (_event: any, data: any) => callback(data);
+    ipcRenderer.on("notify:event", handler);
+    return () => ipcRenderer.removeListener("notify:event", handler);
+  },
   onAlertTriggered: (callback: (event: any) => void) => {
     const handler = (_event: any, data: any) => callback(data);
     ipcRenderer.on("alerts:triggered", handler);

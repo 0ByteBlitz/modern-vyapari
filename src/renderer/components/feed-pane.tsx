@@ -17,12 +17,12 @@ export function FeedPane() {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      /* The ticker snapshot always goes to the feed. A candle read is served
-         from the local cache when it is fresh, so it answered "responding" in
-         0.0s whether or not the feed was reachable. */
-      const t0 = Date.now();
-      const res = await api.getTickerSnapshot();
-      if (!cancelled) setHealth({ ok: !isError(res) && res.length > 0, ms: Date.now() - t0 });
+      /* A real round trip to the feed (feed:ping — the context bar uses the
+         same). A candle read is served from the local cache when fresh, so it
+         answered "responding" in 0.0s whether or not the feed was reachable;
+         the full ticker snapshot was right but ~1 MB per check. */
+      const res = await api.pingFeed();
+      if (!cancelled) setHealth(isError(res) ? { ok: false, ms: 0 } : { ok: true, ms: res });
     })();
     return () => {
       cancelled = true;

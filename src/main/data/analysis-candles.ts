@@ -72,7 +72,21 @@ export async function getTickerSnapshot(): Promise<TickerSnapshot[]> {
   const res = await fetch("https://api.binance.com/api/v3/ticker/24hr");
   if (!res.ok) throw new Error(`Binance 24h ticker failed: ${res.status} ${res.statusText}`);
 
-  const rows = (await res.json()) as Array<{ symbol: string; lastPrice: string; priceChangePercent: string; quoteVolume: string }>;
+  const rows = (await res.json()) as Array<{
+    symbol: string;
+    lastPrice: string;
+    priceChangePercent: string;
+    quoteVolume: string;
+    closeTime: number;
+  }>;
+
+  /* Delisted pairs stay in this endpoint with their last 24h figures frozen —
+     CREAM "+65.35%" and NFP "−65.85%" had led Markets' gainers and losers for
+     27 days. Measured 2026-11-02: 257 of 776 USDT rows had not updated in over
+     24h and every one was non-trading; every row updated within a day was
+     trading. So a row older than a day is dropped — from Markets, Home's
+     movers, and the pairs a session can be created for. */
+  const fresh = Date.now() - 24 * 60 * 60 * 1000;
 
   /* Through `fromFeedSymbol`, the one conversion every symbol takes: it also
      drops bases the app's pair format can't hold, which this list used to
@@ -81,6 +95,7 @@ export async function getTickerSnapshot(): Promise<TickerSnapshot[]> {
   for (const r of rows) {
     const symbol = fromFeedSymbol(r.symbol);
     if (!symbol || LEVERAGED_RE.test(r.symbol) || NON_TRENDING.has(r.symbol.slice(0, -4))) continue;
+    if (!(r.closeTime >= fresh)) continue;
     const t = {
       symbol,
       price: parseFloat(r.lastPrice),
