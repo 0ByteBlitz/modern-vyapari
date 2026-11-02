@@ -635,14 +635,10 @@ export async function sendChatMessage(
 ): Promise<void> {
   const conversation: ChatConversation = sessionId ? sessionId : "general";
   if (inFlight.has(conversation)) {
-    emitError(
-      sender,
-      "chat:error",
-      new AppError("VALIDATION", "The agent is still answering in this chat.", {
-        hint: "Wait for the reply to finish, then send again.",
-      }),
-      { conversation }
-    );
+    emitTo(sender, "chat:notice", {
+      text: "The agent is still answering in this chat. Wait for the reply to finish, then send again.",
+      conversation,
+    });
     return;
   }
   inFlight.add(conversation);

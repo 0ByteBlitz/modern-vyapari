@@ -172,6 +172,7 @@ export function ChatPanel({ sessionId, emptyState }: ChatPanelProps) {
     const unsubComplete = api.onChatComplete(({ conversation }) => {
       if (!forMe(conversation)) return;
       setIsStreaming(false);
+      setNotice(null);
       // Optional: re-fetch history to get real DB IDs
       api.getChatHistory(sessionId).then((res) => {
         if (!isError(res)) setMessages(res);

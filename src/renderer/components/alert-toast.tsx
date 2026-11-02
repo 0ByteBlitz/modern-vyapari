@@ -36,6 +36,8 @@ function alertToast(event: AlertEvent): Toast {
   };
 }
 
+let planToastSeq = 0;
+
 const AUTO_DISMISS_MS = 15_000;
 
 export function AlertToastHost({ onOpenBot }: { onOpenBot?: () => void }) {
@@ -52,7 +54,7 @@ export function AlertToastHost({ onOpenBot }: { onOpenBot?: () => void }) {
     const offAlert = api.onAlertTriggered((event) => show(alertToast(event)));
     const offNotify = api.onNotifyEvent((e) =>
       show({
-        toastId: `plan-${e.kind}-${e.at}`,
+        toastId: `plan-${e.kind}-${e.at}-${++planToastSeq}`,
         source: "plan",
         label: e.title,
         // The body's last line is the reason (the thesis comes first).

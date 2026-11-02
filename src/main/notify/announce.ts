@@ -7,9 +7,8 @@
  * operating system's notifications, so with the window minimised an alert was
  * a sound with no words. This module is the one place an event is announced:
  *
- *  - **Telegram** through the outbox (durable, deduped, retried) — the caller
- *    has usually already enqueued inside its own transaction; `announceAlert`
- *    enqueues for alerts, which have no transaction to bind to.
+ *  - **Telegram** through the outbox (durable, deduped, retried), enqueued in
+ *    the same transaction as the state change.
  *  - **Windows notification** when the app window is not in front: minimised,
  *    hidden or behind another app. Clicking it brings the window back.
  *  - **In the app** via `notify:event`, which the toast host shows — except for
@@ -19,7 +18,7 @@
  * notification for a change that then rolled back would be a lie.
  */
 import { BrowserWindow, Notification } from "electron";
-import { enqueue, type NotificationDraft } from "./outbox";
+import type { NotificationDraft } from "./outbox";
 import { emit } from "../events/outbound";
 import { createLogger } from "../logger";
 
@@ -64,14 +63,9 @@ export function announce(draft: NotificationDraft): void {
 }
 
 /**
- * Announce a fired alert: Telegram (via the outbox) and a Windows
- * notification. The in-app toast and sound come from `alerts:triggered`.
+ * Announce a fired alert after its outbox row commits. The in-app toast and
+ * sound come from `alerts:triggered`.
  */
 export function announceAlert(draft: NotificationDraft): void {
-  try {
-    enqueue(draft);
-  } catch (err) {
-    log.error("Could not queue the alert for Telegram", err);
-  }
   desktop(draft);
 }

@@ -66,6 +66,8 @@ ipcMain.handle("usage:report", () => safe(() => buildUsageReport(), "usage:repor
 ipcMain.handle("usage:setDailyLimit", (_e, limit: number | null) =>
     safe(() => {
       setDailyLimitUsd(limit);
+      const { backgroundScheduler } = require("../services/scheduler") as typeof import("../services/scheduler");
+      void backgroundScheduler.retryPendingReviews();
       return { ok: true as const };
     }, "usage:setDailyLimit")
   );
