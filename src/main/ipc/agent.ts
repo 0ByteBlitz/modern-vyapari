@@ -30,6 +30,10 @@ ipcMain.on("research:closed", () => clearResearchView());
   /* ── Chat (Phase 1) ─────────────────────────────────────────────── */
 ipcMain.handle("chat:history", (_e, sessionId: number | null) => safe(() => chat.getChatHistory(sessionId), "chat:history"));
 
+  /* Is a reply still being written in this conversation? A remounted chat
+     panel asks, so it shows "Thinking…" rather than an open composer. */
+ipcMain.handle("chat:busy", (_e, sessionId: number | null) => safe(() => chat.isChatBusy(sessionId), "chat:busy"));
+
 ipcMain.handle("chat:clear", (_e, sessionId: number | null) => safe(() => chat.clearChatHistory(sessionId), "chat:clear"));
 
 ipcMain.handle("chat:compact", (_e, sessionId: number | null) => safe(() => chat.compactChatHistory(sessionId), "chat:compact"));

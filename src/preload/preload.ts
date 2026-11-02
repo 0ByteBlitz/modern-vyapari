@@ -50,6 +50,7 @@ const api = {
   },
   // Chat (Phase 1)
   getChatHistory: (sessionId: number | null) => ipcRenderer.invoke("chat:history", sessionId),
+  isChatBusy: (sessionId: number | null) => ipcRenderer.invoke("chat:busy", sessionId),
   clearChatHistory: (sessionId: number | null) => ipcRenderer.invoke("chat:clear", sessionId),
   compactChatHistory: (sessionId: number | null) => ipcRenderer.invoke("chat:compact", sessionId),
   getAiModels: () => ipcRenderer.invoke("chat:models"),

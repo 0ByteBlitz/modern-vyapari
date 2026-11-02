@@ -456,6 +456,8 @@ export interface RendererApi {
   onCandleUpdate(callback: (data: { symbol: string; intervalMin: number; candle: Candle }) => void): () => void;
   // Chat
   getChatHistory(sessionId: number | null): Promise<Result<ChatMessage[]>>;
+  /** True while a reply is being written in this conversation. */
+  isChatBusy(sessionId: number | null): Promise<Result<boolean>>;
   clearChatHistory(sessionId: number | null): Promise<Result<{ ok: true }>>;
   compactChatHistory(sessionId: number | null): Promise<Result<{ ok: boolean; summary?: string; error?: string }>>;
   getAiModels(): Promise<Result<AiModelInfo[]>>;

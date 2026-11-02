@@ -63,7 +63,9 @@ export function getChatHistory(sessionId: number | null): ChatMessage[] {
       .all() as unknown as ChatMessage[];
   }
   return db
-    .prepare("SELECT id, role, content, timestamp FROM chat_messages WHERE session_id = ? ORDER BY timestamp ASC")
+    /* `id` breaks ties, as the general table does: two rows written in the
+       same millisecond came back in either order. */
+    .prepare("SELECT id, role, content, timestamp FROM chat_messages WHERE session_id = ? ORDER BY timestamp ASC, id ASC")
     .all(sessionId) as unknown as ChatMessage[];
 }
 
@@ -111,14 +113,21 @@ export async function compactChatHistory(sessionId: number | null): Promise<{ ok
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     log.warn("Compaction LLM call failed:", msg);
-    return { ok: false, error: `Compaction failed: ${msg}` };
+    /* The sanitised sentence, never the provider's raw error — this string is
+       rendered in the chat. The detail is in the log line above. */
+    return { ok: false, error: `Couldn't summarise this chat. ${toUserFacing(e).message}` };
   }
 
   if (!summaryText) {
-    return { ok: false, error: "Compaction returned empty summary text." };
+    return { ok: false, error: "Couldn't summarise this chat: the model returned nothing. Try again." };
   }
 
   const now = Date.now();
+  /* The checkpoint goes just BEFORE the messages it didn't summarise. Stamped
+     `now`, it sorted after the four kept messages — a summary of the past
+     appearing as the latest thing said, and sent to the model in that order. */
+  const firstKept = allMessages[allMessages.length - 4];
+  const checkpointAt = firstKept?.timestamp !== undefined ? firstKept.timestamp - 1 : now;
   const general = isGeneral(sessionId);
   // A session's checkpoint also goes into its journal. The general thread has
   // no journal (a journal belongs to a pair), so its summary lives in the chat.
@@ -130,6 +139,8 @@ export async function compactChatHistory(sessionId: number | null): Promise<{ ok
       "checkpoint,compacted",
       now
     );
+    // The Journal on screen is now stale — say so, as every other DB write does.
+    notifyDataUpdated("journal");
   }
 
   // Replace the older rows with one summary checkpoint message
@@ -145,7 +156,7 @@ export async function compactChatHistory(sessionId: number | null): Promise<{ ok
     general
       ? `📌 **Conversation Checkpoint**\n\n*The earlier ${olderMessages.length} messages were summarized:*\n\n${summaryText}`
       : `📌 **Conversation Checkpoint (Memory Saved)**\n\n*The earlier ${olderMessages.length} messages have been summarized and saved into your session journal memory:*\n\n${summaryText}`,
-    now
+    checkpointAt
   );
 
   return { ok: true, summary: summaryText };
@@ -497,6 +508,17 @@ async function dispatchTool(name: string, input: Record<string, unknown>, sessio
     await waitForRender(400); // Give the chart a moment to paint after navigation
 
     const view = getResearchView();
+    /* A session's agent must not describe another session's chart as its own
+       (same defect as read_research_chart). The general agent has no pair, so
+       whatever is on screen is fair for it. */
+    if (!isGeneral(sessionId) && view) {
+      const own = getSessionById(sessionId);
+      if (own && view.symbol !== own.pair) {
+        return {
+          error: `The Research chart on screen shows ${view.symbol}, not this session's ${own.pair}. Use read_research_chart for ${own.pair}'s numbers, or ask the owner to open its Research view.`,
+        };
+      }
+    }
     // Crop to the chart. A full-window capture also swallows the chat
     // drawer, which feeds the model its own transcript back as an image —
     // wasteful, and a route for it to "confirm" its own earlier claims.
@@ -529,8 +551,13 @@ async function dispatchTool(name: string, input: Record<string, unknown>, sessio
     const session = getSessionById(sessionId);
     if (!session) return { error: "No active session — select a session first." };
 
-    const view = getResearchView();
-    const symbol = view?.symbol ?? session.pair;
+    /* The session's pair, always. This read whatever pair Research last
+       showed: with a reply still running after the owner switched sessions,
+       session A's agent analysed B's chart and called it "what's on screen".
+       The on-screen view is used only when it IS this session's pair. */
+    const rawView = getResearchView();
+    const view = rawView && rawView.symbol === session.pair ? rawView : null;
+    const symbol = session.pair;
     const VALID_INTERVALS = [1, 5, 15, 30, 60, 240, 1440];
 
     // Explicit request wins; otherwise mirror the timeframe actually on
@@ -572,13 +599,56 @@ async function dispatchTool(name: string, input: Record<string, unknown>, sessio
           ? "No candle data available for this pair/interval — check the symbol."
           : view
             ? undefined
-            : "Research hasn't been opened this session, so this is the session's pair at a default interval — not necessarily what's on screen.",
+            : rawView
+              ? `The Research chart on screen shows ${rawView.symbol}, not this session's ${session.pair}; this is ${session.pair} at the interval asked for (or 4H).`
+              : "Research hasn't been opened this session, so this is the session's pair at a default interval — not necessarily what's on screen.",
     };
   }
   return executeSessionTool(name, input, sessionId);
 }
 
+/**
+ * Conversations with a turn in flight.
+ *
+ * One turn at a time per conversation. A chat panel that remounted mid-reply
+ * (a session switch, opening Browser) came back with its composer enabled, and
+ * a second message started a second agent loop on the same conversation —
+ * two replies interleaving into one transcript, both billed. The renderer asks
+ * `isChatBusy` on mount; this is the backstop that holds regardless.
+ */
+const inFlight = new Set<ChatConversation>();
+
+export function isChatBusy(sessionId: number | null): boolean {
+  return inFlight.has(sessionId ? sessionId : "general");
+}
+
 export async function sendChatMessage(
+  sessionId: number | null,
+  messages: { role: "user" | "assistant"; content: string | any[] }[],
+  params: { model: string; effort: string; capabilities?: { adaptive: boolean; extended: boolean } },
+  sender: WebContents
+): Promise<void> {
+  const conversation: ChatConversation = sessionId ? sessionId : "general";
+  if (inFlight.has(conversation)) {
+    emitError(
+      sender,
+      "chat:error",
+      new AppError("VALIDATION", "The agent is still answering in this chat.", {
+        hint: "Wait for the reply to finish, then send again.",
+      }),
+      { conversation }
+    );
+    return;
+  }
+  inFlight.add(conversation);
+  try {
+    await runChatTurn(sessionId, messages, params, sender);
+  } finally {
+    inFlight.delete(conversation);
+  }
+}
+
+async function runChatTurn(
   /** null or 0 = the general conversation (no session open). */
   sessionId: number | null,
   messages: { role: "user" | "assistant"; content: string | any[] }[],
