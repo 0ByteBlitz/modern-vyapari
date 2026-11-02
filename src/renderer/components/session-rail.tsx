@@ -21,7 +21,7 @@ import {
   X,
 } from "lucide-react";
 import { api, isError, type Session, type PaperStats, type SessionSummary, errorText } from "@/lib/api";
-import { sessionDot, sessionState } from "@/lib/session-state";
+import { sessionState } from "@/lib/session-state";
 import { ArchiveSessionDialog } from "@/components/archive-session-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatUsd } from "@/lib/format";
@@ -299,7 +299,7 @@ export function SessionRail({ activeSessionId, surface, onSelectSession, onNavig
           const pnl = open && stats ? stats.realizedPnl : null;
           const pnlText = pnl === null ? "" : formatUsd(pnl, { sign: true });
           const summary = summaries.get(session.id);
-          const dot = sessionDot(session.status, summary);
+          const paused = session.status === "paused";
 
           return (
             <div key={session.id} className="flex flex-col">
@@ -313,8 +313,8 @@ export function SessionRail({ activeSessionId, surface, onSelectSession, onNavig
                   title={open ? undefined : isSelected ? "Selected session — click to return to it" : undefined}
                 >
                   <span
-                    className={`rail-dot rail-dot-${dot}`}
-                    title={dot === "paused" ? "paused" : summary ? sessionState(summary) : undefined}
+                    className={`rail-dot ${paused ? "rail-dot-paused" : "rail-dot-active"}`}
+                    title={paused ? "paused" : summary ? `active · ${sessionState(summary)}` : "active"}
                   />
                   <span className="rail-session-pair">{session.pair}</span>
                   {pnlText && (

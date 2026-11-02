@@ -769,12 +769,11 @@ body {
 .rail-session-pnl { margin-left: auto; font-family: var(--font-mono); font-size: var(--text-sm); }
 
 .rail-dot { width: 7px; height: 7px; border-radius: var(--radius-pill); flex-shrink: 0; }
-/* Green only while the engine has something to act on (an armed plan or an
-   open position) — the same answer Home's cards give. It meant "not paused",
-   so idle sessions were green too, and a selected session's dot dimmed on
-   global pages, so one state showed in two strengths. */
-.rail-dot-working { background: var(--up); }
-.rail-dot-idle { background: transparent; box-shadow: inset 0 0 0 1.5px var(--text-faint); }
+/* Green = an active session, grey = paused. One strength everywhere: the
+   selected session's dot used to dim to half on global pages, so the same
+   state read two ways. What a session is DOING (armed, in position, idle) is
+   said in words — the meta line, Home's cards, the dot's tooltip. */
+.rail-dot-active { background: var(--up); }
 .rail-dot-paused { background: var(--text-ghost); }
 
 .rail-session-meta {
