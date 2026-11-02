@@ -154,7 +154,7 @@ describe("LevelResolver — sources", () => {
     };
 
     const r = new LevelResolver(sourceOver(series)).resolve(level, ctx(T + 2 * HOUR));
-    assert.ok(r.price !== null, r.unavailableReason);
+    assert.ok(r.price !== null, r.unavailableReason ?? "Expected a resolved price");
     assert.equal(typeof r.pocBinIndex, "number");
   });
 
