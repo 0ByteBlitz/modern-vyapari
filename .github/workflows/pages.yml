@@ -1,0 +1,50 @@
+name: Publish product website
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - site/**
+      - docs/images/plans.png
+      - docs/images/research.png
+      - src/renderer/assets/logo.svg
+      - .github/workflows/pages.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+      - name: Prepare website files
+        run: |
+          mkdir -p _site/docs/images _site/src/renderer/assets
+          cp site/index.html _site/index.html
+          sed -i 's|../docs/|./docs/|g; s|../src/|./src/|g' _site/index.html
+          cp site/styles.css _site/styles.css
+          cp docs/images/plans.png docs/images/research.png _site/docs/images/
+          cp src/renderer/assets/logo.svg _site/src/renderer/assets/logo.svg
+      - name: Upload website artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+      - name: Publish website
+        id: deployment
+        uses: actions/deploy-pages@v4
