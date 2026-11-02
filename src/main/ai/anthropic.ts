@@ -20,7 +20,37 @@ import type {
   AiToolResult,
   CompletionRequest,
   CompletionResult,
+  ModelPrice,
 } from "./port";
+
+/**
+ * Anthropic's published prices, USD per million tokens.
+ *
+ * Moved here from `agent/usage.ts` (2026-11-01): a price is a fact about a
+ * provider, and one shared table priced every other provider's calls as
+ * unknown. Prefix matching, so a dated snapshot id resolves to its family —
+ * and the FIRST match wins, so a point release priced differently from its
+ * family sits above the family row (`claude-opus-5-5` before `claude-opus-5`).
+ * Cache reads are listed where the price sheet states them; elsewhere the
+ * ledger applies ~0.1× input.
+ */
+const PRICES: Array<{ prefix: string } & ModelPrice> = [
+  { prefix: "claude-fable-5-1", inputPerM: 10, outputPerM: 50, cacheReadPerM: 0.25 },
+  { prefix: "claude-fable-5", inputPerM: 10, outputPerM: 50 },
+  { prefix: "claude-mythos-5", inputPerM: 10, outputPerM: 50 },
+  { prefix: "claude-opus-5-5", inputPerM: 4, outputPerM: 20, cacheReadPerM: 0.2 },
+  { prefix: "claude-opus-5", inputPerM: 5, outputPerM: 25 },
+  { prefix: "claude-opus-4", inputPerM: 5, outputPerM: 25 },
+  { prefix: "claude-sonnet-5", inputPerM: 2, outputPerM: 10, cacheReadPerM: 0.2 },
+  { prefix: "claude-sonnet-4", inputPerM: 3, outputPerM: 15 },
+  {
+    prefix: "claude-haiku-5",
+    inputPerM: 0.1,
+    outputPerM: 0.5,
+    longPrompt: { overTokens: 100_000, inputPerM: 0.5, outputPerM: 2.5 },
+  },
+  { prefix: "claude-haiku-4", inputPerM: 1, outputPerM: 5 },
+];
 
 /**
  * Anthropic's server-side web search.
@@ -238,5 +268,12 @@ export const anthropicProvider: AiProvider = {
 
   unsupportedTools(model: string) {
     return noWebSearch.has(model) ? ["web_search"] : [];
+  },
+
+  pricing(model: string) {
+    const row = PRICES.find((p) => model.startsWith(p.prefix));
+    if (!row) return null;
+    const { prefix: _prefix, ...price } = row;
+    return price;
   },
 };

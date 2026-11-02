@@ -56,6 +56,19 @@ work is what settles the surfaces they would theme.
 - **U-1 One word per state** (J0, J6) — the mode now reads *simulated* in the
   titlebar, toolbar, Home and the quit dialog, all from main; live stays loud.
   Remaining *strategy* wording on screen still goes — that path is frozen.
+- **U-9 One scope per screen** (J0, J3) — a figure sits where its scope
+  matches the screen. *Landed:* the session dashboard shows only its session
+  (activity filtered by `activity:listForSession`; app-wide agent spend and the
+  approvals queue removed — Home asks for decisions); the toolbar carries the
+  session's figures only on its own surfaces, as numbers without implied-budget
+  bars; agent spend lives in Settings and shows a lower bound (≥) when calls are
+  unpriced; the rail summarises the session instead of showing the shared cash.
+  Settings is grouped (General · Trading · AI · Data · Alerts · System) with
+  each key beside what it powers: the venue's under Exchange, the AI provider's
+  and Browserbase under AI, Telegram under Alerts; the review model is a picker;
+  the simulated venue says *simulated*, not *connected*; the feed badge is a
+  measured round trip. *Next:* one word for the mode; the context bar's feed
+  latency still reads the candle cache.
 - **U-2 Motion system** (all journeys) — `--dur-*` / `--ease-*` tokens exist;
   move the ~10 literal durations and the chat drawer, surface switches, list
   inserts and price ticks onto them. Motion says *appeared* or *changed*, never
@@ -92,10 +105,10 @@ the only adapter today and the default everywhere. The agent loop is already the
 app's, behind a port (design: `ARCHITECTURE.md`, *Vendor neutrality*); what is
 left is adapters, the choice, and removing the defaults.
 - **A-1 OpenAI-compatible adapter** — one adapter, configurable base URL: OpenAI, OpenRouter, Ollama, LM Studio, and Gemini through its OpenAI-compatible endpoint. Must pass `agent-loop.test.ts`.
-- **A-2 Provider choice, and no default provider** — first launch asks which provider (or a local server, which needs no key); Settings › Integrations switches it, with per-provider keys in `integration-secrets` and a base URL for local servers, persisted and read by `ai/registry.ts`. Remove the Anthropic defaults that remain: the registry's fallback, `chat:send`'s default model, the chat panel's fallback model id, and the review model named in Settings.
+- **A-2 Provider choice, and no default provider** — first launch asks which provider (or a local server, which needs no key); Settings › AI switches it, with per-provider keys in `integration-secrets` and a base URL for local servers, persisted and read by `ai/registry.ts`. Remove the Anthropic defaults that remain: the registry's fallback, `chat:send`'s default model, the chat panel's fallback model id, and the review model named in Settings.
 - **A-6 Local models first-class** — Ollama and LM Studio detected on their default ports; their models listed with honest capabilities (`toolCalling: "basic"` for most); cost a true zero; works with the network off.
 - **A-3 App-side web search** — for providers without a server-side search tool, so search is not an Anthropic-only feature.
-- **A-5 Cost per provider** — price tables per adapter; local models declare zero cost; unknown stays *unknown*, never $0.
+- **A-5 Cost per provider** — *landed:* each adapter declares its prices (`AiProvider.pricing`), every usage row records its provider, the readout totals per provider, and unknown stays *unknown* (shown as a ≥ floor), never $0. AI spend is in the titlebar on every screen. *Left:* local adapters declaring zero cost, once they exist.
 - **H-2 Model compatibility matrix** (J7) — every adapter and model the app offers is run against `agent-loop.test.ts`'s contract with a recorded transport, and Settings shows what each model can actually do (tool calling, vision, search, cost known or *unknown*). A model that fails tool calls is listed as chat-only, not hidden.
 
 **Exchange venues** (J6, J7) — Revolut X is the only live venue adapter; simulated mode needs none.

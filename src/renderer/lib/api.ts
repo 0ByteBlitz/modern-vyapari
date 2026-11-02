@@ -32,6 +32,8 @@ import type {
   ArchiveStepEvent,
   ArchiveSummary,
   AiModelInfo,
+  UsageTotals,
+  UsageReport,
 } from "@shared/ipc-types";
 import { isUserFacingError, type UserFacingError } from "@shared/errors";
 import type { QuitSummary } from "@shared/quit";
@@ -69,6 +71,8 @@ export type {
   ArchiveSummary,
   UserFacingError,
   AiModelInfo,
+  UsageTotals,
+  UsageReport,
 };
 
 
@@ -230,37 +234,6 @@ export interface CalibrationRecord {
   stillOpen: number;
   minSample: number;
   empty: boolean;
-}
-
-export interface UsageTotals {
-  calls: number;
-  inputTokens: number;
-  outputTokens: number;
-  cacheReadTokens: number;
-  cacheWriteTokens: number;
-  costUsd: number;
-  /** Calls whose model had no published price. Shown, never folded into 0. */
-  unpricedCalls: number;
-}
-
-/**
- * Measured spend, not an account balance.
- *
- * Anthropic exposes no credit-balance endpoint, and its cost reports need an
- * Admin key that individual accounts cannot create. So this is what the app
- * itself has spent, computed from the `usage` block on every response.
- */
-export interface UsageReport {
-  today: UsageTotals;
-  last30Days: UsageTotals;
-  allTime: UsageTotals;
-  byModel: Array<{ model: string; calls: number; costUsd: number; unpriced: number }>;
-  byPurpose: Array<{ purpose: string; calls: number; costUsd: number }>;
-  cacheSavedUsd: number;
-  /** Attribution across simulated and live. The total is not split by mode:
-      the bill is one bill, so the shared store holds every row. */
-  byMode: Array<{ mode: string; calls: number; costUsd: number }>;
-  scope: string;
 }
 
 export type AppMode = "simulated" | "live";
@@ -430,6 +403,8 @@ export interface RendererApi {
   getAnalysisCandles(symbol: string, intervalMinutes: number, limit?: number): Promise<Result<Candle[]>>;
   /** One-shot Binance 24h snapshot — first paint for the market list. */
   getTickerSnapshot(): Promise<Result<{ symbol: string; price: number; change24h: number; volume24h: number }[]>>;
+  /** Milliseconds for one round trip to the analysis feed; an error when it doesn't answer. */
+  pingFeed(): Promise<Result<number>>;
   /** Cross-venue derivatives: Binance futures + Hyperliquid perps, never blended. */
   getDerivatives(symbol: string): Promise<Result<DerivativesMetrics>>;
   /** Measured Revolut X vs. Binance spread for a pair. */
@@ -481,6 +456,8 @@ export interface RendererApi {
   onCandleUpdate(callback: (data: { symbol: string; intervalMin: number; candle: Candle }) => void): () => void;
   // Chat
   getChatHistory(sessionId: number | null): Promise<Result<ChatMessage[]>>;
+  /** True while a reply is being written in this conversation. */
+  isChatBusy(sessionId: number | null): Promise<Result<boolean>>;
   clearChatHistory(sessionId: number | null): Promise<Result<{ ok: true }>>;
   compactChatHistory(sessionId: number | null): Promise<Result<{ ok: boolean; summary?: string; error?: string }>>;
   getAiModels(): Promise<Result<AiModelInfo[]>>;
@@ -496,6 +473,11 @@ export interface RendererApi {
   /** Simulated or live. `pending` is what the NEXT launch will use. */
   /** What this app has spent. Not an account balance — none is exposed. */
   usageReport(): Promise<Result<UsageReport>>;
+  /** Set the daily AI spending limit in USD; null clears it. */
+  setDailyAiLimit(limit: number | null): Promise<Result<{ ok: true }>>;
+  /** The saved review model (null = the provider's fast model) and the one reviews will use. */
+  reviewModel(): Promise<Result<{ saved: string | null; effective: string | null }>>;
+  setReviewModel(model: string | null): Promise<Result<{ ok: true }>>;
   /** The one paper balance. Sessions are workspaces; cash is not theirs. */
   paperAccount(): Promise<Result<{ balance: number; initialBalance: number; updatedAt: number }>>;
   setPaperBalance(startingBalance: number): Promise<Result<{ ok: true }>>;
@@ -554,6 +536,8 @@ export interface RendererApi {
   ): Promise<Result<JournalEntry[]>>;
   journalCounts(sessionId: number): Promise<Result<Record<string, number>>>;
   listActivity(limit?: number): Promise<Result<ActivityEvent[]>>;
+  /** One session's events, plus the app-wide ones that affect its plans. */
+  listSessionActivity(sessionId: number, limit?: number): Promise<Result<ActivityEvent[]>>;
   portfolioSummary(includeArchived?: boolean): Promise<Result<PortfolioSummary>>;
   tripKillSwitch(reason?: string): Promise<Result<{ active: boolean; reason: string }>>;
   resetKillSwitch(): Promise<Result<{ active: boolean; reason: string }>>;
@@ -606,6 +590,8 @@ export interface RendererApi {
   listAlerts(sessionId?: number): Promise<Result<AlertRecord[]>>;
   removeAlert(alertId: number): Promise<Result<{ ok: true }>>;
   onAlertTriggered(callback: (event: AlertEvent) => void): () => void;
+  /** A plan event the owner is told about on every channel — shown as a toast. */
+  onNotifyEvent(callback: (event: { kind: string; title: string; body: string; at: number }) => void): () => void;
   /** Agent-driven navigation — the agent switches the UI to the surface it's
    *  working on so the user sees what the agent is doing in real time. */
   onAgentNavigate(callback: (surface: string) => void): () => void;

@@ -32,6 +32,24 @@ export interface AiProviderCapabilities {
   toolCalling: "reliable" | "basic" | "none";
 }
 
+/**
+ * What one model costs, in USD per million tokens, as its provider publishes
+ * it. Each adapter owns its own table: prices are a fact about a provider, and
+ * a single shared table is how every non-Anthropic call would have read $0.
+ * A local model declares zeros; a model the adapter cannot price returns null,
+ * which the usage readout shows as unknown, never as free.
+ */
+export interface ModelPrice {
+  inputPerM: number;
+  outputPerM: number;
+  /** Cache reads and writes, when the provider prices them; otherwise the
+   *  usage ledger applies ~0.1× and ~1.25× input. */
+  cacheReadPerM?: number;
+  cacheWritePerM?: number;
+  /** A second rate past a prompt size (e.g. Haiku 5.5 above 100K tokens). */
+  longPrompt?: { overTokens: number; inputPerM: number; outputPerM: number };
+}
+
 export interface AiProviderInfo {
   /** Stable id, persisted in settings: `"anthropic"`, `"openai-compatible"`, … */
   id: string;
@@ -143,4 +161,8 @@ export interface AiProvider {
   rejectedWebSearch(err: unknown, model: string): boolean;
   /** Tools this model cannot use, so the UI says "unavailable" not "off". */
   unsupportedTools(model: string): string[];
+
+  /** The published price of `model`, or null when this adapter can't price it.
+   *  Optional: an adapter without a price table records every call as unknown. */
+  pricing?(model: string): ModelPrice | null;
 }

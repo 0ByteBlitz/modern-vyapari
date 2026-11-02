@@ -171,7 +171,7 @@ export function PlanWatchPanel({
         <Target size={13} style={{ color: "var(--accent)" }} />
         <span className="label-micro">Armed plans</span>
         <span className="mono ml-auto" style={{ fontSize: "var(--text-xs)", color: "var(--text-faint)" }}>
-          {price === null ? "no price" : formatPrice(String(price))}
+          {price === null ? "no price" : `last ${formatPrice(String(price))}`}
         </span>
       </div>
 

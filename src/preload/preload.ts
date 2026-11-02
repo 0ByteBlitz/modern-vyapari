@@ -50,6 +50,7 @@ const api = {
   },
   // Chat (Phase 1)
   getChatHistory: (sessionId: number | null) => ipcRenderer.invoke("chat:history", sessionId),
+  isChatBusy: (sessionId: number | null) => ipcRenderer.invoke("chat:busy", sessionId),
   clearChatHistory: (sessionId: number | null) => ipcRenderer.invoke("chat:clear", sessionId),
   compactChatHistory: (sessionId: number | null) => ipcRenderer.invoke("chat:compact", sessionId),
   getAiModels: () => ipcRenderer.invoke("chat:models"),
@@ -71,6 +72,9 @@ const api = {
     return () => ipcRenderer.removeListener("chat:error", handler);
   },
   usageReport: () => ipcRenderer.invoke("usage:report"),
+  setDailyAiLimit: (limit: number | null) => ipcRenderer.invoke("usage:setDailyLimit", limit),
+  reviewModel: () => ipcRenderer.invoke("agent:reviewModel"),
+  setReviewModel: (model: string | null) => ipcRenderer.invoke("agent:setReviewModel", model),
   paperAccount: () => ipcRenderer.invoke("paper:account"),
   setPaperBalance: (v: number) => ipcRenderer.invoke("paper:setBalance", v),
   appModeStatus: () => ipcRenderer.invoke("mode:get"),
@@ -122,6 +126,11 @@ const api = {
     return () => ipcRenderer.removeListener("browser:state", handler);
   },
   // Phase 2: Alert triggers (pushed live from the alert engine)
+  onNotifyEvent: (callback: (event: any) => void) => {
+    const handler = (_event: any, data: any) => callback(data);
+    ipcRenderer.on("notify:event", handler);
+    return () => ipcRenderer.removeListener("notify:event", handler);
+  },
   onAlertTriggered: (callback: (event: any) => void) => {
     const handler = (_event: any, data: any) => callback(data);
     ipcRenderer.on("alerts:triggered", handler);
@@ -154,6 +163,7 @@ const api = {
   getAnalysisCandles: (symbol: string, intervalMinutes: number, limit?: number) =>
     ipcRenderer.invoke("candles:analysis", symbol, intervalMinutes, limit),
   getTickerSnapshot: () => ipcRenderer.invoke("candles:tickerSnapshot"),
+  pingFeed: () => ipcRenderer.invoke("feed:ping"),
   getDerivatives: (symbol: string) => ipcRenderer.invoke("derivatives:get", symbol),
   getBasisStats: (symbol: string, sinceMs?: number) => ipcRenderer.invoke("basis:stats", symbol, sinceMs),
 
@@ -185,6 +195,8 @@ const api = {
     ipcRenderer.invoke("journal:list", sessionId, opts),
   journalCounts: (sessionId: number) => ipcRenderer.invoke("journal:counts", sessionId),
   listActivity: (limit?: number) => ipcRenderer.invoke("activity:list", limit),
+  listSessionActivity: (sessionId: number, limit?: number) =>
+    ipcRenderer.invoke("activity:listForSession", sessionId, limit),
   portfolioSummary: (includeArchived?: boolean) => ipcRenderer.invoke("portfolio:summary", includeArchived),
 
   tripKillSwitch: (reason?: string) => ipcRenderer.invoke("killSwitch:trip", reason),

@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronRight, RefreshCw, TrendingDown, TrendingUp } from "lucide-react";
+import { ChevronDown, ChevronRight, TrendingDown, TrendingUp } from "lucide-react";
 import { api, isError, type Candle, type Ticker, errorText } from "@/lib/api";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CandlestickChart } from "@/components/candlestick-chart";
 import { formatPrice } from "@/lib/format";
+import { RefreshButton } from "@/components/refresh-button";
 
 const INTERVALS = [
   { value: "5", label: "5m" },
@@ -47,7 +47,6 @@ export function CandlesCard({ symbol, onSymbolChange, symbolLocked = false, fill
   const candles = series.key === seriesKey ? series.candles : EMPTY;
   const [ticker, setTicker] = useState<Ticker | null>(null);
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
   const [showTable, setShowTable] = useState(false);
   const loadSeq = useRef(0); // guards against out-of-order responses on fast pair switching
 
@@ -67,19 +66,18 @@ export function CandlesCard({ symbol, onSymbolChange, symbolLocked = false, fill
   /* ── Candles: load on mount + on symbol/interval change + every 30s ── */
   const loadCandles = useCallback(async () => {
     const seq = ++loadSeq.current;
-    setLoading(true);
     const intervalMin = parseInt(interval, 10);
     // Binance is the single analysis feed — history here must match the WS
     // stream that updates this same chart, and the engine's candle cache.
     const res = await api.getAnalysisCandles(symbol, intervalMin, CANDLE_WINDOW);
-    if (seq !== loadSeq.current) return; // stale response
-    setLoading(false);
+    if (seq !== loadSeq.current) return true; // superseded by a newer load
     if (isError(res)) {
       setError(errorText(res));
-      return;
+      return false;
     }
     setError("");
     setSeries({ key: `${symbol}:${interval}`, candles: res.slice(-CANDLE_WINDOW) });
+    return true;
   }, [symbol, interval]);
 
   useEffect(() => {
@@ -230,16 +228,7 @@ export function CandlesCard({ symbol, onSymbolChange, symbolLocked = false, fill
           )}
         </div>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 text-muted-foreground"
-          onClick={() => void loadCandles()}
-          disabled={loading}
-          title="Refresh"
-        >
-          <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-        </Button>
+        <RefreshButton onRefresh={loadCandles} title="Refresh chart" iconOnly className="btn btn-ghost" size={14} />
       </div>
 
       {error && <p className="px-4 pb-2 text-sm text-destructive">{error}</p>}

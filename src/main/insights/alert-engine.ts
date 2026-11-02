@@ -6,7 +6,7 @@
  * and emits events to the renderer for the Bot Working Area UI.
  */
 
-import { getDb, auditLog } from "../db/database";
+import { getDb, auditLog, withTransaction } from "../db/database";
 import type { CandleNumeric } from "./indicator-types";
 import { makeIndicatorKey } from "./indicator-types";
 import { computeFromCandles } from "./indicators";
@@ -16,6 +16,8 @@ import { binanceWS } from "../data/binance-ws";
 import { describeThreshold } from "../../shared/levels";
 import { createLogger } from "../logger";
 import { ListenerRegistry } from "../events/listener-registry";
+import { announceAlert } from "../notify/announce";
+import { enqueueWithin } from "../notify/outbox";
 
 const log = createLogger("alerts");
 
@@ -264,6 +266,16 @@ class AlertEngine {
       return { hit: false, currentValue: null };
     }
 
+    /* A price condition without a field means the close. Values below are
+       keyed `price::close` etc., so a field-less `price` looked up `price:`,
+       found nothing, and the alert could never fire — while the agent's tool
+       told it to write exactly that ("use {} for price"). Plans hit the same
+       trap and set `field: "close"` explicitly (condition-intent.ts); alerts,
+       including ones already saved, get it here. (2026-11-02) */
+    if (condition.indicator === "price" && !condition.field) {
+      condition = { ...condition, field: "close" };
+    }
+
     const current = new Map<string, number | null>();
     const previous = new Map<string, number | null>();
 
@@ -324,10 +336,34 @@ class AlertEngine {
   private triggerAlert(alertId: number, alert: AlertRecord, currentValue: number | null, triggeredAt?: number): void {
     const now = triggeredAt ?? Date.now();
 
-    // Update DB
-    getDb()
-      .prepare("UPDATE alerts SET status = 'triggered', triggered_at = ? WHERE id = ?")
-      .run(now, alertId);
+    const cond = alert.condition;
+    const measured = currentValue !== null ? ` — now ${currentValue}` : "";
+    const notification = {
+      kind: "alert_triggered",
+      title: `${alert.symbol} — ${triggeredAt ? "missed alert" : "alert"}: ${alert.label}`,
+      body:
+        `${(cond?.indicator || "price").toUpperCase()} ${(cond?.operator || "").replace(/_/g, " ")} ` +
+        `${describeThreshold(cond?.value)}${measured}` +
+        (triggeredAt ? `\nFired at ${new Date(now).toLocaleString()}, while the app wasn't watching.` : ""),
+      dedupeKey: `alert:${alertId}:${now}`,
+    };
+
+    /* The alert state and its durable Telegram obligation are one fact. If
+       either write fails, leave it active so the next evaluation can retry. */
+    try {
+      const changed = withTransaction((db) => {
+        const result = db
+          .prepare("UPDATE alerts SET status = 'triggered', triggered_at = ? WHERE id = ?")
+          .run(now, alertId);
+        if (result.changes === 0) return false;
+        enqueueWithin(db, notification);
+        return true;
+      });
+      if (!changed) return;
+    } catch (err) {
+      log.error("Failed to commit alert trigger and notification", err);
+      return;
+    }
 
     // If attached to a session, log to journal as an observation so the AI context receives it
     if (alert.session_id) {
@@ -367,6 +403,13 @@ class AlertEngine {
     };
 
     this.listeners.emit(event);
+
+    /* Telegram and a Windows notification. Alerts reached neither until
+       2026-11-02 — only the in-app toast, so an alert that fired while the
+       window was minimised or the phone was elsewhere told no one. The
+       dedupe key is the alert and the bar it fired on, so a replay after a
+       restart can't send it twice. */
+    announceAlert(notification);
 
     auditLog("alert_triggered", { alertId, label: alert.label, currentValue });
   }

@@ -39,7 +39,7 @@ const NON_TRENDING_BASES = new Set([
 ]);
 
 /** Keep only liquid, comparable USDT spot pairs — drops cross pairs (ETHBTC),
- *  fiat pairs, leveraged tokens, and stablecoin noise from the !ticker@arr firehose. */
+ *  fiat pairs, leveraged tokens, and stablecoin noise from the all-market ticker stream. */
 function isTrendableSymbol(binanceSymbol: string): boolean {
   const appSymbol = fromFeedSymbol(binanceSymbol);
   if (!appSymbol) return false;
@@ -294,11 +294,19 @@ class BinanceWSManager {
         if (data.e === "kline") {
           this.handleKline(data);
         } else if (Array.isArray(data)) {
-          // This is the !ticker@arr payload — Binance sends 2000+ symbols per
-          // tick across every quote asset. Filter to comparable USDT spot
-          // pairs before broadcasting so gainers/losers/trending reflect real
-          // tradable tokens and the IPC payload isn't the full firehose.
-          const relevant = data.filter((t: any) => typeof t.s === "string" && isTrendableSymbol(t.s));
+          /* The !miniTicker@arr payload: only the symbols that changed in the
+             last second, across every quote asset. Filtered to comparable USDT
+             spot pairs, and given the 24h change the mini ticker leaves out —
+             (close − open) / open over the same rolling 24h — so the renderer
+             keeps the shape it had. A frame is a PATCH, not the full list. */
+          const relevant = data
+            .filter((t: any) => typeof t.s === "string" && isTrendableSymbol(t.s))
+            .map((t: any) => {
+              const open = parseFloat(t.o);
+              const close = parseFloat(t.c);
+              const pct = open > 0 && Number.isFinite(close) ? ((close - open) / open) * 100 : NaN;
+              return { s: t.s, c: t.c, P: Number.isFinite(pct) ? pct.toFixed(3) : "", q: t.q };
+            });
           for (const wc of this.tickerWebContentsSet) emitTo(wc, "binance:ticker-update", relevant);
         }
       } catch (err) {
@@ -369,7 +377,10 @@ class BinanceWSManager {
     }
 
     if (this.tickerWebContentsSet.size > 0) {
-      paramsSet.add("!ticker@arr");
+      /* !miniTicker@arr, not !ticker@arr: the full ticker stream connects and
+         then sends nothing (measured 2026-11-02 — zero frames in 6s while the
+         mini stream sent five), so Markets sat on its REST snapshot for ever. */
+      paramsSet.add("!miniTicker@arr");
     }
 
     const msg = {
