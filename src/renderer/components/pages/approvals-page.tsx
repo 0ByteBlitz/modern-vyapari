@@ -19,6 +19,10 @@ export function ApprovalsPage({ activeSession }: { activeSession?: Session | nul
   const [killActive, setKillActive] = useState(false);
   const [killReason, setKillReason] = useState("");
   const [loading, setLoading] = useState(false);
+  /* Both directions ask once. Tripping used to happen on a single click — easy
+     to do by accident, and it stops every session's entries; re-arming is the
+     direction that lets trading resume, so it never happens on a stray click. */
+  const [confirming, setConfirming] = useState(false);
 
   const loadData = useCallback(async () => {
     if (activeSession) {
@@ -39,6 +43,7 @@ export function ApprovalsPage({ activeSession }: { activeSession?: Session | nul
   }, [loadData]);
 
   const handleToggleKillSwitch = async () => {
+    setConfirming(false);
     setLoading(true);
     if (killActive) {
       const res = await api.resetKillSwitch();
@@ -165,15 +170,40 @@ export function ApprovalsPage({ activeSession }: { activeSession?: Session | nul
                 </div>
               </div>
             )}
-            <Button
-              disabled={loading}
-              onClick={handleToggleKillSwitch}
-              className={`w-full font-bold text-xs h-10 tracking-wider ${
-                killActive ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "bg-rose-600 hover:bg-rose-700 text-white"
-              }`}
-            >
-              {killActive ? "RE-ARM SYSTEM OPERATION" : "TRIP EMERGENCY KILL SWITCH"}
-            </Button>
+            {confirming ? (
+              <div className="kill-confirm" role="alertdialog" aria-label="Confirm kill switch">
+                <p className="text-xs leading-relaxed">
+                  {killActive
+                    ? "Re-arm? Every session can open new positions again."
+                    : "Trip the kill switch? No session can open a new position until you re-arm it. Open positions keep their stops and targets."}
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    autoFocus
+                    disabled={loading}
+                    onClick={handleToggleKillSwitch}
+                    className={`flex-1 font-bold text-xs h-9 ${
+                      killActive ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "bg-rose-600 hover:bg-rose-700 text-white"
+                    }`}
+                  >
+                    {killActive ? "Re-arm" : "Trip kill switch"}
+                  </Button>
+                  <Button variant="ghost" className="flex-1 text-xs h-9" onClick={() => setConfirming(false)}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button
+                disabled={loading}
+                onClick={() => setConfirming(true)}
+                className={`w-full font-bold text-xs h-10 tracking-wider ${
+                  killActive ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "bg-rose-600 hover:bg-rose-700 text-white"
+                }`}
+              >
+                {killActive ? "RE-ARM SYSTEM OPERATION" : "TRIP EMERGENCY KILL SWITCH"}
+              </Button>
+            )}
           </div>
         </section>
 

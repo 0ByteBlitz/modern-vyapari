@@ -24,8 +24,16 @@ function formatVolume(v: number): string {
  * so Research can't silently drift onto a pair the session doesn't trade —
  * the market list then acts as comparison, not navigation.
  */
-export function MarketPage({ lockedSymbol }: { lockedSymbol?: string } = {}) {
-  const [symbol, setSymbol] = useState(lockedSymbol ?? "BTC-USD");
+export function MarketPage({
+  lockedSymbol,
+  initialSymbol,
+}: {
+  lockedSymbol?: string;
+  /** Open on this pair (e.g. a mover clicked on Home); unlike `lockedSymbol`
+   *  the list still navigates. */
+  initialSymbol?: string;
+} = {}) {
+  const [symbol, setSymbol] = useState(lockedSymbol ?? initialSymbol ?? "BTC-USD");
   const [search, setSearch] = useState("");
   /** When on, hide markets the bot could not actually execute on the venue. */
   const [tradableOnly, setTradableOnly] = useState(false);

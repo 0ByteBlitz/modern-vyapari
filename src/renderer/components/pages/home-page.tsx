@@ -58,10 +58,13 @@ export function HomePage({
   setup,
   onOpenSession,
   onNavigate,
+  onOpenMarket,
 }: {
   setup: SetupStatus | null;
   onOpenSession: (sessionId: number) => void;
   onNavigate: (surface: "markets" | "portfolio" | "settings" | "approvals") => void;
+  /** Open Markets on one pair — a Biggest movers tile. */
+  onOpenMarket: (symbol: string) => void;
 }) {
   const mode = useAppMode();
   const [portfolio, setPortfolio] = useState<PortfolioSummary | null>(null);
@@ -334,12 +337,19 @@ export function HomePage({
         </div>
         <div className="home-movers">
           {movers.map((m) => (
-            <div key={m.symbol} className="home-mover">
+            /* A button, because it reads as one: the tiles looked clickable
+               and did nothing. Opens Markets on that pair. */
+            <button
+              key={m.symbol}
+              className="home-mover"
+              onClick={() => onOpenMarket(m.symbol)}
+              title={`Open ${m.symbol} in Markets`}
+            >
               <span style={{ fontWeight: 600 }}>{m.symbol}</span>
               <span className={`mono ${m.change24h >= 0 ? "v-up" : "v-down"}`}>
                 {formatPct(m.change24h, 2, true)}
               </span>
-            </div>
+            </button>
           ))}
           {movers.length === 0 && (
             <span style={{ fontSize: "var(--text-md)", color: "var(--text-faint)", padding: "10px 12px" }}>

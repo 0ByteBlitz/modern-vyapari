@@ -1,22 +1,19 @@
 import { useCallback, useEffect, useState } from "react";
-import { Bell, BellOff, CheckCircle2, AlertTriangle, Trash2, Plus, RefreshCw, Zap, Volume2 } from "lucide-react";
+import { Bell, BellOff, CheckCircle2, AlertTriangle, Trash2, Plus, Zap, Volume2 } from "lucide-react";
 import { api, isError, type Session, type AlertRecord } from "@/lib/api";
 import { testAlertSound } from "@/lib/alert-sound";
 import { describeThreshold } from "@shared/levels";
+import { RefreshButton } from "@/components/refresh-button";
 
 export function AlertsPage({ activeSession }: { activeSession: Session | null }) {
   const [alerts, setAlerts] = useState<AlertRecord[]>([]);
-  const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState<"all" | "active" | "triggered">("all");
 
   const loadAlerts = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await api.listAlerts(activeSession?.id);
-      if (!isError(res)) setAlerts(res);
-    } finally {
-      setLoading(false);
-    }
+    const res = await api.listAlerts(activeSession?.id);
+    if (isError(res)) return false;
+    setAlerts(res);
+    return true;
   }, [activeSession?.id]);
 
   useEffect(() => {
@@ -66,10 +63,7 @@ export function AlertsPage({ activeSession }: { activeSession: Session | null })
             <Volume2 size={14} style={{ color: "var(--accent)" }} />
             <span>Test Sound</span>
           </button>
-          <button onClick={() => void loadAlerts()} className="btn btn-secondary" title="Refresh alerts">
-            <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-            <span>Refresh</span>
-          </button>
+          <RefreshButton onRefresh={loadAlerts} title="Refresh alerts" className="btn btn-secondary" size={14} />
           {alerts.length > 0 && (
             <button onClick={clearAll} className="btn" style={{ color: "var(--down)", borderColor: "rgba(242,86,106,0.3)" }}>
               <Trash2 size={14} />

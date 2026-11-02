@@ -8,6 +8,7 @@ import { FeedPane } from "@/components/feed-pane";
 import { UsagePanel } from "@/components/usage-panel";
 import { api, isError, type SetupStatus, type ActivityEvent } from "@/lib/api";
 import { DENSITIES, getDensity, setDensity, type Density } from "@/lib/density";
+import { RefreshButton } from "@/components/refresh-button";
 
 /**
  * Settings — 200px section nav, one pane at a time.
@@ -161,6 +162,7 @@ function DiagnosticsPane({ dbStatus }: { dbStatus?: string }) {
     const [l, p] = await Promise.all([api.getRecentLogs(300), api.getLogPath()]);
     if (!isError(l)) setLines(l.lines);
     if (!isError(p)) setLogPath(p.path);
+    return !isError(l);
   }, []);
 
   useEffect(() => {
@@ -177,7 +179,9 @@ function DiagnosticsPane({ dbStatus }: { dbStatus?: string }) {
           <input type="checkbox" className="accent-primary" checked={onlyErrors} onChange={(e) => setOnlyErrors(e.target.checked)} />
           errors & warnings only
         </label>
-        <button className="btn ml-auto" onClick={() => void load()}>Refresh</button>
+        <span className="ml-auto">
+          <RefreshButton onRefresh={load} title="Refresh the log" />
+        </span>
         <button className="btn" onClick={() => void api.revealLogs()}>Open file</button>
       </div>
 
@@ -222,7 +226,9 @@ export function SettingsPage({ setup, setupError, onRefresh, dbStatus, openSecti
 
   const loadAudit = useCallback(async () => {
     const res = await api.listActivity(80);
-    if (!isError(res)) setAudit(res);
+    if (isError(res)) return false;
+    setAudit(res);
+    return true;
   }, []);
 
   useEffect(() => {
@@ -302,9 +308,9 @@ export function SettingsPage({ setup, setupError, onRefresh, dbStatus, openSecti
           <section className="panel">
             <div className="panel-header">
               <span style={{ fontSize: "12.5px", fontWeight: 600 }}>Audit log</span>
-              <button className="btn ml-auto" onClick={() => void loadAudit()}>
-                Refresh
-              </button>
+              <span className="ml-auto">
+                <RefreshButton onRefresh={loadAudit} title="Refresh the audit log" />
+              </span>
             </div>
             <table className="vy-table">
               <thead>
