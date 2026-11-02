@@ -150,6 +150,13 @@ app.whenReady().then(() => {
      naturally and threw "Database not initialized" on every launch. */
   if (resetStaleChoice) auditLog("app_mode_reset", { from: chosen, to: mode, reason: "live execution not built" });
   auditLog("app_started", { mode });
+  /* Armed plans stranded in archived sessions (archiving didn't end plans
+     before 2026-11-02): ended here, before any surface counts them. */
+  {
+    const { endPlansInArchivedSessions } = require("./plans/plan-service") as typeof import("./plans/plan-service");
+    const ended = endPlansInArchivedSessions();
+    if (ended > 0) log.info(`Ended ${ended} armed plan(s) left in archived sessions.`);
+  }
   /* The one store both modes open: lessons, because what you learn about a
      market is true in both worlds, and API spend, because there is one
      Anthropic bill. Everything else stays mode-owned — a hit rate must never

@@ -765,13 +765,15 @@ body {
 /* Selected but not in scope — you're on a global surface. Quiet marker so the
    rail doesn't imply you're inside a session when you aren't. */
 .rail-session-selected .rail-session-pair { color: var(--muted-foreground); }
-.rail-session-selected .rail-dot { opacity: 0.5; }
 .rail-session-pair { font-size: 12.5px; font-weight: 600; letter-spacing: -0.005em; }
 .rail-session-pnl { margin-left: auto; font-family: var(--font-mono); font-size: var(--text-sm); }
 
 .rail-dot { width: 7px; height: 7px; border-radius: var(--radius-pill); flex-shrink: 0; }
+/* Green = an active session, grey = paused. One strength everywhere: the
+   selected session's dot used to dim to half on global pages, so the same
+   state read two ways. What a session is DOING (armed, in position, idle) is
+   said in words — the meta line, Home's cards, the dot's tooltip. */
 .rail-dot-active { background: var(--up); }
-.rail-dot-warn { background: var(--caution); }
 .rail-dot-paused { background: var(--text-ghost); }
 
 .rail-session-meta {
@@ -1400,18 +1402,22 @@ ol.md-list li { list-style: decimal; }
 
 .research-main { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
 
+/* Wraps rather than overflows. At a fixed 36px with the agent drawer open the
+   bar ran past the page edge: Replay's Exit sat under the drawer and could not
+   be clicked, so replay could only be left by collapsing the drawer. */
 .research-bar {
-  height: 36px;
+  min-height: 36px;
   flex-shrink: 0;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  padding: 0 10px;
+  gap: 4px 8px;
+  padding: 4px 10px;
   border-bottom: 1px solid var(--border);
   background: var(--surface-1);
 }
 
-.research-symbol { font-size: var(--text-lg); font-weight: 600; letter-spacing: -0.01em; }
+.research-symbol { font-size: var(--text-lg); font-weight: 600; letter-spacing: -0.01em; white-space: nowrap; }
 .research-bar-sep { width: 1px; height: 18px; background: var(--border); }
 
 .research-intervals { display: flex; align-items: center; gap: 1px; }
@@ -1494,7 +1500,7 @@ ol.md-list li { list-style: decimal; }
 }
 
 .ind-param input:focus { border-color: var(--accent); }
-.research-replay { display: flex; align-items: center; gap: 6px; }
+.research-replay { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
 
 /* KLineChart draws into this; it owns its own canvas sizing. */
 .research-canvas { flex: 1; min-height: 0; background: var(--background); }
