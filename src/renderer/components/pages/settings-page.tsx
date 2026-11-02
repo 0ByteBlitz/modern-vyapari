@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { IntegrationsPane } from "@/components/integrations-pane";
+import { ExchangePane } from "@/components/exchange-pane";
 import { NotificationsPane } from "@/components/notifications-pane";
 import { ModePane } from "@/components/mode-pane";
+import { SimulatedAccountPane } from "@/components/account-pane";
+import { AiPane } from "@/components/ai-pane";
+import { FeedPane } from "@/components/feed-pane";
 import { UsagePanel } from "@/components/usage-panel";
-import { CandleCoveragePane } from "@/components/candle-coverage-pane";
 import { api, isError, type SetupStatus, type ActivityEvent } from "@/lib/api";
 import { DENSITIES, getDensity, setDensity, type Density } from "@/lib/density";
 
@@ -14,29 +16,58 @@ import { DENSITIES, getDensity, setDensity, type Density } from "@/lib/density";
  * shown as read-only "not enforced yet". Limits that appear editable but are
  * checked by nothing would be the most misleading control in the app — a user
  * would reasonably believe they were protected.
+ *
+ * **Grouped by what each setting powers** (2026-11-01). The flat list mixed
+ * levels — "Integrations" held the exchange, the analysis feed and every key;
+ * "Mode" held the account balance; "Models & cost" held spend but no model
+ * choice; the feed was described on two pages. Each key now sits beside the
+ * thing it powers, and every group answers one question.
  */
-const SECTIONS = [
-  /* First, because it is the one setting that changes what the app can do. */
-  { id: "mode", label: "Mode" },
-  { id: "appearance", label: "Appearance" },
-  { id: "limits", label: "Risk limits" },
-  { id: "integrations", label: "Integrations" },
-  { id: "notifications", label: "Notifications" },
-  { id: "models", label: "Models & cost" },
-  { id: "feeds", label: "Data & feeds" },
-  { id: "audit", label: "Audit log" },
-  { id: "diagnostics", label: "Diagnostics" },
+const GROUPS = [
+  {
+    label: "General",
+    sections: [
+      /* First, because it is the one setting that changes what the app can do. */
+      { id: "mode", label: "Mode" },
+      { id: "appearance", label: "Appearance" },
+    ],
+  },
+  {
+    label: "Trading",
+    sections: [
+      { id: "exchange", label: "Exchange" },
+      { id: "account", label: "Simulated account" },
+      { id: "limits", label: "Risk limits" },
+    ],
+  },
+  {
+    label: "AI",
+    sections: [
+      { id: "ai", label: "Provider & models" },
+      { id: "usage", label: "Usage & cost" },
+    ],
+  },
+  { label: "Data", sections: [{ id: "feed", label: "Analysis feed" }] },
+  { label: "Alerts", sections: [{ id: "notifications", label: "Telegram" }] },
+  {
+    label: "System",
+    sections: [
+      { id: "audit", label: "Audit log" },
+      { id: "diagnostics", label: "Diagnostics" },
+    ],
+  },
 ] as const;
 
-type SectionId = (typeof SECTIONS)[number]["id"];
+type SectionId = (typeof GROUPS)[number]["sections"][number]["id"];
+export type SettingsSectionId = SectionId;
 
-/** The limits the Phase 4 risk engine will enforce. Values are the plan's
+/** The limits the risk engine will enforce once it exists. Values are the plan's
  *  defaults, displayed so the intended shape is reviewable before it's live. */
 const PLANNED_LIMITS: { label: string; note: string; value: string }[] = [
   { label: "Max capital per pair", note: "share of total equity", value: "20%" },
   { label: "Max daily loss", note: "halts the session, not just the order", value: "5%" },
   { label: "Max open positions", note: "across all sessions", value: "3" },
-  { label: "Max orders per day", note: "venues cap limit orders per day (Revolut X: 1,000)", value: "50" },
+  { label: "Max orders per day", note: "exchanges also cap orders per day", value: "50" },
   { label: "Min time between orders", note: "throttles a misfiring strategy", value: "60s" },
   { label: "Feed staleness tolerance", note: "no orders on stale data", value: "3 intervals" },
 ];
@@ -114,14 +145,14 @@ function AppearancePane() {
         </div>
 
         <p style={{ fontSize: "var(--text-sm)", color: "var(--text-ghost)", lineHeight: 1.5 }}>
-          Themes, accent colours and chart palettes are planned — see the roadmap in <code>docs/PLAN.md</code> §16.
+          Themes, accent colours and chart palettes aren't available yet.
         </p>
       </div>
     </section>
   );
 }
 
-function DiagnosticsPane() {
+function DiagnosticsPane({ dbStatus }: { dbStatus?: string }) {
   const [lines, setLines] = useState<string[]>([]);
   const [logPath, setLogPath] = useState("");
   const [onlyErrors, setOnlyErrors] = useState(false);
@@ -160,6 +191,9 @@ function DiagnosticsPane() {
 
       <div className="panel-footer" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
         <span className="mono" style={{ fontSize: "var(--text-xs)" }}>{logPath}</span>
+        {/* Moved here from the Settings subtitle, where "v21 · 7 sessions"
+            was internal detail on every visit. */}
+        {dbStatus && <span className="mono" style={{ fontSize: "var(--text-xs)" }}>database {dbStatus}</span>}
         <span>
           API keys, signatures and private keys are redacted before writing, so this file is safe to share.
           Rotates at 2 MB, keeps 5 files.
@@ -174,10 +208,16 @@ interface SettingsPageProps {
   setupError: string;
   onRefresh: () => Promise<void>;
   dbStatus?: string;
+  /** Open on this section, e.g. Usage & cost from the titlebar's spend chip. */
+  openSection?: SectionId;
 }
 
-export function SettingsPage({ setup, setupError, onRefresh, dbStatus }: SettingsPageProps) {
-  const [section, setSection] = useState<SectionId>("integrations");
+export function SettingsPage({ setup, setupError, onRefresh, dbStatus, openSection }: SettingsPageProps) {
+  /* Opens where something is missing: without the AI key nothing else in the
+     app works, so that comes first; otherwise the first section. */
+  const [section, setSection] = useState<SectionId>(
+    openSection ?? (setup && !setup.hasAnthropicApiKey ? "ai" : "mode")
+  );
   const [audit, setAudit] = useState<ActivityEvent[]>([]);
 
   const loadAudit = useCallback(async () => {
@@ -192,18 +232,26 @@ export function SettingsPage({ setup, setupError, onRefresh, dbStatus }: Setting
   return (
     <div className="settings-layout">
       <nav className="settings-nav">
-        {SECTIONS.map((s) => (
-          <button
-            key={s.id}
-            className={`settings-nav-item ${section === s.id ? "settings-nav-item-active" : ""}`}
-            onClick={() => setSection(s.id)}
-          >
-            {s.label}
-          </button>
+        {GROUPS.map((g) => (
+          <div key={g.label} className="settings-nav-group">
+            <span className="settings-nav-heading">{g.label}</span>
+            {g.sections.map((s) => (
+              <button
+                key={s.id}
+                className={`settings-nav-item ${section === s.id ? "settings-nav-item-active" : ""}`}
+                onClick={() => setSection(s.id)}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
         ))}
       </nav>
 
       <div className="settings-pane vy-scroll">
+        {/* Shown on every section: a setup error is never only one pane's. */}
+        {setupError && <p className="integ-problem">{setupError}</p>}
+
         {section === "limits" && (
           <section className="panel">
             <div className="panel-header">
@@ -225,7 +273,7 @@ export function SettingsPage({ setup, setupError, onRefresh, dbStatus }: Setting
               </div>
             ))}
             <div className="panel-footer">
-              These are the values the risk engine will be built to enforce (Phase 4). They are
+              These are the values the risk engine will enforce once it exists. They are
               displayed read-only on purpose: an editable field that nothing checks would imply a
               protection that does not exist.
             </div>
@@ -234,64 +282,21 @@ export function SettingsPage({ setup, setupError, onRefresh, dbStatus }: Setting
 
         {section === "mode" && <ModePane />}
 
-        {section === "notifications" && <NotificationsPane />}
-
-        {section === "integrations" && (
-          <IntegrationsPane setup={setup} setupError={setupError} onRefresh={onRefresh} />
-        )}
-
-        {section === "models" && (
-          <>
-            <UsagePanel />
-          <section className="panel">
-            <div className="panel-header">
-              <span style={{ fontSize: "12.5px", fontWeight: 600 }}>Models & cost</span>
-            </div>
-            <div className="panel-body" style={{ fontSize: "var(--text-md)", color: "var(--muted-foreground)", lineHeight: 1.6 }}>
-              The chat model is chosen per session in the agent drawer. Post-trade reviews run
-              unattended on a cheaper model — <span className="mono">claude-haiku-4-5-20251001</span> by
-              default, overridable with the <span className="mono">review_model</span> settings key.
-              <div style={{ marginTop: 8, color: "var(--text-faint)", fontSize: "var(--text-sm)" }}>
-                Per-call cost accounting isn't tracked yet.
-              </div>
-            </div>
-          </section>
-          </>
-        )}
-
-        {section === "feeds" && (
-          <section className="panel">
-            <div className="panel-header">
-              <span style={{ fontSize: "12.5px", fontWeight: 600 }}>Data & feeds</span>
-            </div>
-            <div className="panel-body" style={{ fontSize: "var(--text-md)", color: "var(--muted-foreground)", lineHeight: 1.7 }}>
-              <p>
-                <strong style={{ color: "var(--foreground)" }}>Binance</strong> is the analysis feed —
-                charts, indicators, backtests, paper fills, strategy triggers. One cached history per
-                symbol so a chart can never disagree with the engine that traded on it.
-              </p>
-              <p style={{ marginTop: 8 }}>
-                <strong style={{ color: "var(--foreground)" }}>The trading venue</strong> is execution and
-                reconciliation truth — balances, orders, fills. It is never charted from.
-              </p>
-              <p style={{ marginTop: 8, color: "var(--text-faint)" }}>
-                Analysis is USD-quote only; no FX conversion happens anywhere. The basis monitor samples
-                the venue-vs-Binance spread every 60s and feeds the measured value into backtest slippage.
-              </p>
-              {dbStatus && (
-                <p className="mono" style={{ marginTop: 10, color: "var(--text-faint)", fontSize: "var(--text-sm)" }}>
-                  database {dbStatus}
-                </p>
-              )}
-            </div>
-          </section>
-        )}
-
-        {section === "feeds" && <CandleCoveragePane />}
-
         {section === "appearance" && <AppearancePane />}
 
-        {section === "diagnostics" && <DiagnosticsPane />}
+        {section === "exchange" && <ExchangePane setup={setup} onRefresh={onRefresh} />}
+
+        {section === "account" && <SimulatedAccountPane />}
+
+        {section === "ai" && <AiPane setup={setup} onRefresh={onRefresh} />}
+
+        {section === "usage" && <UsagePanel />}
+
+        {section === "feed" && <FeedPane />}
+
+        {section === "notifications" && <NotificationsPane />}
+
+        {section === "diagnostics" && <DiagnosticsPane dbStatus={dbStatus} />}
 
         {section === "audit" && (
           <section className="panel">

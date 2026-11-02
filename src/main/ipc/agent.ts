@@ -13,6 +13,7 @@ import { setResearchView, clearResearchView } from "../agent/research-view";
 import { createLogger } from "../logger";
 import { emitError } from "../events/outbound";
 import { buildUsageReport } from "../agent/usage";
+import { reviewModelStatus, setReviewModel } from "../agent/review";
 import { safe } from "./safe";
 
 const ipcLog = createLogger("ipc");
@@ -56,6 +57,17 @@ ipcMain.handle("agent:resetTools", () =>
   );
 
 ipcMain.handle("usage:report", () => safe(() => buildUsageReport(), "usage:report"));
+
+  /* Which model writes post-trade reviews. Null returns to the provider's fast
+     model; the status says which one will actually run. */
+ipcMain.handle("agent:reviewModel", () => safe(() => reviewModelStatus(), "agent:reviewModel"));
+
+ipcMain.handle("agent:setReviewModel", (_e, model: string | null) =>
+    safe(() => {
+      setReviewModel(model);
+      return { ok: true as const };
+    }, "agent:setReviewModel")
+  );
 
 ipcMain.on("chat:send", (e, sessionId: number | null, messages: any[], params?: { model: string; effort: string; capabilities?: { adaptive: boolean; extended: boolean } }) => {
     /* Fire and forget over `on`, not `handle` — the reply streams back on its

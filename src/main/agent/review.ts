@@ -28,6 +28,7 @@ import { getSessionById } from "../sessions/service";
 import type { StrategySpec } from "../strategy/strategy-spec";
 import { resolveFastModel } from "./chat";
 import { aiProvider } from "../ai/registry";
+import { AppError } from "../../shared/errors";
 import { isAdministrativeExit } from "../paper/paper-exchange";
 import { createLogger } from "../logger";
 import { FEED_SCOPE_SQL } from "../integrations/feed/symbols";
@@ -37,16 +38,42 @@ const log = createLogger("review");
 /** Bars of context either side of the trade handed to the reviewer. */
 const CONTEXT_BARS = 60;
 
-async function reviewModel(): Promise<string | null> {
+/** The review model the owner chose, or null to use the provider's fast model. */
+export function savedReviewModel(): string | null {
   try {
     const row = getDb().prepare("SELECT value FROM settings WHERE key = 'review_model'").get() as
       | { value: string }
       | undefined;
-    if (row?.value) return row.value;
+    return row?.value ? row.value : null;
   } catch {
-    // fallback below
+    return null;
   }
-  return resolveFastModel();
+}
+
+/**
+ * Choose the review model; null returns to the provider's fast model.
+ *
+ * Settings › AI used to tell the owner to edit "the `review_model` settings
+ * key" — a row in the database, with nothing on screen that could write it.
+ */
+export function setReviewModel(model: string | null): void {
+  if (model !== null && !/^[A-Za-z0-9._:\/-]{1,100}$/.test(model)) {
+    throw new AppError("VALIDATION", "That isn't a model id.");
+  }
+  getDb()
+    .prepare(
+      "INSERT INTO settings(key, value) VALUES('review_model', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value"
+    )
+    .run(model ?? "");
+}
+
+async function reviewModel(): Promise<string | null> {
+  return savedReviewModel() ?? resolveFastModel();
+}
+
+/** The saved choice and the model reviews will actually run on. */
+export async function reviewModelStatus(): Promise<{ saved: string | null; effective: string | null }> {
+  return { saved: savedReviewModel(), effective: await reviewModel() };
 }
 
 interface ClosedPositionRow {

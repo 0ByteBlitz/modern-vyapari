@@ -90,7 +90,8 @@ export function readMode(userDataPath: string): AppMode {
  * the titlebar says LIVE, the toolbar says paper, and simulated fills land in
  * the file whose whole purpose is to hold only real ones. That happened
  * (2026-11-01). A stored "live" choice therefore runs simulated until live
- * execution exists; the choice itself is left alone.
+ * execution exists — and `main.ts` then clears it and audits the reset, so a
+ * choice made before live trading existed can never take effect later.
  */
 export function resolveMode(chosen: AppMode, liveExecutionBuilt: boolean): AppMode {
   return chosen === "live" && liveExecutionBuilt ? "live" : "simulated";

@@ -82,12 +82,12 @@ export async function compactChatHistory(sessionId: number | null): Promise<{ ok
 
   const provider = aiProvider();
   if (!provider.isConfigured()) {
-    return { ok: false, error: `${provider.info.displayName} isn't configured. Add the key in Settings › Integrations.` };
+    return { ok: false, error: `${provider.info.displayName} isn't configured. Add the key in Settings › AI.` };
   }
 
   const model = await resolveFastModel();
   if (!model) {
-    return { ok: false, error: `Could not get a model from ${provider.info.displayName}. Check your connection or the key in Settings › Integrations.` };
+    return { ok: false, error: `Could not get a model from ${provider.info.displayName}. Check your connection or the key in Settings › AI.` };
   }
 
   // Keep last 4 messages active, compact the older ones
@@ -609,7 +609,7 @@ export async function sendChatMessage(
       sender,
       "chat:error",
       new AppError("CREDENTIALS", "The AI isn't configured yet.", {
-        hint: `Add your ${provider.info.displayName} key in Settings › Integrations.`,
+        hint: `Add your ${provider.info.displayName} key in Settings › AI.`,
       }),
       { conversation }
     );

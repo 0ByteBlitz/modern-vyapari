@@ -407,6 +407,7 @@ body {
 .badge-supervised  { background: rgba(47, 204, 139, 0.12); color: var(--up); border-color: rgba(47, 204, 139, 0.35); }
 .badge-auto        { background: rgba(139, 92, 246, 0.14); color: var(--ai-bright); border-color: rgba(139, 92, 246, 0.35); }
 .badge-retired     { background: transparent; color: var(--text-ghost); border-color: var(--border); }
+.badge-down        { background: transparent; color: var(--down); border-color: var(--down); }
 
 /* ── Semantic value colours ── */
 .v-up { color: var(--up); }
@@ -627,10 +628,7 @@ body {
   border-left: 1px solid var(--border);
 }
 
-.risk-chip { display: flex; flex-direction: column; gap: 3px; min-width: 76px; }
-.risk-chip-head { display: flex; align-items: baseline; gap: 5px; }
-.risk-chip-track { height: 3px; background: #1A212B; border-radius: 2px; overflow: hidden; }
-.risk-chip-fill { height: 100%; }
+.risk-chip { display: flex; align-items: baseline; gap: 5px; }
 
 /* ── Alerts popover ── */
 .alert-popover {
@@ -1536,6 +1534,17 @@ ol.md-list li { list-style: decimal; }
 }
 
 .settings-nav-item:hover { background: var(--surface-3); color: var(--foreground); }
+
+.settings-nav-group { display: flex; flex-direction: column; gap: 1px; }
+.settings-nav-group + .settings-nav-group { margin-top: 10px; }
+.settings-nav-heading {
+  padding: 2px 9px 4px;
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
 .settings-nav-item-active { background: rgba(34, 211, 238, 0.1); color: var(--accent); }
 
 .settings-pane {
@@ -2029,10 +2038,53 @@ ol.md-list li { list-style: decimal; }
 /* Titlebar nav (.titlebar-nav/.titlebar-tab*) removed with the redesign —
    navigation is session-first and lives in the rail. */
 
+/* The width Windows paints its minimise/maximise/close over. Fixed rather than
+   flex: 1, so the AI spend chip sits beside the buttons, not mid-bar. */
 .titlebar-spacer {
-  flex: 1;
+  flex: 0 0 140px;
   -webkit-app-region: drag;
 }
+
+/* ── AI spend (titlebar) ─────────────────────────────────────────────
+   On every screen, in the window's chrome rather than the trading toolbar, so
+   it can't be read as a trading figure. Quiet until opened. */
+.ai-spend { position: relative; -webkit-app-region: no-drag; }
+.ai-spend-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--muted-foreground);
+  font-family: inherit;
+  font-size: var(--text-xs);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ai-spend-chip:hover,
+.ai-spend-chip[aria-expanded="true"] { background: var(--surface-3); color: var(--foreground); }
+.ai-spend-label { color: var(--text-faint); }
+.ai-spend-pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 80;
+  width: 300px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 8px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+.ai-spend-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.ai-spend-grid > div { display: flex; flex-direction: column; gap: 2px; }
+.ai-spend-big { font-size: var(--text-md); color: var(--foreground); }
 
 /* ═══════════════════════════════════════════════════════════════════
    Lock Screen (Windows Hello app-launch gate)
@@ -4237,23 +4289,6 @@ ol.md-list li { list-style: decimal; }
    Spend, never "credit remaining" — no balance endpoint exists for a normal
    API key. Styled quiet: it is a background fact, and a loud running total
    would compete with the prices that actually matter. */
-.usage-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 8px;
-  margin-right: 8px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  font-size: var(--text-xs);
-  color: var(--muted-foreground);
-  white-space: nowrap;
-}
-
-.usage-chip-label {
-  color: var(--text-faint);
-}
-
 .usage-body {
   padding: 8px 10px 10px;
   display: flex;

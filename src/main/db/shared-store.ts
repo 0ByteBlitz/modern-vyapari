@@ -98,7 +98,21 @@ export function initSharedStore(userDataPath: string): void {
   shared = new DatabaseSync(path.join(dataDir, SHARED_STORE_FILE));
   shared.exec("PRAGMA journal_mode = WAL;");
   shared.exec(SHARED_SQL);
+  migrateUsageProvider(shared);
   log.info("Shared lesson store ready.");
+}
+
+/**
+ * `api_usage.provider` — which AI provider made the call (2026-11-01).
+ *
+ * Added by migration, not in SHARED_SQL's CREATE TABLE, because SHARED_SQL
+ * re-runs against stores created before the column existed. Rows written
+ * before it were all Anthropic: that has been the only adapter.
+ */
+function migrateUsageProvider(db: DatabaseSync): void {
+  const cols = db.prepare("PRAGMA table_info(api_usage)").all() as Array<{ name: string }>;
+  if (cols.some((c) => c.name === "provider")) return;
+  db.exec("ALTER TABLE api_usage ADD COLUMN provider TEXT NOT NULL DEFAULT 'anthropic'");
 }
 
 export function getSharedStore(): DatabaseSync {
