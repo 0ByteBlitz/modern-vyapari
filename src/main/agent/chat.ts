@@ -1,6 +1,6 @@
 import { WebContents } from "electron";
 import { getDb } from "../db/database";
-import { recordUsage } from "./usage";
+import { recordUsage, dailyLimitReached, dailyLimitError } from "./usage";
 import * as derivatives from "../data/derivatives";
 import * as embeddedBrowser from "../browser/embedded-browser";
 import * as agentFetch from "../browser/agent-fetch";
@@ -85,6 +85,11 @@ export async function compactChatHistory(sessionId: number | null): Promise<{ ok
   const provider = aiProvider();
   if (!provider.isConfigured()) {
     return { ok: false, error: `${provider.info.displayName} isn't configured. Add the key in Settings › AI.` };
+  }
+  const gate = dailyLimitReached();
+  if (gate.reached && gate.limit !== null) {
+    const e = dailyLimitError(gate.limit);
+    return { ok: false, error: `${e.userMessage} ${e.hint ?? ""}`.trim() };
   }
 
   const model = await resolveFastModel();
@@ -748,6 +753,21 @@ async function runChatTurn(
   attempt: for (;;) {
   try {
     for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
+      /* The daily spending limit, checked before EVERY model step: a long
+         tool-using turn can cross it partway, and stops there rather than
+         finishing on the owner's money. */
+      const gate = dailyLimitReached();
+      if (gate.reached && gate.limit !== null) {
+        if (iteration === 0) {
+          emitError(sender, "chat:error", dailyLimitError(gate.limit), { conversation });
+          return;
+        }
+        const limitNote = `\n\n*[Stopped: today's AI spending limit of $${gate.limit.toFixed(2)} is reached.]*\n`;
+        fullAssistantResponse += limitNote;
+        emitTo(sender, "chat:chunk", { text: limitNote, conversation });
+        break;
+      }
+
       /* Filtered by the owner's choices (`tool-registry`). Read per request
          rather than cached, so toggling a tool takes effect on the next message
          instead of the next restart. */

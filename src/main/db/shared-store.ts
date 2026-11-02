@@ -90,6 +90,13 @@ CREATE TABLE IF NOT EXISTS api_usage (
   created_at  INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_api_usage_time ON api_usage(created_at DESC);
+
+-- Settings that belong to the owner rather than to a mode — the daily AI
+-- spending limit: one bill, so one limit.
+CREATE TABLE IF NOT EXISTS shared_settings (
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
 `;
 
 export function initSharedStore(userDataPath: string): void {

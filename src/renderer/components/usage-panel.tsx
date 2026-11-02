@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Coins } from "lucide-react";
-import { api, isError, type UsageReport, type UsageTotals } from "@/lib/api";
+import { api, isError, errorText, type UsageReport, type UsageTotals } from "@/lib/api";
 
 /**
  * What the agent has cost.
@@ -56,6 +56,8 @@ export function UsagePanel() {
       </div>
 
       <div className="usage-body">
+        <DailyLimit report={report} onChanged={load} />
+
         <div className="usage-figures">
           {(
             [
@@ -151,6 +153,76 @@ export function UsagePanel() {
   );
 }
 
+/** How close today is to the limit: none, nearing (80%+) or reached. */
+function limitTone(report: UsageReport): "none" | "ok" | "near" | "reached" {
+  const limit = report.dailyLimitUsd;
+  if (limit === null) return "none";
+  const spent = report.today.costUsd;
+  return spent >= limit ? "reached" : spent >= limit * 0.8 ? "near" : "ok";
+}
+
+/**
+ * The daily limit: what it is, how much of it today has used, and a way to
+ * change it. AI calls — chat, compaction, reviews — stop when it is reached;
+ * stated here so the stop is never a surprise.
+ */
+function DailyLimit({ report, onChanged }: { report: UsageReport; onChanged: () => Promise<void> }) {
+  const [draft, setDraft] = useState("");
+  const [problem, setProblem] = useState<string | null>(null);
+  const limit = report.dailyLimitUsd;
+  const tone = limitTone(report);
+
+  async function save(value: number | null) {
+    setProblem(null);
+    const res = await api.setDailyAiLimit(value);
+    if (isError(res)) {
+      setProblem(errorText(res));
+      return;
+    }
+    setDraft("");
+    await onChanged();
+  }
+
+  return (
+    <div className="usage-limit">
+      <div className="usage-limit-head">
+        <span className="label-micro">Daily limit</span>
+        <span className={`mono usage-limit-state usage-limit-${tone}`}>
+          {limit === null
+            ? "none — AI calls are not limited"
+            : tone === "reached"
+              ? `reached · ${usd(report.today.costUsd)} of ${usd(limit)} — AI calls are paused until midnight`
+              : `${usd(report.today.costUsd)} of ${usd(limit)} used today`}
+        </span>
+      </div>
+      <div className="flex items-center gap-2">
+        <input
+          className="settings-input"
+          style={{ maxWidth: 140 }}
+          inputMode="decimal"
+          placeholder={limit === null ? "e.g. 1.00" : limit.toFixed(2)}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && draft.trim() && void save(Number(draft))}
+        />
+        <button className="btn btn-primary" disabled={!draft.trim()} onClick={() => void save(Number(draft))}>
+          Set limit
+        </button>
+        {limit !== null && (
+          <button className="btn" onClick={() => void save(null)}>
+            Remove limit
+          </button>
+        )}
+      </div>
+      {problem && <p className="integ-problem">{problem}</p>}
+      <p className="usage-note usage-dim">
+        Chat, summaries and post-trade reviews stop at the limit and resume at midnight. Calls on unpriced models
+        count as $0, so set it with some room.
+      </p>
+    </div>
+  );
+}
+
 /**
  * AI spend, on every screen.
  *
@@ -207,7 +279,8 @@ export function AiSpendChip({ onOpenUsage }: { onOpenUsage: () => void }) {
       >
         <Coins size={12} />
         <span className="ai-spend-label">AI</span>
-        <span className="mono">{total(report.today)}</span>
+        <span className={`mono usage-limit-${limitTone(report)}`}>{total(report.today)}</span>
+        {report.dailyLimitUsd !== null && <span className="ai-spend-label">/ {usd(report.dailyLimitUsd)}</span>}
         <span className="ai-spend-label">today</span>
       </button>
 

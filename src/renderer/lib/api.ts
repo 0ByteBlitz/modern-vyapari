@@ -473,6 +473,8 @@ export interface RendererApi {
   /** Simulated or live. `pending` is what the NEXT launch will use. */
   /** What this app has spent. Not an account balance — none is exposed. */
   usageReport(): Promise<Result<UsageReport>>;
+  /** Set the daily AI spending limit in USD; null clears it. */
+  setDailyAiLimit(limit: number | null): Promise<Result<{ ok: true }>>;
   /** The saved review model (null = the provider's fast model) and the one reviews will use. */
   reviewModel(): Promise<Result<{ saved: string | null; effective: string | null }>>;
   setReviewModel(model: string | null): Promise<Result<{ ok: true }>>;

@@ -47,6 +47,7 @@
 import { getSharedStore } from "../db/shared-store";
 import { appMode } from "../modes/app-mode";
 import { aiProvider, listAiProviders } from "../ai/registry";
+import { AppError } from "../../shared/errors";
 import type { ModelPrice } from "../ai/port";
 import type { UsageTotals, UsageReport } from "../../shared/ipc-types";
 import { createLogger } from "../logger";
@@ -133,6 +134,57 @@ export function recordUsage(
 }
 
 export type { UsageTotals, UsageReport };
+
+/* ── Daily spending limit ─────────────────────────────────────────────
+   The owner runs the agent without a budget to spare, and spend was only
+   ever displayed. This is the one place it is limited: every AI call path
+   (chat turns — each model step — compaction, trade and plan reviews,
+   lessons) asks `dailyLimitReached()` first. Today's spend is a floor when
+   calls are unpriced, so the limit can only be hit late, never early. */
+const DAILY_LIMIT_KEY = "ai_daily_limit_usd";
+
+export function getDailyLimitUsd(): number | null {
+  const row = getSharedStore().prepare("SELECT value FROM shared_settings WHERE key = ?").get(DAILY_LIMIT_KEY) as
+    | { value: string }
+    | undefined;
+  const v = row ? Number(row.value) : NaN;
+  return Number.isFinite(v) && v > 0 ? v : null;
+}
+
+/** null clears the limit. */
+export function setDailyLimitUsd(limit: number | null): void {
+  const db = getSharedStore();
+  if (limit === null) {
+    db.prepare("DELETE FROM shared_settings WHERE key = ?").run(DAILY_LIMIT_KEY);
+    return;
+  }
+  if (!Number.isFinite(limit) || limit <= 0 || limit > 10_000) {
+    throw new AppError("VALIDATION", "Enter a daily limit above $0.");
+  }
+  db.prepare(
+    "INSERT INTO shared_settings(key, value) VALUES(?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value"
+  ).run(DAILY_LIMIT_KEY, String(limit));
+}
+
+function startOfToday(): number {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+
+export function dailyLimitReached(): { reached: boolean; spent: number; limit: number | null } {
+  const limit = getDailyLimitUsd();
+  if (limit === null) return { reached: false, spent: 0, limit };
+  const spent = totalsSince(startOfToday()).costUsd;
+  return { reached: spent >= limit, spent, limit };
+}
+
+/** The refusal an AI call path raises at the limit. One wording everywhere. */
+export function dailyLimitError(limit: number): AppError {
+  return new AppError("UNSUPPORTED", `Today's AI spending limit of $${limit.toFixed(2)} is reached.`, {
+    hint: "Raise it in Settings › Usage & cost, or it resets at midnight.",
+  });
+}
 
 const EMPTY: UsageTotals = {
   calls: 0,
@@ -231,5 +283,6 @@ export function buildUsageReport(): UsageReport {
     /* The UI must never render this as a balance. Provider-neutral: measured
        per call, whoever bills it. */
     scope: "Measured from each call, across both modes. This is what was spent, not an account balance.",
+    dailyLimitUsd: getDailyLimitUsd(),
   };
 }

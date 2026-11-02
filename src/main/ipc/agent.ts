@@ -12,7 +12,7 @@ import * as toolRegistry from "../agent/tool-registry";
 import { setResearchView, clearResearchView } from "../agent/research-view";
 import { createLogger } from "../logger";
 import { emitError } from "../events/outbound";
-import { buildUsageReport } from "../agent/usage";
+import { buildUsageReport, setDailyLimitUsd } from "../agent/usage";
 import { reviewModelStatus, setReviewModel } from "../agent/review";
 import { safe } from "./safe";
 
@@ -61,6 +61,14 @@ ipcMain.handle("agent:resetTools", () =>
   );
 
 ipcMain.handle("usage:report", () => safe(() => buildUsageReport(), "usage:report"));
+
+  /* The daily AI spending limit, in USD; null clears it. */
+ipcMain.handle("usage:setDailyLimit", (_e, limit: number | null) =>
+    safe(() => {
+      setDailyLimitUsd(limit);
+      return { ok: true as const };
+    }, "usage:setDailyLimit")
+  );
 
   /* Which model writes post-trade reviews. Null returns to the provider's fast
      model; the status says which one will actually run. */

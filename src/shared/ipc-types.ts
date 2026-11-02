@@ -365,6 +365,8 @@ export interface UsageReport {
   byMode: Array<{ mode: string; calls: number; costUsd: number }>;
   /** Stated so the UI never implies this is an account balance. */
   scope: string;
+  /** The owner's daily limit in USD, or null for none. AI calls stop at it. */
+  dailyLimitUsd: number | null;
 }
 
 export interface SessionSummary {

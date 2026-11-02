@@ -72,6 +72,7 @@ const api = {
     return () => ipcRenderer.removeListener("chat:error", handler);
   },
   usageReport: () => ipcRenderer.invoke("usage:report"),
+  setDailyAiLimit: (limit: number | null) => ipcRenderer.invoke("usage:setDailyLimit", limit),
   reviewModel: () => ipcRenderer.invoke("agent:reviewModel"),
   setReviewModel: (model: string | null) => ipcRenderer.invoke("agent:setReviewModel", model),
   paperAccount: () => ipcRenderer.invoke("paper:account"),

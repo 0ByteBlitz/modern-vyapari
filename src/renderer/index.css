@@ -4399,3 +4399,11 @@ ol.md-list li { list-style: decimal; }
   border-radius: var(--radius-sm);
   background: var(--surface-2, var(--card));
 }
+
+/* Daily AI limit — the colour says how close today is, everywhere it shows. */
+.usage-limit { display: flex; flex-direction: column; gap: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+.usage-limit-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.usage-limit-state { font-size: var(--text-xs); }
+.usage-limit-none, .usage-limit-ok { color: inherit; }
+.usage-limit-near { color: var(--caution); }
+.usage-limit-reached { color: var(--down); }
