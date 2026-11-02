@@ -1091,7 +1091,7 @@ export function ResearchPage({ activeSession }: { activeSession: Session | null 
                   </div>
                   {alerts.length === 0 ? (
                     <div style={{ fontSize: "var(--text-xs)", color: "var(--text-faint)", padding: "6px 0" }}>
-                      No alerts set for this session yet.
+                      No alerts set for this session yet. Ask the agent to set one.
                     </div>
                   ) : (
                     alerts.map((a) => (

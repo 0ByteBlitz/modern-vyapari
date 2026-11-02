@@ -413,6 +413,7 @@ export interface PortfolioSummary {
 /** The ordered steps of an archive, in execution order. */
 export type ArchiveStepId =
   | "close_positions"
+  | "end_plans"
   | "retire_strategies"
   | "clear_alerts"
   | "release_streams"
@@ -437,6 +438,9 @@ export interface ArchivePlan {
   pair: string;
   status: Session["status"];
   openPositions: ArchivePositionPreview[];
+  /** Armed plans (`planned`) the archive ends — they can't be watched once
+   *  the session is archived. */
+  armedPlans: number;
   armedStrategies: number;
   retirableStrategies: number;
   totalStrategies: number;
@@ -458,6 +462,8 @@ export interface ArchiveSummary {
   sessionId: number;
   pair: string;
   closed: number;
+  /** Armed plans ended (expired) because the session stopped being watched. */
+  plansEnded: number;
   retired: number;
   alertsCleared: number;
   /** PnL realised by the wind-down itself, separate from prior trades. */

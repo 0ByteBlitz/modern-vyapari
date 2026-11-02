@@ -136,7 +136,7 @@ export function AlertsPage({ activeSession }: { activeSession: Session | null })
             <BellOff size={24} style={{ color: "var(--text-faint)", opacity: 0.5 }} />
             <span>No alerts found for this filter.</span>
             <span style={{ fontSize: "var(--text-xs)", color: "var(--text-ghost)" }}>
-              Ask the agent to set an alert (e.g. "Alert me if RSI crosses below 30"), or set one on the Research chart.
+              Ask the agent to set one — for example, "alert me if RSI crosses below 30".
             </span>
           </div>
         ) : (

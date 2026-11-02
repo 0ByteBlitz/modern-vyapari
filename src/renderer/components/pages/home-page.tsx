@@ -10,6 +10,7 @@ import {
 } from "@/lib/api";
 import { formatUsd, formatPct } from "@/lib/format";
 import { describeActivity, ACTIVITY_TONE_COLOR } from "@/lib/activity";
+import { sessionState } from "@/lib/session-state";
 import { useAppMode, modeTitle } from "@/lib/mode";
 
 /**
@@ -44,14 +45,6 @@ function relTime(ms: number): string {
   return `${Math.floor(d / 86_400_000)}d ago`;
 }
 
-/** One word for a session card. An open position outranks an armed plan:
- *  it is the state with money in it. Never "idle" while either exists. */
-function sessionState(s: SessionSummary): string {
-  if (s.openCount > 0 && s.armedCount > 0) return "in position · armed";
-  if (s.openCount > 0) return "in position";
-  if (s.armedCount > 0) return "armed";
-  return "idle";
-}
 
 function greeting(): string {
   const h = new Date().getHours();

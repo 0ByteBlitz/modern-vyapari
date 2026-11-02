@@ -97,7 +97,7 @@ export function BrowserPage() {
           >
             <RotateCw className={`h-4 w-4 ${state?.loading ? "animate-spin" : ""}`} />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => void api.browserGoHome()} title="TradingView">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => void api.browserGoHome()} title="Home">
             <Home className="h-4 w-4" />
           </Button>
         </div>

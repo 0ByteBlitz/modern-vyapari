@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Bell, FlaskConical, ShieldAlert } from "lucide-react";
 import type { AlertEvent, AppMode } from "@/lib/api";
 import { formatPrice } from "@/lib/format";
@@ -60,6 +60,18 @@ export function AppToolbar({
 }: AppToolbarProps) {
   const [arming, setArming] = useState(false);
   const [typed, setTyped] = useState("");
+
+  /* Escape closes the alerts popover, as it does the AI spend panel and the
+     agent window. It only closed on an outside click, so Escape left a
+     full-screen click-catcher over the app. */
+  useEffect(() => {
+    if (!alertsOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onToggleAlerts();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [alertsOpen, onToggleAlerts]);
 
   const confirmed = typed.trim().toUpperCase() === "GO LIVE";
 

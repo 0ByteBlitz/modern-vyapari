@@ -28,6 +28,7 @@ import { formatPrice, formatQty, formatUsd } from "@/lib/format";
 
 const STEPS: { id: ArchiveStepId; label: string }[] = [
   { id: "close_positions", label: "Close open positions" },
+  { id: "end_plans", label: "End armed plans" },
   { id: "retire_strategies", label: "Retire strategies" },
   { id: "clear_alerts", label: "Clear active alerts" },
   { id: "release_streams", label: "Release live data streams" },
@@ -168,6 +169,10 @@ export function ArchiveSessionDialog({
                     )}
                   </li>
                   <li>
+                    <strong>{plan.armedPlans}</strong> armed {plan.armedPlans === 1 ? "plan ends" : "plans end"} —
+                    an archived session isn't watched, so they expire untested
+                  </li>
+                  <li>
                     <strong>{plan.retirableStrategies}</strong>{" "}
                     {plan.retirableStrategies === 1 ? "strategy is" : "strategies are"} retired
                     {plan.armedStrategies > 0 && ` (${plan.armedStrategies} currently armed)`}
@@ -268,7 +273,8 @@ export function ArchiveSessionDialog({
                       </span>
                     )}
                     {" · "}
-                    {summary.retired} retired · {summary.alertsCleared} alerts cleared
+                    {summary.plansEnded} {summary.plansEnded === 1 ? "plan" : "plans"} ended · {summary.retired} retired ·{" "}
+                    {summary.alertsCleared} alerts cleared
                   </div>
                 </div>
               </div>
