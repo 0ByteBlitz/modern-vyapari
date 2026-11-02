@@ -16,6 +16,7 @@ import { binanceWS } from "../data/binance-ws";
 import { describeThreshold } from "../../shared/levels";
 import { createLogger } from "../logger";
 import { ListenerRegistry } from "../events/listener-registry";
+import { announceAlert } from "../notify/announce";
 
 const log = createLogger("alerts");
 
@@ -264,6 +265,16 @@ class AlertEngine {
       return { hit: false, currentValue: null };
     }
 
+    /* A price condition without a field means the close. Values below are
+       keyed `price::close` etc., so a field-less `price` looked up `price:`,
+       found nothing, and the alert could never fire — while the agent's tool
+       told it to write exactly that ("use {} for price"). Plans hit the same
+       trap and set `field: "close"` explicitly (condition-intent.ts); alerts,
+       including ones already saved, get it here. (2026-11-02) */
+    if (condition.indicator === "price" && !condition.field) {
+      condition = { ...condition, field: "close" };
+    }
+
     const current = new Map<string, number | null>();
     const previous = new Map<string, number | null>();
 
@@ -367,6 +378,23 @@ class AlertEngine {
     };
 
     this.listeners.emit(event);
+
+    /* Telegram and a Windows notification. Alerts reached neither until
+       2026-11-02 — only the in-app toast, so an alert that fired while the
+       window was minimised or the phone was elsewhere told no one. The
+       dedupe key is the alert and the bar it fired on, so a replay after a
+       restart can't send it twice. */
+    const cond = alert.condition;
+    const measured = currentValue !== null ? ` — now ${currentValue}` : "";
+    announceAlert({
+      kind: "alert_triggered",
+      title: `${alert.symbol} — ${triggeredAt ? "missed alert" : "alert"}: ${alert.label}`,
+      body:
+        `${(cond?.indicator || "price").toUpperCase()} ${(cond?.operator || "").replace(/_/g, " ")} ` +
+        `${describeThreshold(cond?.value)}${measured}` +
+        (triggeredAt ? `\nFired at ${new Date(now).toLocaleString()}, while the app wasn't watching.` : ""),
+      dedupeKey: `alert:${alertId}:${now}`,
+    });
 
     auditLog("alert_triggered", { alertId, label: alert.label, currentValue });
   }

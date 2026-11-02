@@ -124,6 +124,11 @@ const api = {
     return () => ipcRenderer.removeListener("browser:state", handler);
   },
   // Phase 2: Alert triggers (pushed live from the alert engine)
+  onNotifyEvent: (callback: (event: any) => void) => {
+    const handler = (_event: any, data: any) => callback(data);
+    ipcRenderer.on("notify:event", handler);
+    return () => ipcRenderer.removeListener("notify:event", handler);
+  },
   onAlertTriggered: (callback: (event: any) => void) => {
     const handler = (_event: any, data: any) => callback(data);
     ipcRenderer.on("alerts:triggered", handler);

@@ -586,6 +586,8 @@ export interface RendererApi {
   listAlerts(sessionId?: number): Promise<Result<AlertRecord[]>>;
   removeAlert(alertId: number): Promise<Result<{ ok: true }>>;
   onAlertTriggered(callback: (event: AlertEvent) => void): () => void;
+  /** A plan event the owner is told about on every channel — shown as a toast. */
+  onNotifyEvent(callback: (event: { kind: string; title: string; body: string; at: number }) => void): () => void;
   /** Agent-driven navigation — the agent switches the UI to the surface it's
    *  working on so the user sees what the agent is doing in real time. */
   onAgentNavigate(callback: (surface: string) => void): () => void;

@@ -112,6 +112,9 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  /* Windows only shows an app's notifications under a stable app id; the
+     installer sets it from `build.appId`, an unpackaged run needs it here. */
+  if (process.platform === "win32") app.setAppUserModelId("com.modernvyapari.app");
   Menu.setApplicationMenu(null);   // hide native menu — app uses custom titlebar
   if (process.platform === "darwin" && !app.isPackaged) app.dock?.setIcon(ICON_PATH);
 

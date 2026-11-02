@@ -449,7 +449,7 @@ export const PHASE2_TOOLS = [
             "Alert condition (required for 'add'). Must include:\n" +
             '- indicator: string (e.g. "rsi", "price", "volume", "macd")\n' +
             '- params: object (e.g. { period: 14 }), use {} for price/volume\n' +
-            '- field?: string (for multi-output indicators, e.g. "histogram" for MACD)\n' +
+            '- field?: string (for multi-output indicators, e.g. "histogram" for MACD; for price, one of open/high/low/close — defaults to close)\n' +
             '- operator: "above"|"below"|"crosses_above"|"crosses_below"|"between"\n' +
             '- value: number (or [low, high] for "between")',
         },

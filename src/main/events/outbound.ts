@@ -47,6 +47,9 @@ export interface OutboundMap {
   "browser:state": unknown;
   /** An alert condition became true. */
   "alerts:triggered": unknown;
+  /** Something the owner is told about on every channel (plan triggered,
+   *  closed, expired, invalidated) — the app shows it as a toast. */
+  "notify:event": { kind: string; title: string; body: string; at: number };
   /** Live candle tick. **Hot path** — fires per subscription per tick. */
   "binance:candle-update": { symbol: string; intervalMin: number; candle: unknown };
   /** Filtered 24h ticker array. **Hot path.** */
