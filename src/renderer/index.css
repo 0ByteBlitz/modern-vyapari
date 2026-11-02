@@ -2837,7 +2837,15 @@ ol.md-list li { list-style: decimal; }
   padding: 9px 12px;
   background: var(--card);
   font-size: var(--text-md);
+  /* A button now — reset its chrome, keep the tile's look. */
+  border: none;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
 }
+.home-mover:hover { background: var(--surface-3); }
+.home-mover:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 
 /* ── Session overflow menu (pause / resume / archive) ──────────────────
    The trigger is a sibling of the session button, not a child: nesting a
@@ -4372,4 +4380,22 @@ ol.md-list li { list-style: decimal; }
 
 .activity-toggle:hover {
   color: var(--muted-foreground);
+}
+
+/* ── Refresh control ─────────────────────────────────────────────────
+   The button, then what the last click did. Quiet: it confirms, it doesn't
+   compete with the data it refreshed. */
+.refresh-control { display: inline-flex; align-items: center; gap: 6px; }
+.refresh-status { font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--text-faint); white-space: nowrap; }
+.refresh-status-failed { color: var(--down); }
+
+/* Kill switch confirmation — inline, in the panel it acts on. */
+.kill-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2, var(--card));
 }

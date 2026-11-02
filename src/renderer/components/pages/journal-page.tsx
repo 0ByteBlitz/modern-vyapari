@@ -17,7 +17,9 @@ const FILTERS: { id: string; label: string }[] = [
   { id: "lesson", label: "Lessons" },
   { id: "observation", label: "Observations" },
   { id: "strategy_note", label: "Strategy notes" },
-  { id: "backtest_review", label: "Backtests" },
+  /* No "Backtests" filter: backtests belong to the frozen strategy path, and
+     the agent's write_journal no longer accepts `backtest_review`. Old entries
+     still show under All, with their AI accent (AI_KINDS below). */
 ];
 
 /** Journal entries are either AI-authored or human-authored; the distinction

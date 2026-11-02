@@ -70,6 +70,9 @@ export default function App() {
   const [activeSession, setActiveSession] = useState<Session | null>(null);
   const [stats, setStats] = useState<PaperStats | null>(null);
   const [alertsOpen, setAlertsOpen] = useState(false);
+  /* A pair to open Markets on (a Home mover). `n` changes per request, so the
+     same tile clicked twice still re-opens it. */
+  const [marketSymbol, setMarketSymbol] = useState<{ symbol: string; n: number } | null>(null);
   /* A request to open a Settings section from elsewhere (the AI spend chip).
      `n` changes on every request so asking twice re-opens it. */
   const [settingsSection, setSettingsSection] = useState<{ id: SettingsSectionId; n: number } | null>(null);
@@ -324,6 +327,10 @@ export default function App() {
                 setup={setup}
                 onOpenSession={(id) => void openSessionById(id)}
                 onNavigate={(s) => setSurface(s)}
+                onOpenMarket={(symbol) => {
+                  setMarketSymbol({ symbol, n: Date.now() });
+                  setSurface("markets");
+                }}
               />
             )}
             {surface === "dashboard" && <DashboardPage activeSession={activeSession} />}
@@ -335,7 +342,9 @@ export default function App() {
                 lightweight scanner across every pair. */}
             {surface === "research" && <ResearchPage activeSession={activeSession} />}
             {surface === "alerts" && <AlertsPage activeSession={activeSession} />}
-            {surface === "markets" && <MarketPage />}
+            {surface === "markets" && (
+              <MarketPage key={marketSymbol?.n ?? 0} initialSymbol={marketSymbol?.symbol} />
+            )}
             {surface === "portfolio" && (
               <PortfolioPage onOpenSession={(s) => void openSessionById(s.id)} />
             )}

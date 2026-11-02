@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { RefreshCw, Wallet } from "lucide-react";
+import { Wallet } from "lucide-react";
 import { api, isError, errorText, type Balance, type Ticker } from "@/lib/api";
-import { Button } from "@/components/ui/button";
+import { RefreshButton } from "@/components/refresh-button";
 
 const REFRESH_MS = 60_000;
 
@@ -46,19 +46,17 @@ export function BalancesCard() {
   const [balances, setBalances] = useState<Balance[] | null>(null);
   const [tickers, setTickers] = useState<Ticker[]>([]);
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
 
   const load = useCallback(async () => {
-    setLoading(true);
     const [balRes, tickRes] = await Promise.all([api.getBalances(), api.getTickers()]);
-    setLoading(false);
     if (isError(balRes)) {
       setError(errorText(balRes));
-      return;
+      return false;
     }
     setError("");
     setBalances(balRes.filter((b) => parseFloat(b.total) > 0));
     if (!isError(tickRes)) setTickers(tickRes);
+    return true;
   }, []);
 
   useEffect(() => {
@@ -123,16 +121,9 @@ export function BalancesCard() {
         ))}
       </div>
 
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-7 w-7 text-muted-foreground ml-auto"
-        onClick={() => void load()}
-        disabled={loading}
-        title="Refresh portfolio"
-      >
-        <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-      </Button>
+      <span className="ml-auto">
+        <RefreshButton onRefresh={load} title="Refresh portfolio" iconOnly className="btn btn-ghost" />
+      </span>
     </div>
   );
 }
