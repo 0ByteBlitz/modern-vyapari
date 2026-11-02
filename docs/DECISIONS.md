@@ -369,7 +369,8 @@ It exists for the question no PnL figure can answer (plan §17.6): **did the tri
 
 - **The guard is the point, not the concatenation.** `toFeedSymbol` returns **null** for a non-USD quote — never a best-effort string. Synthesising `BASEUSDT ÷ QUOTEUSDT` is precisely what schema v8 had to purge: the FX rate defaulted to 1 until its first tick, so raw USD prices were stored under a GBP symbol, while the REST backfill applied no conversion at all and one symbol's history carried both scales with a ~1.3x step between them.
 - **Null means "this pair has no analysis feed"** — a fact callers handle, not an error. A GBP session can exist (RevX trades them); it just cannot be charted or backtested. `noFeedReason()` gives one wording for saying so.
-- `fromFeedSymbol` is deliberately strict, because the `!ticker@arr` firehose carries cross pairs and leveraged tokens, and letting one through yields a symbol that looks tradable and is not.
+- `fromFeedSymbol` is deliberately strict, because the all-market ticker stream carries cross pairs and leveraged tokens, and letting one through yields a symbol that looks tradable and is not. Since 2026-11-02 it also refuses a base outside the app's pair format (`/^[A-Z0-9]+$/`): the feed lists bases like "牛来", which reached Markets and Home and then failed to chart. The REST ticker snapshot goes through it too.
+- **The stream is `!miniTicker@arr`** (2026-11-02). `!ticker@arr` connects and then sends nothing — measured at zero frames in 6 s while the mini stream sent five — so Markets sat on its first snapshot for ever. Mini tickers carry no percent change; main computes it from the rolling 24 h open. Each frame holds only the symbols that changed, so the renderer merges it into the list rather than replacing the list with it.
 
 ## One entry path, two owners (2026-07-31)
 

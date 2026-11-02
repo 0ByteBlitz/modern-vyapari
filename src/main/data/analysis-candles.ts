@@ -19,7 +19,7 @@
 import { getDb } from "../db/database";
 import { backfillFromBinance, syncRecentFromBinance } from "../insights/indicators";
 import { createLogger } from "../logger";
-import { FEED_SCOPE_SQL } from "../integrations/feed/symbols";
+import { FEED_SCOPE_SQL, fromFeedSymbol } from "../integrations/feed/symbols";
 
 const log = createLogger("candles");
 
@@ -74,19 +74,37 @@ export async function getTickerSnapshot(): Promise<TickerSnapshot[]> {
 
   const rows = (await res.json()) as Array<{ symbol: string; lastPrice: string; priceChangePercent: string; quoteVolume: string }>;
 
-  return rows
-    .filter((r) => {
-      if (!r.symbol?.endsWith("USDT")) return false;
-      if (LEVERAGED_RE.test(r.symbol)) return false;
-      return !NON_TRENDING.has(r.symbol.slice(0, -4));
-    })
-    .map((r) => ({
-      symbol: `${r.symbol.slice(0, -4)}-USD`,
+  /* Through `fromFeedSymbol`, the one conversion every symbol takes: it also
+     drops bases the app's pair format can't hold, which this list used to
+     offer and the chart then refused. */
+  const out: TickerSnapshot[] = [];
+  for (const r of rows) {
+    const symbol = fromFeedSymbol(r.symbol);
+    if (!symbol || LEVERAGED_RE.test(r.symbol) || NON_TRENDING.has(r.symbol.slice(0, -4))) continue;
+    const t = {
+      symbol,
       price: parseFloat(r.lastPrice),
       change24h: parseFloat(r.priceChangePercent),
       volume24h: parseFloat(r.quoteVolume),
-    }))
-    .filter((t) => Number.isFinite(t.price) && Number.isFinite(t.volume24h));
+    };
+    if (Number.isFinite(t.price) && Number.isFinite(t.volume24h)) out.push(t);
+  }
+  return out;
+}
+
+/**
+ * One round trip to the analysis feed, in milliseconds. Throws when it doesn't
+ * answer.
+ *
+ * For health readouts. They used to time a candle read, which the local cache
+ * answers in ~0 ms whether or not the feed is reachable — "Binance 0.0s"
+ * while offline. The ping endpoint is the lightest call the feed has.
+ */
+export async function pingFeed(): Promise<number> {
+  const t0 = Date.now();
+  const res = await fetch("https://api.binance.com/api/v3/ping");
+  if (!res.ok) throw new Error(`Binance ping failed: ${res.status} ${res.statusText}`);
+  return Date.now() - t0;
 }
 
 const DEFAULT_LIMIT = 300;
