@@ -53,6 +53,14 @@ ipcMain.handle("plans:transition", (_e, id: number, to: string, reason?: string)
     safe(() => planService.transitionPlan(id, to as never, reason), "plans:transition")
   );
 
+  /* Read from the running engine, never inferred from the session's status. */
+  ipcMain.handle("plans:watch", (_e, id: number) =>
+    safe(() => {
+      const { paperEngine } = require("../paper/paper-exchange") as typeof import("../paper/paper-exchange");
+      return paperEngine.planWatch(id);
+    }, "plans:watch")
+  );
+
   /* Statistics about the PLANNER, not about a plan — grouped by assumption tag,
      never by plan. Cross-session by default: the same thesis type recurs on
      different pairs, and that is the whole unit of evidence. */

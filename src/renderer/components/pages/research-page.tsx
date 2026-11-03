@@ -1276,7 +1276,6 @@ export function ResearchPage({ activeSession }: { activeSession: Session | null 
           <PlanDetail
             plan={planDetail}
             price={null}
-            monitored={activeSession?.status === "active"}
             onClose={() => setPlanDetail(null)}
           />
         )}

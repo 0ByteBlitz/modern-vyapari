@@ -240,6 +240,7 @@ levels were worth at the moment it fired.*
 | **The owner is told what happened, in plan language** | ✅ N-1 — trigger and close notifications carry the thesis and whether a position opened |
 | **A closed plan position is reviewed** | ✅ J-2, 2026-08-01 |
 | **A missed analysis-feed interval pauses plan decisions until the missing bars are back** | ✅ feed-gap gate, 2026-11-03 |
+| **The plan says what the engine is doing with it** — watched, paused for missing bars, or watched with entries refused (session paused, kill switch) | ✅ read from the running engine, 2026-11-03 — no longer inferred from the session |
 
 **Found by walking this journey, 2026-08-01:** the owner armed a plan, went
 looking for what it was doing, and found nothing. `plan-monitor.ts` was imported

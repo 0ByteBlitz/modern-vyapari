@@ -57,6 +57,7 @@ import * as crypto from "crypto";
 import { createLogger } from "../logger";
 import { ListenerRegistry } from "../events/listener-registry";
 import { FEED_SCOPE_SQL } from "../integrations/feed/symbols";
+import type { PlanWatch } from "../../shared/ipc-types";
 import { emit } from "../events/outbound";
 
 const log = createLogger("paper");
@@ -492,6 +493,7 @@ export class PaperExchangeEngine {
         };
         this.planFeedPaused.set(key, next);
         if (next.cause === "stream") this.announcePause(symbol, intervalMin, next);
+        else emit("data:updated", { kind: "feed" });
       }
       void this.healStream(symbol, intervalMin);
     }
@@ -554,8 +556,8 @@ export class PaperExchangeEngine {
       this.planFeedPaused.delete(key);
       if (pause.announced) {
         auditLog("analysis_feed_recovered", { symbol, intervalMin, from: pause.from, at: c.timestamp });
-        emit("data:updated", { kind: "feed" });
       }
+      emit("data:updated", { kind: "feed" });
     }
     this.evaluatePlansOnBar(symbol, intervalMin, this.candleBuffers.get(key) ?? buffer);
   }
@@ -619,6 +621,21 @@ export class PaperExchangeEngine {
       cause: pause.cause,
     });
     emit("data:updated", { kind: "feed" });
+  }
+
+  /** What the engine is doing with one plan right now — read by the screen
+   *  rather than inferred there from the session's status. */
+  public planWatch(rowId: number): PlanWatch {
+    const plan = this.running ? this.watchedPlans.find((p) => p.rowId === rowId) : undefined;
+    if (!plan) return { watched: false, feedPausedSince: null, entryBlocked: null };
+    const pause = this.planFeedPaused.get(`${plan.pair}:${INTERVAL_MAP[plan.evalInterval] || 240}`);
+    const session = getSessionById(plan.sessionId);
+    return {
+      watched: true,
+      feedPausedSince: pause ? pause.from : null,
+      /* The same two refusals as `planEntryAllowed`, in the same order. */
+      entryBlocked: killSwitch.isTripped() ? "kill_switch" : session?.status !== "active" ? "session_paused" : null,
+    };
   }
 
   /** Settles once every refill in flight has finished. For tests. */
