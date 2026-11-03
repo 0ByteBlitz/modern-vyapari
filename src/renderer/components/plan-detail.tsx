@@ -138,12 +138,12 @@ function usePlanWatch(rowId: number): PlanWatch | null {
   return watch;
 }
 
-function watchLine(watch: PlanWatch, mode: string): { text: string; off: boolean } {
+function watchLine(watch: PlanWatch, mode: string, canFire: boolean): { text: string; off: boolean } {
   if (!watch.watched) return { text: "Not being watched — restart the app if this lasts.", off: true };
   if (watch.feedPausedSince !== null) {
     const since = new Date(watch.feedPausedSince).toLocaleString([], { dateStyle: "short", timeStyle: "short" });
     return {
-      text: `Paused — price bars are missing after ${since}. Decisions resume once they load; stops and targets still apply.`,
+      text: `Paused — price bars are missing from ${since}. Decisions resume once they load; stops and targets still apply.`,
       off: true,
     };
   }
@@ -151,6 +151,7 @@ function watchLine(watch: PlanWatch, mode: string): { text: string; off: boolean
     return { text: "Watched, but a trigger opens no position while the session is paused. Resume the session to allow entries.", off: true };
   if (watch.entryBlocked === "kill_switch")
     return { text: "Watched, but a trigger opens no position while the kill switch is on.", off: true };
+  if (!canFire) return { text: "Watched on every closed bar until it resolves.", off: false };
   return { text: `Watched on every closed bar. A trigger opens a ${mode} position with the branch's stop and target.`, off: false };
 }
 
@@ -183,7 +184,7 @@ export function PlanDetail({
 }) {
   const mode = useAppMode();
   const watch = usePlanWatch(plan.rowId);
-  const line = watch && watchLine(watch, mode);
+  const line = watch && watchLine(watch, mode, plan.branches.some((b) => (b.status ?? "pending") === "pending"));
   const left = plan.expiresAt - Date.now();
   const expiry =
     left <= 0

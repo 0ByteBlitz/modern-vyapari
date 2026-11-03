@@ -634,13 +634,23 @@ export class PaperExchangeEngine {
   public planWatch(rowId: number): PlanWatch {
     const plan = this.running ? this.watchedPlans.find((p) => p.rowId === rowId) : undefined;
     if (!plan) return { watched: false, feedPausedSince: null, entryBlocked: null };
-    const pause = this.planFeedPaused.get(`${plan.pair}:${INTERVAL_MAP[plan.evalInterval] || 240}`);
+    const intervalMin = INTERVAL_MAP[plan.evalInterval] || 240;
+    const pause = this.planFeedPaused.get(`${plan.pair}:${intervalMin}`);
     const session = getSessionById(plan.sessionId);
+    /* A refused entry only matters while a branch can still fire. */
+    const canFire = plan.branches.some((b) => b.status === "pending");
     return {
       watched: true,
-      feedPausedSince: pause ? pause.from : null,
+      /* The first bar that did not arrive, not the last one that did. */
+      feedPausedSince: pause ? pause.from + intervalMin * 60_000 : null,
       /* The same two refusals as `planEntryAllowed`, in the same order. */
-      entryBlocked: killSwitch.isTripped() ? "kill_switch" : session?.status !== "active" ? "session_paused" : null,
+      entryBlocked: !canFire
+        ? null
+        : killSwitch.isTripped()
+          ? "kill_switch"
+          : session?.status !== "active"
+            ? "session_paused"
+            : null,
     };
   }
 

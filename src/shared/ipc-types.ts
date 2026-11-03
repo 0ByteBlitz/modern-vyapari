@@ -576,9 +576,10 @@ export interface AiModelInfo {
 export interface PlanWatch {
   /** The running engine holds this plan and evaluates it on closed bars. */
   watched: boolean;
-  /** Plan decisions wait for missing bars on this plan's stream; the time of
-   *  the last bar before the gap, or null when the stream is complete. */
+  /** Plan decisions wait for missing bars on this plan's stream; the open time
+   *  of the first missing bar, or null when the stream is complete. */
   feedPausedSince: number | null;
-  /** Why a trigger would be recorded but open no position; null when it would. */
+  /** Why a trigger would be recorded but open no position; null when it would,
+   *  or when no branch is left to fire. */
   entryBlocked: "session_paused" | "kill_switch" | null;
 }
