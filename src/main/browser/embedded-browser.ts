@@ -4,10 +4,14 @@ import { emitTo } from "../events/outbound";
 /**
  * Embedded browser (Phase 1 surface 3): a native `WebContentsView` stacked on
  * top of the main window's own content, positioned to match a placeholder
- * element in the renderer (see browser-page.tsx). Display-only research
- * surface — this process never scrapes, reads, or automates it (TradingView
- * ToS §3, docs/PLAN.md §9); the only bridge from here to the AI is the user
- * manually pasting a snapshot into chat.
+ * element in the renderer (see browser-page.tsx). The owner browses in it, and
+ * the agent reaches it too: `readPageText` and `capturePageScreenshot` below
+ * send whatever page is open — logged-in pages included — to the AI provider
+ * (`read_browser_page`, `screenshot_browser`), and `navigate` lets the agent
+ * load a URL here (`navigate_browser`). It is exempt from main.ts's navigation
+ * lockdown, and popups open in this one view. That overrides the original
+ * display-only rule (TradingView ToS §3, docs/PLAN.md §9) by owner decision;
+ * see docs/DESIGN-NOTES.md, *Owner-accepted risk*, and ROADMAP P-2.
  *
  * Privacy posture ("privacy-focused, lightweight browser" — not a full
  * ad-blocker, just sensible defaults with zero new dependencies):
