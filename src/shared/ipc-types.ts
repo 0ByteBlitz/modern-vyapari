@@ -366,6 +366,20 @@ export interface ActivityEvent {
   created_at: number;
 }
 
+/**
+ * Which audit rows to list. `events` (the default) leaves out the agent's
+ * per-tool-call rows, which would otherwise crowd the engine's own actions out
+ * of the Home and lock-screen feeds; `agent` is only what an agent did.
+ */
+export type ActivityScope = "events" | "all" | "agent";
+
+/** Where the agent's turn landed, sent once per turn (`agent:navigate`). */
+export interface AgentNavigation {
+  surface: string;
+  /** Open this plan on the Plans surface — the one the turn drafted. */
+  focusPlanId?: number;
+}
+
 /* ── AI usage ─────────────────────────────────────────────────────────── */
 
 export interface UsageTotals {

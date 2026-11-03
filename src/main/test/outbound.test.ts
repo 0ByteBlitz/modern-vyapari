@@ -43,8 +43,8 @@ describe("emitTo", () => {
   });
 
   test("a null or undefined target is a no-op", () => {
-    assert.doesNotThrow(() => emitTo(null, "agent:acting", true));
-    assert.doesNotThrow(() => emitTo(undefined, "agent:acting", false));
+    assert.doesNotThrow(() => emitTo(null, "agent:acting", "Reading trades"));
+    assert.doesNotThrow(() => emitTo(undefined, "agent:acting", null));
   });
 });
 
