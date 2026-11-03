@@ -9,7 +9,7 @@ These rules override convenience, performance, and feature requests. If a reques
 
 ## Execution path
 
-1. **No AI in the order path.** Claude/LLM output may create an `OrderIntent` record — nothing else. Only the deterministic risk engine may approve an intent; only the execution engine may submit it.
+1. **No AI in the order path.** AI/LLM output may create an `OrderIntent` record — nothing else. Only the deterministic risk engine may approve an intent; only the execution engine may submit it.
 2. Every order passes ALL risk checks at submit time: per-pair capital %, max order size, daily loss caps (pair + global), daily trade count, order budget (1,000/day venue cap), price sanity vs current Revolut X mid, balance check, duplicate suppression via `client_order_id`.
 3. **Entry is incomplete until its venue-side TP/SL stop is confirmed.** No naked positions, ever — including paper mode (simulate the same invariant).
 4. Kill switch and auto-pause states must be checked before every submission. A paused session/strategy submits nothing.
@@ -23,7 +23,7 @@ These rules override convenience, performance, and feature requests. If a reques
 
 ## Secrets
 
-- Private key + API key: main process only. Never in IPC payloads, logs, error messages, prompts sent to Claude, or the DB.
+- Private key + API key: main process only. Never in IPC payloads, logs, error messages, prompts sent to the AI provider, or the DB.
 - Anything that could log a request must redact headers.
 
 ## Money math
