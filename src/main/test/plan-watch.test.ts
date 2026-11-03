@@ -122,6 +122,41 @@ describe("an armed plan is watched by the engine", () => {
     assert.ok(plan.branches[0]?.positionId, "the branch records the position it opened");
   });
 
+  test("a missed interval pauses plan decisions until the missing bars are loaded", async () => {
+    const s = createTestSession(PAIR);
+    const bars = risingBars();
+    seedPriming(bars);
+    const rowId = armed(s.id);
+    const paper = new PaperExchangeEngine();
+    paper.start(false);
+    const bar = (i: number, close: number): CandleNumeric =>
+      ({ timestamp: T0 + BAR * i, open: close, high: close, low: close, close, volume: 10 });
+    const feedActions = () =>
+      (getDb().prepare("SELECT action FROM audit_log ORDER BY id").all() as Array<{ action: string }>)
+        .map((row) => row.action)
+        .filter((action) => action.startsWith("analysis_feed_"));
+
+    feed(paper, bars[1]!);
+    feed(paper, bar(4, 105)); // bars 2 and 3 never arrived
+    await paper.__feedHealingForTests();
+    assert.equal(getPlan(rowId)!.state, "planned", "no decision on a buffer with a hole");
+    assert.deepEqual(feedActions(), ["analysis_feed_interruption"]);
+
+    /* Still missing (the suite has no network), so the next close stays paused. */
+    feed(paper, bar(5, 99));
+    await paper.__feedHealingForTests();
+    assert.deepEqual(feedActions(), ["analysis_feed_interruption"], "a partial refill does not resume");
+
+    /* The bars land in the cache; the refill kicked by the next close finds them. */
+    seedTestCandles(PAIR, 240, [bar(2, 98), bar(3, 98)]);
+    feed(paper, bar(6, 99));
+    await paper.__feedHealingForTests();
+    feed(paper, bar(7, 105));
+
+    assert.deepEqual(feedActions(), ["analysis_feed_interruption", "analysis_feed_recovered"]);
+    assert.equal(getPlan(rowId)!.state, "triggered", "decisions resume on the first close after the refill");
+  });
+
   test("expiry is acted on, and beats a trigger on the same bar", () => {
     const s = createTestSession(PAIR);
     const bars = risingBars();

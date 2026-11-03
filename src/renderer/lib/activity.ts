@@ -165,6 +165,17 @@ export function describeActivity(ev: ActivityEvent): DescribedActivity {
         text: `nothing was watching for ${mins >= 60 ? `${(mins / 60).toFixed(1)}h` : `${mins}m`} — plans could not trigger in that window`,
       };
     }
+    case "analysis_feed_interruption": {
+      const missed = num(d.missedBars);
+      return {
+        tag: "feed",
+        tone: "warning",
+        chore: false,
+        text: `plans on ${str(d.symbol) ?? "a pair"} paused — ${missed && missed > 0 ? `${missed} bars` : "bars"} missing from the price feed`,
+      };
+    }
+    case "analysis_feed_recovered":
+      return { tag: "feed", tone: "decision", chore: false, text: `plans on ${str(d.symbol) ?? "a pair"} resumed — missing bars loaded` };
     case "notification_abandoned":
       return {
         tag: "alert",
