@@ -576,6 +576,9 @@ export interface AiModelInfo {
 export interface PlanWatch {
   /** The running engine holds this plan and evaluates it on closed bars. */
   watched: boolean;
+  /** No price data has arrived on this plan's stream since this time (its last
+   *  tick); null while ticks arrive. Decisions and paper stops wait meanwhile. */
+  feedSilentSince: number | null;
   /** Plan decisions wait for missing bars on this plan's stream; the open time
    *  of the first missing bar, or null when the stream is complete. */
   feedPausedSince: number | null;

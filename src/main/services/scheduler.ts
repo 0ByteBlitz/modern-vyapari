@@ -227,6 +227,15 @@ export class BackgroundSchedulerService {
        to catch the case where it somehow has no socket and no pending retry. */
     if (!this.active) return;
     if (!binanceWS.hasSubscribers()) return;
+    /* Open but silent: a half-open connection reports itself connected and
+       never closes, so the socket's own reconnect never runs. Binance pushes
+       updates every couple of seconds, so a minute of nothing is a dead link. */
+    const silentMs = binanceWS.msSinceLastMessage();
+    if (silentMs !== null && silentMs > 60_000) {
+      log.warn(`[scheduler] Binance WS open but silent for ${Math.round(silentMs / 1000)}s — reconnecting...`);
+      binanceWS.reconnect();
+      return;
+    }
     if (binanceWS.isConnected() || binanceWS.isConnecting()) return;
     if (binanceWS.isReconnectPending()) return;
 

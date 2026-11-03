@@ -174,6 +174,13 @@ export function describeActivity(ev: ActivityEvent): DescribedActivity {
         text: `plans on ${str(d.symbol) ?? "a pair"} paused — ${missed && missed > 0 ? `${missed} bars` : "bars"} missing from the price feed`,
       };
     }
+    case "analysis_feed_silent": {
+      const since = num(d.since);
+      const at = since ? ` since ${new Date(since).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "";
+      return { tag: "feed", tone: "warning", chore: false, text: `no price data for ${str(d.symbol) ?? "a pair"}${at} — plans there are waiting` };
+    }
+    case "analysis_feed_live":
+      return { tag: "feed", tone: "decision", chore: false, text: `price data for ${str(d.symbol) ?? "a pair"} is back` };
     case "analysis_feed_recovered":
       return { tag: "feed", tone: "decision", chore: false, text: `plans on ${str(d.symbol) ?? "a pair"} resumed — missing bars loaded` };
     case "notification_abandoned":

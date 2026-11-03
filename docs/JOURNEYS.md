@@ -241,6 +241,7 @@ levels were worth at the moment it fired.*
 | **A closed plan position is reviewed** | ✅ J-2, 2026-08-01 |
 | **A missed analysis-feed interval pauses plan decisions until the missing bars are back** | ✅ feed-gap gate, 2026-11-03 |
 | **The plan says what the engine is doing with it** — watched, paused for missing bars, or watched with entries refused (session paused, kill switch) | ✅ read from the running engine, 2026-11-03 — no longer inferred from the session |
+| **A silent price feed is seen while it is silent, not only when it returns** — no tick for 90 s shows on the plan, 5 min notifies once, an open-but-silent socket is reconnected | ✅ 2026-11-03 |
 
 **Found by walking this journey, 2026-08-01:** the owner armed a plan, went
 looking for what it was doing, and found nothing. `plan-monitor.ts` was imported
@@ -286,7 +287,11 @@ reported when the bars load; the next close is then the next decision. A buffer
 loaded from the cache at startup is checked for holes too (the cache only
 holds bars from while the app was running), refilled the same way, and only
 announced if the refill fails: the downtime itself is already the
-`monitor_gap` entry. Open paper positions
+`monitor_gap` entry. A gap is only visible when the stream returns, so
+silence is watched by the clock as well: a stream with no tick for 90 seconds
+is shown on its plans as having no price data, the owner is notified once if
+it lasts five minutes, and a socket that stays open but delivers nothing for a
+minute is reconnected. Open paper positions
 keep checking stop/target on every tick throughout, and cannot be protected
 while no ticks arrive — local paper protection, not venue-side; live execution
 remains unbuilt.

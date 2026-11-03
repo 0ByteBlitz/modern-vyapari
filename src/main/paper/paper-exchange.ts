@@ -58,6 +58,8 @@ import { createLogger } from "../logger";
 import { ListenerRegistry } from "../events/listener-registry";
 import { FEED_SCOPE_SQL } from "../integrations/feed/symbols";
 import type { PlanWatch } from "../../shared/ipc-types";
+import { enqueue } from "../notify/outbox";
+import { announce } from "../notify/announce";
 import { emit } from "../events/outbound";
 
 const log = createLogger("paper");
@@ -77,6 +79,10 @@ interface FeedPause {
 
 /** How often a failed refill is retried while ticks keep arriving. */
 const HEAL_RETRY_MS = 60_000;
+/** No tick on a stream for this long and its plans are shown as unwatched. */
+const SILENT_MS = 90_000;
+/** ...and for this long, the owner is told once. */
+const SILENT_NOTIFY_MS = 5 * 60_000;
 
 /** True when every bar from `fromTs` (or the buffer's oldest, if the gap is
  *  older than the buffer) to the newest is present, one interval apart. */
@@ -223,6 +229,12 @@ export class PaperExchangeEngine {
   private planPositions = new Map<number, PaperPosition | null>();
   private running = false;
   private unsubscribeKillSwitch: (() => void) | null = null;
+  /** Last tick per stream, by wall clock. A gap is only seen when the next bar
+   *  arrives; while nothing arrives, this is the only thing that knows. */
+  private lastTickAt = new Map<string, number>();
+  /** Streams with no tick for `SILENT_MS`, since the last tick. */
+  private silentStreams = new Map<string, { since: number; notified: boolean }>();
+  private silenceTimer: NodeJS.Timeout | null = null;
 
   public start(subscribeToWs = true) {
     if (this.running) return;
@@ -235,11 +247,15 @@ export class PaperExchangeEngine {
       this.unsubscribeCandle = binanceWS.onCandle((symbol, intervalMin, candle) => {
         this.handleCandle(symbol, intervalMin, candle);
       });
+      this.silenceTimer = setInterval(() => this.checkSilence(), 15_000);
+      this.silenceTimer.unref?.();
     }
     log.info("Started.");
   }
 
   public stop() {
+    if (this.silenceTimer) clearInterval(this.silenceTimer);
+    this.silenceTimer = null;
     this.unsubscribeKillSwitch?.();
     this.unsubscribeKillSwitch = null;
     if (this.unsubscribeCandle) {
@@ -332,6 +348,7 @@ export class PaperExchangeEngine {
       // Release streams we no longer need, take streams we newly need.
       for (const key of Array.from(this.subscribed)) {
         if (!wanted.has(key)) {
+          this.silentStreams.delete(key);
           const { symbol, intervalMin } = splitStreamKey(key);
           binanceWS.unsubscribeInternal(symbol, intervalMin);
           this.subscribed.delete(key);
@@ -339,6 +356,7 @@ export class PaperExchangeEngine {
       }
       for (const key of wanted) {
         if (!this.subscribed.has(key)) {
+          this.lastTickAt.set(key, Date.now());
           const { symbol, intervalMin } = splitStreamKey(key);
           binanceWS.subscribeInternal(symbol, intervalMin);
           this.subscribed.add(key);
@@ -360,6 +378,8 @@ export class PaperExchangeEngine {
    */
   private seedStream(symbol: string, intervalMin: number) {
     const key = `${symbol}:${intervalMin}`;
+    /* The silence clock starts when the stream is wanted, not at the epoch. */
+    this.lastTickAt.set(key, Date.now());
     const buffer = this.seedBuffer(symbol, intervalMin);
     this.candleBuffers.set(key, buffer);
     const barMs = intervalMin * 60_000;
@@ -499,6 +519,13 @@ export class PaperExchangeEngine {
     const key = `${symbol}:${intervalMin}`;
     const buffer = this.candleBuffers.get(key);
     if (!buffer) return;
+    this.lastTickAt.set(key, Date.now());
+    const silent = this.silentStreams.get(key);
+    if (silent) {
+      this.silentStreams.delete(key);
+      auditLog("analysis_feed_live", { symbol, intervalMin, since: silent.since, at: Date.now() });
+      emit("data:updated", { kind: "feed" });
+    }
 
     const c: CandleNumeric = {
       timestamp: candle.start,
@@ -670,18 +697,59 @@ export class PaperExchangeEngine {
     emit("data:updated", { kind: "feed" });
   }
 
+  /**
+   * Mark streams that have stopped ticking. Run on a timer, because silence is
+   * the one failure no arriving data can report. Bars missed meanwhile are
+   * handled by the gap check when the stream returns.
+   */
+  private checkSilence() {
+    const now = Date.now();
+    /* Only streams this engine has subscribed to: a buffer outlives its
+       subscription, and a stream nobody asked for is not silent, it is off. */
+    for (const key of this.subscribed) {
+      const last = this.lastTickAt.get(key) ?? now;
+      if (now - last < SILENT_MS) continue;
+      const { symbol, intervalMin } = splitStreamKey(key);
+      let silent = this.silentStreams.get(key);
+      if (!silent) {
+        silent = { since: last, notified: false };
+        this.silentStreams.set(key, silent);
+        log.warn(`${key}: no price data for ${Math.round((now - last) / 1000)}s — plan decisions and paper stops are waiting.`);
+        auditLog("analysis_feed_silent", { symbol, intervalMin, since: last });
+        emit("data:updated", { kind: "feed" });
+      }
+      const watched = this.watchedPlans.some(
+        (p) => p.pair === symbol && (INTERVAL_MAP[p.evalInterval] || 240) === intervalMin
+      );
+      if (!silent.notified && now - last >= SILENT_NOTIFY_MS && watched) {
+        silent.notified = true;
+        const at = new Date(last).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        const draft = {
+          kind: "feed_silent",
+          title: `Plans on ${symbol} are not being watched`,
+          body: `No price data since ${at}. Plan decisions and paper stops wait until it returns.`,
+          dedupeKey: `feed_silent:${key}:${last}`,
+        };
+        enqueue(draft);
+        announce(draft);
+      }
+    }
+  }
+
   /** What the engine is doing with one plan right now — read by the screen
    *  rather than inferred there from the session's status. */
   public planWatch(rowId: number): PlanWatch {
     const plan = this.running ? this.watchedPlans.find((p) => p.rowId === rowId) : undefined;
-    if (!plan) return { watched: false, feedPausedSince: null, entryBlocked: null };
+    if (!plan) return { watched: false, feedSilentSince: null, feedPausedSince: null, entryBlocked: null };
     const intervalMin = INTERVAL_MAP[plan.evalInterval] || 240;
     const pause = this.planFeedPaused.get(`${plan.pair}:${intervalMin}`);
+    const silent = this.silentStreams.get(`${plan.pair}:${intervalMin}`);
     const session = getSessionById(plan.sessionId);
     /* A refused entry only matters while a branch can still fire. */
     const canFire = plan.branches.some((b) => b.status === "pending");
     return {
       watched: true,
+      feedSilentSince: silent ? silent.since : null,
       /* The first bar that did not arrive, not the last one that did. */
       feedPausedSince: pause && !pause.healed ? pause.from + intervalMin * 60_000 : null,
       /* The same two refusals as `planEntryAllowed`, in the same order. */
