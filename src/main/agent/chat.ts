@@ -297,7 +297,7 @@ const BROWSER_NAVIGATE_TOOL = {
 const RESEARCH_SCREENSHOT_TOOL = {
   name: "screenshot_research",
   description:
-    "Takes a screenshot of the in-app Research chart — the KLineChart that shows Binance analysis feed candles, " +
+    "Takes a screenshot of the in-app Charts tab — the KLineChart that shows Binance analysis feed candles, " +
     "your drawings, and indicator overlays. Use this when the user asks you to 'look at the chart', 'check the " +
     "chart', or 'analyze what you see'. This captures the app's own charting surface, NOT the external browser " +
     "tab — you do NOT need the user to open TradingView or the Browser tab. Vision reads are approximate for " +
@@ -308,10 +308,10 @@ const RESEARCH_SCREENSHOT_TOOL = {
 const RESEARCH_READ_TOOL = {
   name: "read_research_chart",
   description:
-    "Reads the current Research chart as structured data: the session's symbol, and the last 50 candles (OHLCV) " +
+    "Reads the current Charts tab as structured data: the session's symbol, and the last 50 candles (OHLCV) " +
     "plus key indicator values (RSI-14, MACD-12/26/9, Bollinger Bands-20, SMA-20/50/200, EMA-9/21, ATR-14) " +
     "computed on the same Binance analysis feed data the chart displays. Use this for precise numeric analysis " +
-    "of whatever the user is looking at on the Research page — it does NOT require the Browser tab. Accepts an " +
+    "of whatever the user is looking at on the Charts tab — it does NOT require the Browser tab. Accepts an " +
     "optional interval_minutes parameter (default 240 = 4H, matching the most common research view).",
   input_schema: {
     type: "object" as const,
@@ -363,8 +363,8 @@ Analysis capabilities:
 - A plan's lifecycle is the only one: draft → planned (armed) → triggered → closed / expired / invalidated. "Expired" and "invalidated" are different facts and both are useful — never fired, versus fired and was wrong. There is no promotion ladder and no backtest gate.
 - When backtesting, walk-forward validation (70/30 split) is on by default to catch overfitting. A strategy with beautiful in-sample results but poor out-of-sample performance likely memorized the past.
 
-Research chart (in-app charting surface):
-- You can see and analyze the user's Research chart directly via screenshot_research (visual) and read_research_chart (numeric data). These read the in-app KLineChart — do NOT tell the user to open TradingView or the Browser tab when they ask you to look at their chart.
+Charts tab (in-app charting surface):
+- You can see and analyze the user's Charts tab directly via screenshot_research (visual) and read_research_chart (numeric data). These read the in-app KLineChart — do NOT tell the user to open TradingView or the Browser tab when they ask you to look at their chart.
 - screenshot_research captures what the user sees: candles, indicators, drawings, support/resistance levels. Use it for visual pattern recognition (chart structure, trendlines, formations).
 - read_research_chart returns precise OHLCV data and computed indicator values for the session's pair. Use it to ground your analysis in exact numbers after a visual read.
 - For chart analysis, call screenshot_research first (to see the visual layout, drawings, and context), then read_research_chart (to get exact numbers for any levels or indicators you identified visually).`;
@@ -570,7 +570,7 @@ async function dispatchTool(name: string, input: Record<string, unknown>, sessio
       const own = getSessionById(sessionId);
       if (own && view.symbol !== own.pair) {
         return {
-          error: `The Research chart on screen shows ${view.symbol}, not this session's ${own.pair}. Use read_research_chart for ${own.pair}'s numbers, or ask the owner to open its Research view.`,
+          error: `The Charts tab on screen shows ${view.symbol}, not this session's ${own.pair}. Use read_research_chart for ${own.pair}'s numbers, or ask the owner to open its Charts tab.`,
         };
       }
     }
@@ -593,11 +593,11 @@ async function dispatchTool(name: string, input: Record<string, unknown>, sessio
 
     return {
       url: "app://research",
-      title: view ? `Research chart · ${view.symbol} · ${view.intervalMin}m` : "Research chart",
+      title: view ? `Charts · ${view.symbol} · ${view.intervalMin}m` : "Charts",
       cropped_to_chart: Boolean(rect),
       note: view
         ? undefined
-        : "The Research surface hasn't been opened this session, so this is a full-window capture and may not show a chart.",
+        : "The Charts tab hasn't been opened this session, so this is a full-window capture and may not show a chart.",
       base64: resized.toPNG().toString("base64"),
       mediaType: "image/png" as const,
     };
@@ -655,8 +655,8 @@ async function dispatchTool(name: string, input: Record<string, unknown>, sessio
           : view
             ? undefined
             : rawView
-              ? `The Research chart on screen shows ${rawView.symbol}, not this session's ${session.pair}; this is ${session.pair} at the interval asked for (or 4H).`
-              : "Research hasn't been opened this session, so this is the session's pair at a default interval — not necessarily what's on screen.",
+              ? `The Charts tab on screen shows ${rawView.symbol}, not this session's ${session.pair}; this is ${session.pair} at the interval asked for (or 4H).`
+              : "Charts hasn't been opened this session, so this is the session's pair at a default interval — not necessarily what's on screen.",
     };
   }
   return executeSessionTool(name, input, sessionId);
