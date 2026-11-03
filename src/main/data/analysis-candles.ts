@@ -19,6 +19,7 @@
 import { getDb } from "../db/database";
 import { backfillFromBinance, syncRecentFromBinance } from "../insights/indicators";
 import { createLogger } from "../logger";
+import { binanceFetch } from "./binance-hosts";
 import { FEED_SCOPE_SQL, fromFeedSymbol } from "../integrations/feed/symbols";
 
 const log = createLogger("candles");
@@ -69,7 +70,7 @@ const NON_TRENDING = new Set([
  * something to paint immediately; the stream then keeps it live.
  */
 export async function getTickerSnapshot(): Promise<TickerSnapshot[]> {
-  const res = await fetch("https://api.binance.com/api/v3/ticker/24hr");
+  const res = await binanceFetch("/api/v3/ticker/24hr");
   if (!res.ok) throw new Error(`Binance 24h ticker failed: ${res.status} ${res.statusText}`);
 
   const rows = (await res.json()) as Array<{
@@ -117,7 +118,7 @@ export async function getTickerSnapshot(): Promise<TickerSnapshot[]> {
  */
 export async function pingFeed(): Promise<number> {
   const t0 = Date.now();
-  const res = await fetch("https://api.binance.com/api/v3/ping");
+  const res = await binanceFetch("/api/v3/ping");
   if (!res.ok) throw new Error(`Binance ping failed: ${res.status} ${res.statusText}`);
   return Date.now() - t0;
 }

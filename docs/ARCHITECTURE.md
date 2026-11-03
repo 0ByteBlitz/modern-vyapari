@@ -94,7 +94,9 @@ re-point. **This is the cheapest it will ever be to fix.**
 ### Binance — deep. This is the real problem, and the owner identified it correctly.
 
 - **12 main modules** touch Binance.
-- **6 hardcoded API URLs.**
+- **6 hardcoded API URLs** — the spot ones now live in one place,
+  `data/binance-hosts.ts`, with the fallback hosts (2026-11-03); futures is
+  still a literal in `binance-derivatives.ts`.
 - **18 SQL predicates containing `source = 'binance'`.** The identity of the
   analysis feed is a string literal repeated across the query layer.
 - **5 independent symbol-translation sites**, each writing `${base}USDT` by
