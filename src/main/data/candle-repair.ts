@@ -151,7 +151,7 @@ export async function repairCandleHistory(
   const before = getCandleCoverage(symbol, intervalMin);
   if (!before) {
     throw new AppError("VALIDATION", `No cached ${symbol} ${intervalMin}m history to repair.`, {
-      hint: "Open the pair on Research or Markets first so history is fetched.",
+      hint: "Open the pair on Charts or Markets first so history is fetched.",
     });
   }
   if (!before.repairable) {

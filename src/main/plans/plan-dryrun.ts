@@ -149,7 +149,7 @@ export function dryRunPlan(plan: StoredPlan, opts: DryRunOptions = {}): PlanDryR
     return empty(
       plan,
       intervalMin,
-      `No cached ${plan.evalInterval} history for ${plan.pair} — open it on Research first.`,
+      `No cached ${plan.evalInterval} history for ${plan.pair} — open it on Charts first.`,
       "cannot_evaluate"
     );
   }

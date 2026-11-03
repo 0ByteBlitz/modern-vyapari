@@ -815,7 +815,7 @@ function toolCreateLevelReference(sessionId: number, input: Record<string, unkno
     label: ref.label,
     price,
     pair: session.pair,
-    note: "Created. It is now selectable when authoring a plan, and drawn on Research as a locked line.",
+    note: "Created. It is now selectable when authoring a plan, and drawn on Charts as a locked line.",
   };
 }
 

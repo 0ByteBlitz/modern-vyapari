@@ -851,6 +851,10 @@ body {
 }
 
 .rail-archived:hover { background: rgba(22, 29, 39, 0.6); }
+/* Same size as a live row's pair, one step quieter — archived history should
+   never out-shout a session that can still act. */
+.rail-archived-pair { color: var(--muted-foreground); }
+.rail-archived-note { font-size: var(--text-2xs); }
 
 .rail-footer {
   border-top: 1px solid var(--border);

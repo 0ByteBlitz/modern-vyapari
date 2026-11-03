@@ -177,7 +177,7 @@ export async function archiveSession(sessionId: number, report: StepReporter): P
         throw new AppError(
           "MARKET_DATA",
           `No recent price for ${pos.symbol}, so its open position can't be closed.`,
-          { hint: "Open Research for that pair to refresh its candles, then try again." }
+          { hint: "Open Charts for that pair to refresh its candles, then try again." }
         );
       }
       /* `session_archived`, not `manual`: the review agent and the promotion
