@@ -29,7 +29,8 @@ describe("Alert Engine & Offline Backfill Catch-up Suite", () => {
       "ARB Breakout Alert",
       "ARB-USD",
       15,
-      session.id
+      session.id,
+      "owner"
     );
 
     assert.equal(alert.status, "active");
@@ -74,7 +75,8 @@ describe("Alert Engine & Offline Backfill Catch-up Suite", () => {
       "ARB Breakout Alert",
       "ARB-USD",
       15,
-      session.id
+      session.id,
+      "owner"
     );
 
     const baseTime = Date.now() - 3600000;

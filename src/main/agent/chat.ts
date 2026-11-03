@@ -1,4 +1,5 @@
 import { WebContents } from "electron";
+import { randomUUID } from "node:crypto";
 import { getDb } from "../db/database";
 import { recordUsage, dailyLimitReached, dailyLimitError } from "./usage";
 import * as derivatives from "../data/derivatives";
@@ -17,6 +18,7 @@ import { SESSION_TOOLS, PHASE2_TOOLS, PLAN_TOOLS, CONTEXT_TOOLS, SESSION_SCOPED_
 import { disabledToolIds } from "./tool-registry";
 import { aiProvider } from "../ai/registry";
 import type { AiMessage, AiModelInfo, AiToolResult, AiToolSpec } from "../ai/port";
+import { auditToolCall, resultError } from "./tool-audit";
 
 export interface ChatMessage {
   id?: number;
@@ -295,7 +297,7 @@ const BROWSER_NAVIGATE_TOOL = {
 const RESEARCH_SCREENSHOT_TOOL = {
   name: "screenshot_research",
   description:
-    "Takes a screenshot of the in-app Research chart — the KLineChart that shows Binance analysis feed candles, " +
+    "Takes a screenshot of the in-app Charts tab — the KLineChart that shows Binance analysis feed candles, " +
     "your drawings, and indicator overlays. Use this when the user asks you to 'look at the chart', 'check the " +
     "chart', or 'analyze what you see'. This captures the app's own charting surface, NOT the external browser " +
     "tab — you do NOT need the user to open TradingView or the Browser tab. Vision reads are approximate for " +
@@ -306,10 +308,10 @@ const RESEARCH_SCREENSHOT_TOOL = {
 const RESEARCH_READ_TOOL = {
   name: "read_research_chart",
   description:
-    "Reads the current Research chart as structured data: the session's symbol, and the last 50 candles (OHLCV) " +
+    "Reads the current Charts tab as structured data: the session's symbol, and the last 50 candles (OHLCV) " +
     "plus key indicator values (RSI-14, MACD-12/26/9, Bollinger Bands-20, SMA-20/50/200, EMA-9/21, ATR-14) " +
     "computed on the same Binance analysis feed data the chart displays. Use this for precise numeric analysis " +
-    "of whatever the user is looking at on the Research page — it does NOT require the Browser tab. Accepts an " +
+    "of whatever the user is looking at on the Charts tab — it does NOT require the Browser tab. Accepts an " +
     "optional interval_minutes parameter (default 240 = 4H, matching the most common research view).",
   input_schema: {
     type: "object" as const,
@@ -361,31 +363,33 @@ Analysis capabilities:
 - A plan's lifecycle is the only one: draft → planned (armed) → triggered → closed / expired / invalidated. "Expired" and "invalidated" are different facts and both are useful — never fired, versus fired and was wrong. There is no promotion ladder and no backtest gate.
 - When backtesting, walk-forward validation (70/30 split) is on by default to catch overfitting. A strategy with beautiful in-sample results but poor out-of-sample performance likely memorized the past.
 
-Research chart (in-app charting surface):
-- You can see and analyze the user's Research chart directly via screenshot_research (visual) and read_research_chart (numeric data). These read the in-app KLineChart — do NOT tell the user to open TradingView or the Browser tab when they ask you to look at their chart.
+Charts tab (in-app charting surface):
+- You can see and analyze the user's Charts tab directly via screenshot_research (visual) and read_research_chart (numeric data). These read the in-app KLineChart — do NOT tell the user to open TradingView or the Browser tab when they ask you to look at their chart.
 - screenshot_research captures what the user sees: candles, indicators, drawings, support/resistance levels. Use it for visual pattern recognition (chart structure, trendlines, formations).
 - read_research_chart returns precise OHLCV data and computed indicator values for the session's pair. Use it to ground your analysis in exact numbers after a visual read.
 - For chart analysis, call screenshot_research first (to see the visual layout, drawings, and context), then read_research_chart (to get exact numbers for any levels or indicators you identified visually).`;
 
 /**
- * Navigate the renderer to a specific surface so the user sees what the agent
- * is doing — like modern AI assistants that move to the page they're working
- * on. Fires an IPC event the renderer's App component listens for.
+ * Navigate the renderer to a surface so the owner sees where the agent's work
+ * landed. `focusPlanId` opens that plan on the Plans surface. Fires an IPC
+ * event the renderer's App component listens for.
  */
-function navigateAgent(surface: string): void {
+function navigateAgent(surface: string, focusPlanId?: number): void {
   const { mainWindow } = require("../main");
   if (mainWindow && !mainWindow.isDestroyed()) {
-    emitTo(mainWindow.webContents, "agent:navigate", surface);
+    emitTo(mainWindow.webContents, "agent:navigate", { surface, focusPlanId });
   }
 }
 
 /**
- * Toggle the agent-acting visual state in the renderer (purple border glow + top badge).
+ * What the agent is doing right now, for the badge over the stage — or null
+ * when it is not running a tool. Named per tool here, never derived from the
+ * page on screen: the page is often not where the tool works (#3).
  */
-function setAgentActing(acting: boolean): void {
+function setAgentActing(activity: string | null): void {
   const { mainWindow } = require("../main");
   if (mainWindow && !mainWindow.isDestroyed()) {
-    emitTo(mainWindow.webContents, "agent:acting", acting);
+    emitTo(mainWindow.webContents, "agent:acting", activity);
   }
 }
 
@@ -410,51 +414,99 @@ function surfaceKeepsConversation(surface: string, general: boolean): boolean {
 /** Short pause to let React re-render after a navigation event. */
 const waitForRender = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
-/** Surface mapping for every agent tool to make tool execution visual on screen */
+/**
+ * Where each tool's work can be seen.
+ *
+ * The agent no longer jumps to every tool's page as it runs it: five tools
+ * meant five jumps with a pause each, and a turn that drafted a plan and then
+ * wrote a journal note ended on the Journal (#4). It now moves at most once,
+ * when the turn ends, to the most relevant surface (`TOOL_WEIGHT`). The only
+ * exception is a tool that reads the screen itself (`SCREEN_TOOLS`): it must
+ * have its page open before it runs.
+ */
 const TOOL_SURFACE_MAP: Record<string, string> = {
-  // Research tools -> Research tab
   read_candles: "research",
   compute_indicators: "research",
   list_indicators: "research",
   screenshot_research: "research",
   read_research_chart: "research",
   manage_alerts: "research",
-
-  // Plan tools -> the Plans surface. Reading a plan while the owner looks at
-  // something else is the "agent works where you can watch it" contract.
-  list_plans: "plans",
-  get_plan: "plans",
-  draft_plan: "plans",
-  update_draft: "plans",
   list_level_references: "research",
   create_level_reference: "research",
   get_order_flow: "research",
 
+  list_plans: "plans",
+  get_plan: "plans",
+  draft_plan: "plans",
+  update_draft: "plans",
   get_execution_basis: "plans",
 
-  // Memory & journal tools -> Journal tab
   read_session_memory: "journal",
   write_journal: "journal",
 
-  // Trade query tools -> Orders tab
   query_trades: "orders",
 
-  // Derivatives & macro tools -> Markets tab
   get_derivatives_metrics: "markets",
 
-  /* Embedded-browser tools -> Browser tab. These genuinely concern that tab:
-     two read it, one drives it.
-
-     `fetch_url` is deliberately NOT here. It runs in an isolated headless
+  /* `fetch_url` is deliberately NOT here. It runs in an isolated headless
      window with its own cookie-less session — the Browser tab has nothing to
-     do with it. Mapping it here switched the UI to that tab and left the user
-     staring at whatever was already loaded there (DuckDuckGo's home page),
-     which reads as "it opened a browser and failed to load anything". The
-     agent-acting badge is the honest signal for invisible work. */
+     do with it. Mapping it switched the UI to that tab and left the user
+     staring at whatever was already loaded there, which reads as "it opened a
+     browser and failed to load anything". The badge says what it is doing. */
   read_browser_page: "browser",
   screenshot_browser: "browser",
   navigate_browser: "browser",
 };
+
+/** Tools that read or drive what is on screen, so their page opens first. */
+const SCREEN_TOOLS = new Set(["screenshot_research", "read_browser_page", "screenshot_browser", "navigate_browser"]);
+
+/* Which surface the turn ends on: the heaviest successful tool, the later one
+   on a tie. A drafted plan outranks everything, since that is what the owner
+   has to act on; a write outranks a read. Unlisted tools weigh 1. */
+const TOOL_WEIGHT: Record<string, number> = {
+  draft_plan: 3,
+  update_draft: 3,
+  write_journal: 2,
+  create_level_reference: 2,
+  manage_alerts: 2,
+};
+
+/** The badge text per tool. A tool not listed here reads "Working". */
+const TOOL_ACTIVITY: Record<string, string> = {
+  read_candles: "Reading candles",
+  compute_indicators: "Computing indicators",
+  list_indicators: "Listing indicators",
+  screenshot_research: "Looking at the chart",
+  read_research_chart: "Reading the chart",
+  list_level_references: "Reading levels",
+  create_level_reference: "Naming a level",
+  get_order_flow: "Reading order flow",
+  list_plans: "Reading plans",
+  get_plan: "Reading a plan",
+  draft_plan: "Drafting a plan",
+  update_draft: "Editing a draft",
+  get_execution_basis: "Checking the execution basis",
+  read_session_memory: "Reading session memory",
+  write_journal: "Writing to the journal",
+  query_trades: "Reading trades",
+  get_derivatives_metrics: "Reading derivatives data",
+  fetch_url: "Fetching a web page",
+  read_browser_page: "Reading the browser page",
+  screenshot_browser: "Looking at the browser page",
+  navigate_browser: "Opening a page in the browser",
+  get_app_capabilities: "Checking what the app can do",
+  get_calibration: "Reading the calibration record",
+};
+
+function toolActivity(name: string, input: Record<string, unknown>): string {
+  if (name === "manage_alerts") {
+    if (input.action === "add") return "Adding an alert";
+    if (input.action === "remove") return "Removing an alert";
+    return "Reading alerts";
+  }
+  return TOOL_ACTIVITY[name] ?? "Working";
+}
 
 async function dispatchTool(name: string, input: Record<string, unknown>, sessionId: number): Promise<unknown> {
   /* Backstop for the filter in sendChatMessage: a session tool called from the
@@ -521,7 +573,7 @@ async function dispatchTool(name: string, input: Record<string, unknown>, sessio
       const own = getSessionById(sessionId);
       if (own && view.symbol !== own.pair) {
         return {
-          error: `The Research chart on screen shows ${view.symbol}, not this session's ${own.pair}. Use read_research_chart for ${own.pair}'s numbers, or ask the owner to open its Research view.`,
+          error: `The Charts tab on screen shows ${view.symbol}, not this session's ${own.pair}. Use read_research_chart for ${own.pair}'s numbers, or ask the owner to open its Charts tab.`,
         };
       }
     }
@@ -544,11 +596,11 @@ async function dispatchTool(name: string, input: Record<string, unknown>, sessio
 
     return {
       url: "app://research",
-      title: view ? `Research chart · ${view.symbol} · ${view.intervalMin}m` : "Research chart",
+      title: view ? `Charts · ${view.symbol} · ${view.intervalMin}m` : "Charts",
       cropped_to_chart: Boolean(rect),
       note: view
         ? undefined
-        : "The Research surface hasn't been opened this session, so this is a full-window capture and may not show a chart.",
+        : "The Charts tab hasn't been opened this session, so this is a full-window capture and may not show a chart.",
       base64: resized.toPNG().toString("base64"),
       mediaType: "image/png" as const,
     };
@@ -606,8 +658,8 @@ async function dispatchTool(name: string, input: Record<string, unknown>, sessio
           : view
             ? undefined
             : rawView
-              ? `The Research chart on screen shows ${rawView.symbol}, not this session's ${session.pair}; this is ${session.pair} at the interval asked for (or 4H).`
-              : "Research hasn't been opened this session, so this is the session's pair at a default interval — not necessarily what's on screen.",
+              ? `The Charts tab on screen shows ${rawView.symbol}, not this session's ${session.pair}; this is ${session.pair} at the interval asked for (or 4H).`
+              : "Charts hasn't been opened this session, so this is the session's pair at a default interval — not necessarily what's on screen.",
     };
   }
   return executeSessionTool(name, input, sessionId);
@@ -743,6 +795,12 @@ async function runChatTurn(
   const conv = provider.createConversation(apiMessages);
 
   let fullAssistantResponse = "";
+  /* Groups the audit rows of this reply's tool calls. */
+  const turnId = randomUUID();
+  /* Where the turn's work landed, and what is on screen already (see
+     TOOL_SURFACE_MAP). The owner is moved once, when the turn ends. */
+  let landing: { surface: string; weight: number; planId?: number } | null = null;
+  let shownSurface: string | null = null;
   /* Set when a rejected web_search sends us round again, so the retry does not
      re-emit the notice and cannot loop. */
   let retriedWithoutSearch = false;
@@ -817,17 +875,19 @@ async function runChatTurn(
 
       // Execute every requested tool call, in order, before continuing.
       const toolResultBlocks: AiToolResult[] = [];
-      setAgentActing(true);
       try {
         for (const toolUse of toolUseBlocks) {
+          const input = (toolUse.input as Record<string, unknown>) ?? {};
+          setAgentActing(toolActivity(toolUse.name, input));
           const targetSurface = TOOL_SURFACE_MAP[toolUse.name];
-          if (targetSurface && surfaceKeepsConversation(targetSurface, general)) {
-            navigateAgent(targetSurface);
-            // Deliberate pause so the user visually sees the page switch and purple active glow
+          const reachable = Boolean(targetSurface && surfaceKeepsConversation(targetSurface, general));
+          if (reachable && SCREEN_TOOLS.has(toolUse.name) && shownSurface !== targetSurface) {
+            navigateAgent(targetSurface!);
+            shownSurface = targetSurface!;
+            // Let the page paint before the tool reads it.
             await waitForRender(800);
           }
 
-          const label = toolUse.name.replace(/_/g, " ");
           // Machine-readable marker rather than prose. The renderer splits on
           // these to show a tool chip and to break the reply into separate
           // blocks — without it, the text either side of a tool call runs
@@ -836,7 +896,30 @@ async function runChatTurn(
           fullAssistantResponse += marker;
           emitTo(sender, "chat:chunk", { text: marker, conversation });
           try {
-            const result = await dispatchTool(toolUse.name, (toolUse.input as Record<string, unknown>) ?? {}, sessionId ?? 0);
+            const result = await dispatchTool(toolUse.name, input, sessionId ?? 0);
+            const failed = resultError(result);
+            auditToolCall({
+              sessionId,
+              tool: toolUse.name,
+              input,
+              model: params.model,
+              turnId,
+              outcome: failed ? "error" : "ok",
+              error: failed ?? undefined,
+              result,
+            });
+            notifyDataUpdated("audit");
+
+            if (!failed && reachable) {
+              const weight = TOOL_WEIGHT[toolUse.name] ?? 1;
+              if (!landing || weight >= landing.weight) {
+                const planId =
+                  (toolUse.name === "draft_plan" || toolUse.name === "update_draft") && typeof (result as { plan_id?: unknown })?.plan_id === "number"
+                    ? (result as { plan_id: number }).plan_id
+                    : undefined;
+                landing = { surface: targetSurface!, weight, planId };
+              }
+            }
 
             if (toolUse.name === "write_journal") notifyDataUpdated("journal");
             /* Every tool that writes must broadcast, or the surface it wrote to
@@ -869,6 +952,8 @@ async function runChatTurn(
             const message = e instanceof Error ? e.message : String(e);
             log.error(`Tool "${toolUse.name}" failed:`, message);
             if (e instanceof Error && e.stack) log.error(e.stack);
+            auditToolCall({ sessionId, tool: toolUse.name, input, model: params.model, turnId, outcome: "error", error: message });
+            notifyDataUpdated("audit");
             const errMarker = `\n\n[[toolerror:${toolUse.name}:${message.replace(/[\r\n]+/g, " ").slice(0, 200)}]]\n\n`;
             fullAssistantResponse += errMarker;
             emitTo(sender, "chat:chunk", { text: errMarker, conversation });
@@ -876,7 +961,7 @@ async function runChatTurn(
           }
         }
       } finally {
-        setAgentActing(false);
+        setAgentActing(null);
       }
 
       // Append the results so the next iteration sees its own prior tool calls.
@@ -936,7 +1021,14 @@ async function runChatTurn(
     emitError(sender, "chat:error", err, { conversation });
     break attempt;
   } finally {
-    setAgentActing(false);
+    setAgentActing(null);
   }
+  }
+
+  /* The one move of the turn, after the reply: to where its work landed — the
+     plan it drafted, opened — unless the owner is already looking there. */
+  const end = landing as { surface: string; weight: number; planId?: number } | null;
+  if (end && (end.surface !== shownSurface || end.planId !== undefined)) {
+    navigateAgent(end.surface, end.planId);
   }
 }

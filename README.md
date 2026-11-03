@@ -67,12 +67,12 @@ budget — and only you can arm one.
   <img src="docs/images/plans.png" width="820" alt="Plans page with one armed plan and one draft, each showing its thesis, branches, assumptions, budget and expiry" />
 </p>
 
-**5. Research.** Charting on the analysis feed, with the agent reading the chart, searching the
+**5. Charts.** Charting on the analysis feed, with the agent reading the chart, searching the
 web and fetching pages through its tools. It can research, journal and draft a plan —
 it has no tool that can place, size or price an order.
 
 <p align="center">
-  <img src="docs/images/research.png" width="820" alt="Research screen with a BTC-USD candlestick chart and the agent calling web_search, read_candles and fetch_url" />
+  <img src="docs/images/research.png" width="820" alt="Charts screen with a BTC-USD candlestick chart and the agent calling web_search, read_candles and fetch_url" />
 </p>
 
 **6. Quitting says what stops.** A plan can only execute while the app is running, so closing
@@ -139,7 +139,7 @@ being structurally unable to lose your money on its own.
 
 ## Features
 
-- **Research workspace** — KLineChart charting, 24 indicators, volume profile, anchored
+- **Charts workspace** — KLineChart charting, 24 indicators, volume profile, anchored
   VWAP/CVD, Binance + Hyperliquid derivatives (funding, OI, basis).
 - **Level references** — named price levels (static or derived) the engine resolves every
   bar, point-in-time, so a chart and the engine never disagree.

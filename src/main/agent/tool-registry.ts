@@ -84,8 +84,8 @@ const CATALOGUE: Omit<ToolInfo, "enabled">[] = [
   { id: "read_browser_page", label: "Read browser tab", group: "browser", description: "Read the page open in the Browser tab.", untrusted: true },
   { id: "screenshot_browser", label: "Screenshot browser", group: "browser", description: "Capture the Browser tab as an image.", untrusted: true },
   { id: "navigate_browser", label: "Open a page", group: "browser", description: "Point the Browser tab at a URL for you to look at." },
-  { id: "read_research_chart", label: "Read Research chart", group: "browser", description: "Read the symbol, timeframe and range you're looking at." },
-  { id: "screenshot_research", label: "Screenshot Research", group: "browser", description: "Capture the Research chart as an image." },
+  { id: "read_research_chart", label: "Read chart", group: "browser", description: "Read the symbol, timeframe and range you're looking at." },
+  { id: "screenshot_research", label: "Screenshot chart", group: "browser", description: "Capture the Charts tab as an image." },
 ];
 
 const SETTINGS_KEY = "agent_disabled_tools";

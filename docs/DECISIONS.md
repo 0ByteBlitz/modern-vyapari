@@ -94,6 +94,8 @@ Source of truth: **the token block at the top of `src/renderer/index.css`**, (th
 
 ## Research surface (2026-07-28) — KLineChart
 
+*Shown as **Charts** since 2026-11-03 — it is the chart surface, and "Research" read like the Research browser. The surface id `research` and the tool names `screenshot_research` / `read_research_chart` are unchanged, so stored selections and per-tool settings survive.*
+
 Owner decision: Research is where the time goes, so it needs real charting, not a read-only candle view. **Dependency: `klinecharts` ^10.1.0** (Apache-2.0, zero runtime deps, ~59k gzip).
 
 **v10 pulls data; our data is pushed** (2026-11-01). v10 dropped `applyNewData`/`updateData` for a `DataLoader` the chart calls whenever the symbol, period or loader changes — and `setSymbol` (which now carries price precision) reloads. `lib/chart-feed.ts` keeps the latest window plus live ticks and serves it on every pull, so a precision change cannot rewind the chart to the last fetch. The chart's period must be the real interval: it drives axis labels and where an overlay lands past the last bar.
@@ -114,8 +116,8 @@ Indicators carry editable `calcParams` (`IndicatorDef.params`/`defaults` in `cha
 
 The agent now *shows* what it's doing instead of only reporting it afterwards. Three IPC channels from main → renderer drive this; all are fire-and-forget and none can block a tool call.
 
-- **`agent:navigate`** — every tool is mapped to a surface in `TOOL_SURFACE_MAP` (`chat.ts`); calling one switches the UI to that surface so you watch the agent work. `App.tsx` validates the surface name against the `Surface` union before applying it — a bad name from main must not wedge the router.
-- **`agent:acting`** — toggles the "agent is working" visual state.
+- **`agent:navigate`** — every tool is mapped to a surface in `TOOL_SURFACE_MAP` (`chat.ts`); calling one switches the UI to that surface so you watch the agent work. *(Superseded 2026-11-03: one move per turn, see "The agent leaves a record".)* `App.tsx` validates the surface name against the `Surface` union before applying it — a bad name from main must not wedge the router.
+- **`agent:acting`** — toggles the "agent is working" visual state. *(Since 2026-11-03 it carries what the agent is doing, named per tool.)*
 - **`data:updated`** — broadcast after a tool writes (`write_journal` → `journal`, `create_strategy`/`run_backtest` → `strategy`, `manage_alerts` → `alert`). Journal, Workbench, Alerts and Research subscribe and re-query. This replaced polling for agent-written data; **if you add a tool that writes to the DB, add its broadcast too or the UI silently goes stale.**
 - **`research:view`** (renderer → main, `agent/research-view.ts`) — Research reports its symbol, interval and chart bounds on mount/change/resize. Without it the agent's chart tools were lying: `read_research_chart` hardcoded 4H while claiming to read "what the user is looking at", and `screenshot_research` captured the whole window including the chat transcript (feeding the model its own words back as an image). Both now mirror the real view and say so when Research was never opened.
 
@@ -137,7 +139,7 @@ The agent now *shows* what it's doing instead of only reporting it afterwards. T
 
 **Streaming channels bypass `safe()`.** Chat streams over its own `chat:error` channel, so it never went through the IPC boundary and rendered raw API errors straight into the transcript — the exact leak `safe()` exists to prevent. `chat.ts` now logs the full error and sends `toUserFacing(err)` (message + hint, plus `code`). **Any new channel that pushes main → renderer must sanitise the same way**; the boundary is per-channel, not global.
 
-**Not the audit log.** `audit_log` records what the engines *did* (evidence, order-affecting); the log file records what the process *saw* (diagnostics). Keeping them separate means HTTP noise can't bury the record of a real order.
+**Not the audit log.** `audit_log` records what the engines *did* (evidence, order-affecting) and, since 2026-11-03, every tool call an agent made; the log file records what the process *saw* (diagnostics). Keeping them separate means HTTP noise can't bury the record of a real order.
 
 ## Anthropic API contract (fixed 2026-07-29)
 
@@ -820,6 +822,41 @@ cache on the next close. Until it is whole, indicator alerts are left to the
 scheduled closed-bar check, which refills the cache it reads, rather than computed
 across bars that never arrived. The live path also now passes taker-buy volume,
 which it dropped, so a CVD alert read every bar as an unknown split.
+
+## The agent leaves a record, and lands where its work is (2026-11-03)
+
+**Every agent tool call is an audit row (#10).** Only three writing tools wrote
+one. An alert the agent removed left nothing; reads that send the owner's data to
+the AI provider (trades, session memory, screenshots, fetched pages) left
+nothing; and the transcript keeps only `[[tool:name]]` markers and can be
+cleared or compacted. So what the agent did, and on whose behalf, could vanish.
+
+`agent/tool-audit.ts` now writes one `agent_tool_call` row per call, from the
+agent loop around `dispatchTool`, so a new tool is covered without anyone
+remembering a line. Each row has the actor (`agent:general` or
+`agent:session:<id>`), the tool, a clipped input summary (credential-shaped keys
+and image data omitted), the outcome (a tool that returns `{ error }` counts as
+an error), the model, a turn id grouping one reply's calls, and the ids the call
+created or changed. Clear and Compact touch the chat tables only, never
+`audit_log`. Alert removal is audited whoever does it — `alert_removed` and
+`alert_created` name the actor (`owner`, `owner:archive`, an agent).
+
+**No schema bump.** Actor and session live in the JSON detail. The only query
+that needs them filters by `action`, a column; `json_extract` over `detail` is
+already how session activity is resolved. Home, the lock screen and the session
+dashboard leave `agent_tool_call` rows out (`ActivityScope "events"`), or a few
+chat turns would push the engines' own actions off the feed. Settings › Audit
+log shows everything, with an *agent only* filter.
+
+**One move per turn (#4, #3).** The agent jumped to each tool's page as it ran
+it: five tools, five jumps with a pause each, and a turn that drafted a plan and
+then wrote a journal note ended on the Journal. It now moves once, when the
+turn ends, to the surface of its heaviest successful tool — a drafted plan
+outranks a write, a write a read — and a drafted plan opens on Plans. A tool
+that reads the screen itself (a chart or browser screenshot) still opens its
+page first, because it must. The badge said "Agent acting on {page}" even when
+the tool worked elsewhere or navigation was refused; it now shows what main
+says the agent is doing ("Drafting a plan", "Fetching a web page").
 
 ## A draft the owner could not finish (2026-11-03, #11)
 

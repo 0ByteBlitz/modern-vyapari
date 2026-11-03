@@ -10,6 +10,7 @@ import { getDb } from "./database";
 import { getAccountValue } from "../paper/account";
 import type {
   ActivityEvent,
+  ActivityScope,
   ChartDrawing,
   JournalEntry,
   OrderRecord,
@@ -114,13 +115,21 @@ export function journalCounts(sessionId: number): Record<string, number> {
 
 
 /**
- * The audit log — every order-affecting action the deterministic engines took.
- * The dashboard shows this verbatim: it is the record of what the *code* did,
- * with no AI anywhere in the path, which is exactly what makes it trustworthy.
+ * The audit log — every order-affecting action the deterministic engines took,
+ * and every tool call an agent made (`agent_tool_call`, `agent/tool-audit.ts`).
+ * Home shows the default scope verbatim: the record of what the *code* did.
+ * The agent's per-call rows are left out of it, or a few chat turns would push
+ * the engine's own actions off the feed; Settings › Audit log shows them.
  */
-export function listActivity(limit = 60): ActivityEvent[] {
+export function listActivity(limit = 60, scope: ActivityScope = "events"): ActivityEvent[] {
+  const where =
+    scope === "agent"
+      ? `WHERE action = 'agent_tool_call' OR action LIKE '%agent%' OR json_extract(detail, '$.actor') LIKE 'agent:%'`
+      : scope === "events"
+        ? `WHERE action != 'agent_tool_call'`
+        : "";
   return getDb()
-    .prepare(`SELECT id, action, detail, created_at FROM audit_log ORDER BY created_at DESC LIMIT ?`)
+    .prepare(`SELECT id, action, detail, created_at FROM audit_log ${where} ORDER BY created_at DESC LIMIT ?`)
     .all(Math.min(limit, 300)) as unknown as ActivityEvent[];
 }
 
@@ -140,7 +149,7 @@ export function listSessionActivity(sessionId: number, limit = 60): ActivityEven
   return getDb()
     .prepare(
       `SELECT id, action, detail, created_at FROM audit_log a
-       WHERE (a.action IN ('monitor_gap', 'kill_switch_tripped', 'kill_switch_reset')
+       WHERE a.action != 'agent_tool_call' AND ((a.action IN ('monitor_gap', 'kill_switch_tripped', 'kill_switch_reset')
               AND EXISTS (SELECT 1 FROM sessions s WHERE s.id = :sid AND a.created_at >= s.created_at
                           AND (s.status != 'archived' OR a.created_at <= s.updated_at)))
           OR json_extract(a.detail, '$.sessionId') = :sid
@@ -149,7 +158,7 @@ export function listSessionActivity(sessionId: number, limit = 60): ActivityEven
           OR EXISTS (SELECT 1 FROM trade_plans p WHERE p.id = json_extract(a.detail, '$.planId') AND p.session_id = :sid)
           OR EXISTS (SELECT 1 FROM paper_positions p WHERE p.id = json_extract(a.detail, '$.position_id') AND p.session_id = :sid)
           OR EXISTS (SELECT 1 FROM strategies s WHERE s.id = COALESCE(json_extract(a.detail, '$.strategy_id'), json_extract(a.detail, '$.strategyId')) AND s.session_id = :sid)
-          OR EXISTS (SELECT 1 FROM alerts al WHERE al.id = json_extract(a.detail, '$.alertId') AND al.session_id = :sid)
+          OR EXISTS (SELECT 1 FROM alerts al WHERE al.id = json_extract(a.detail, '$.alertId') AND al.session_id = :sid))
        ORDER BY a.created_at DESC LIMIT :lim`
     )
     .all({ sid: sessionId, lim: Math.min(limit, 300) }) as unknown as ActivityEvent[];

@@ -177,7 +177,7 @@ export async function archiveSession(sessionId: number, report: StepReporter): P
         throw new AppError(
           "MARKET_DATA",
           `No recent price for ${pos.symbol}, so its open position can't be closed.`,
-          { hint: "Open Research for that pair to refresh its candles, then try again." }
+          { hint: "Open Charts for that pair to refresh its candles, then try again." }
         );
       }
       /* `session_archived`, not `manual`: the review agent and the promotion
@@ -226,7 +226,7 @@ export async function archiveSession(sessionId: number, report: StepReporter): P
   try {
     // In-memory first so the engine releases each alert's stream subscription…
     for (const alert of alertEngine.getSessionAlerts(sessionId)) {
-      alertEngine.removeAlert(alert.id);
+      alertEngine.removeAlert(alert.id, "owner:archive");
       summary.alertsCleared += 1;
     }
     // …then a DB sweep, in case rows exist that the engine never loaded.

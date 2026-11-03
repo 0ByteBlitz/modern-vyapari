@@ -1,6 +1,6 @@
 /**
  * SQLite schema — core tables from the plan (§4 sessions, §5 memory, §10 backtests).
- * Structured facts are ground truth; journal is append-only; audit_log is order-affecting actions.
+ * Structured facts are ground truth; journal is append-only; audit_log is order-affecting actions and agent tool calls.
  *
  * v4: added description/backtest_count/last_evaluated_at to strategies; added alerts table.
  * v5: added paper_balance to sessions.

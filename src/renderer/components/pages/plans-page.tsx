@@ -40,6 +40,8 @@ const DAY = 86_400_000;
 
 interface Props {
   session: Session;
+  /** A plan the agent just drafted, to open once it is in the list. */
+  focus?: { planId: number; key: number } | null;
 }
 
 /* A level as authored in the form: either a typed price, or a promoted
@@ -107,7 +109,7 @@ const STATE_LABEL: Record<PlanState, string> = {
   invalidated: "Invalidated",
 };
 
-export function PlansPage({ session }: Props) {
+export function PlansPage({ session, focus }: Props) {
   const [plans, setPlans] = useState<StoredPlanView[]>([]);
   const [refs, setRefs] = useState<LevelReferenceView[]>([]);
   const [authoring, setAuthoring] = useState(false);
@@ -361,6 +363,18 @@ export function PlansPage({ session }: Props) {
      active: a plan holding a position is very much still live, and a thesis can
      still be disproved while that position is green. */
   const FINISHED = ["closed", "expired", "invalidated"];
+  /* Open the plan the agent drafted, on its tab, once the list has it. A plan
+     of another session is not in this list, so nothing opens. */
+  const [focusedKey, setFocusedKey] = useState<number | null>(null);
+  useEffect(() => {
+    if (!focus || focus.key === focusedKey) return;
+    const p = plans.find((x) => x.rowId === focus.planId);
+    if (!p) return;
+    setFocusedKey(focus.key);
+    setTab(FINISHED.includes(p.state) ? "finished" : "active");
+    setDetail(p);
+  }, [focus, focusedKey, plans]);
+
   const active = plans.filter((p) => !FINISHED.includes(p.state));
   const finished = plans.filter((p) => FINISHED.includes(p.state));
   const shown = tab === "active" ? active : finished;

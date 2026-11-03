@@ -9,6 +9,7 @@
 import { ipcMain } from "electron";
 import * as queries from "../db/queries";
 import { safe } from "./safe";
+import type { ActivityScope } from "../../shared/ipc-types";
 
 export function registerReadmodels(): void {
   /* ── Phase 3: read models for the redesigned surfaces ─────── */
@@ -38,7 +39,9 @@ ipcMain.handle("journal:list", (_e, sessionId: number, opts?: { kind?: string; q
 
 ipcMain.handle("journal:counts", (_e, sessionId: number) => safe(() => queries.journalCounts(sessionId), "journal:counts"));
 
-ipcMain.handle("activity:list", (_e, limit?: number) => safe(() => queries.listActivity(limit), "activity:list"));
+ipcMain.handle("activity:list", (_e, limit?: number, scope?: ActivityScope) =>
+    safe(() => queries.listActivity(limit, scope === "all" || scope === "agent" ? scope : "events"), "activity:list")
+  );
 
 ipcMain.handle("activity:listForSession", (_e, sessionId: number, limit?: number) =>
     safe(() => queries.listSessionActivity(sessionId, limit), "activity:listForSession")
