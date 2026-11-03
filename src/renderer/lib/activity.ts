@@ -181,6 +181,13 @@ export function describeActivity(ev: ActivityEvent): DescribedActivity {
     }
     case "analysis_feed_live":
       return { tag: "feed", tone: "decision", chore: false, text: `price data for ${str(d.symbol) ?? "a pair"} is back` };
+    case "analysis_feed_rejected":
+      return {
+        tag: "feed",
+        tone: "warning",
+        chore: false,
+        text: `price data for ${str(d.symbol) ?? "a pair"} refused — ${str(d.problem) ?? "the response was malformed"}; nothing was saved`,
+      };
     case "analysis_feed_recovered":
       return { tag: "feed", tone: "decision", chore: false, text: `plans on ${str(d.symbol) ?? "a pair"} resumed — missing bars loaded` };
     case "notification_abandoned":
