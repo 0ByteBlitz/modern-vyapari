@@ -86,8 +86,19 @@ export function gapSinceLastRun(now: number = Date.now()): WatchGap | null {
   return { from: last, to: now, ms };
 }
 
+/* The previous run's last beat, read just before this run's first one
+   overwrites it. Anything that starts later than the heartbeat (the alert
+   catch-up runs 5s after launch) reads it from here. */
+let beatBeforeThisRun: number | null = null;
+
+/** When the previous run last said it was alive, or null if it never did. */
+export function lastBeatBeforeThisRun(): number | null {
+  return beatBeforeThisRun;
+}
+
 /** Start beating. Returns a stop function. */
 export function startHeartbeat(intervalMs = HEARTBEAT_INTERVAL_MS): () => void {
+  beatBeforeThisRun = lastBeat();
   beat();
   const id = setInterval(() => {
     try {
