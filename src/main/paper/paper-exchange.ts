@@ -217,11 +217,15 @@ export class PaperExchangeEngine {
    *  regression in code nobody is going to exercise again. */
   private planPositions = new Map<number, PaperPosition | null>();
   private running = false;
+  private unsubscribeKillSwitch: (() => void) | null = null;
 
   public start(subscribeToWs = true) {
     if (this.running) return;
     this.running = true;
     this.reloadStrategies(subscribeToWs);
+    /* The kill switch decides whether a trigger opens anything, so every plan's
+       watch line has to hear about it — however it was tripped. */
+    this.unsubscribeKillSwitch = killSwitch.onChange(() => emit("data:updated", { kind: "safety" }));
     if (subscribeToWs) {
       this.unsubscribeCandle = binanceWS.onCandle((symbol, intervalMin, candle) => {
         this.handleCandle(symbol, intervalMin, candle);
@@ -231,6 +235,8 @@ export class PaperExchangeEngine {
   }
 
   public stop() {
+    this.unsubscribeKillSwitch?.();
+    this.unsubscribeKillSwitch = null;
     if (this.unsubscribeCandle) {
       this.unsubscribeCandle();
       this.unsubscribeCandle = null;

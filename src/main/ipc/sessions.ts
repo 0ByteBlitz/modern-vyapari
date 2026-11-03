@@ -9,7 +9,7 @@
 import { ipcMain } from "electron";
 import * as sessionArchive from "../sessions/archive";
 import * as sessions from "../sessions/service";
-import { emitTo } from "../events/outbound";
+import { emit, emitTo } from "../events/outbound";
 import { venue, venueCapabilities } from "../integrations/venue/registry";
 import { appMode } from "../modes/app-mode";
 import { tradablePairs } from "./venue";
@@ -60,7 +60,13 @@ ipcMain.handle("sessions:getSelected", () => safe(() => sessions.getSelectedSess
 ipcMain.handle("sessions:getLast", () => safe(() => sessions.getLastSession(), "sessions:getLast"));
 
 ipcMain.handle("sessions:setStatus", (_e, id: number, status: "active" | "paused" | "archived") =>
-    safe(() => sessions.setSessionStatus(id, status), "sessions:setStatus")
+    safe(() => {
+      const result = sessions.setSessionStatus(id, status);
+      /* Pausing changes whether a plan's trigger can open a position, and a
+         plan's watch line is open on other surfaces than the one that paused. */
+      emit("data:updated", { kind: "session" });
+      return result;
+    }, "sessions:setStatus")
   );
 
   /* Archiving is a wind-down, not a status flip — see sessions/archive.ts.
