@@ -20,7 +20,7 @@
  */
 
 import { getDb, auditLog, withTransaction } from "../db/database";
-import { compileIntent, type ConditionIntent } from "./condition-intent";
+import { compileIntent, intentOf, type ConditionIntent } from "./condition-intent";
 import { createLogger } from "../logger";
 import { enqueueWithin, type NotificationDraft } from "../notify/outbox";
 import { announce } from "../notify/announce";
@@ -97,6 +97,13 @@ export interface StoredPlan extends Omit<TradePlan, "id" | "branches"> {
   armedAt: number | null;
   outcomeReason: string | null;
   branches: StoredBranch[];
+  /** What the falsifiability gate still refuses, for a draft — the same
+   *  `validatePlan` arming runs, so the list and the refusal cannot disagree.
+   *  Empty for every other state. */
+  missingBeforeArming?: string[];
+  /** The invalidation as authored, for editing a draft. Null when the stored
+   *  group is not one the form can represent. */
+  invalidationIntent?: ConditionIntent | null;
 }
 
 export interface StoredBranch {
@@ -111,10 +118,12 @@ export interface StoredBranch {
   status: string;
   triggeredAt: number | null;
   positionId: number | null;
+  /** The trigger as authored — see `invalidationIntent`. */
+  triggerIntent?: ConditionIntent | null;
 }
 
 function hydrate(row: PlanRow, branches: BranchRow[]): StoredPlan {
-  return {
+  const plan: StoredPlan = {
     rowId: row.id,
     slug: row.slug,
     sessionId: row.session_id,
@@ -142,6 +151,53 @@ function hydrate(row: PlanRow, branches: BranchRow[]): StoredPlan {
       status: b.status,
       triggeredAt: b.triggered_at,
       positionId: b.position_id,
+      triggerIntent: null,
+    })),
+    missingBeforeArming: [],
+    invalidationIntent: null,
+  };
+  plan.invalidationIntent = intentOf(plan.invalidation);
+  for (const b of plan.branches) b.triggerIntent = intentOf(b.trigger);
+  if (plan.state === "draft") plan.missingBeforeArming = armingGate(plan, Date.now()).errors;
+  return plan;
+}
+
+/**
+ * The falsifiability gate, exactly as `armPlan` runs it. Levels are drafts
+ * here; `validatePlan` only inspects structure and drift guards, both of which
+ * are present pre-arm.
+ */
+export function armingGate(plan: StoredPlan, now: number) {
+  return validatePlan({ ...plan, id: plan.slug, branches: plan.branches } as unknown as TradePlan, now);
+}
+
+/**
+ * A stored draft back in the shape `updatePlan` takes, so an edit can change
+ * one field and keep the rest. Null when a condition cannot be represented as
+ * an intent — editing that plan would rewrite a condition nobody asked to change.
+ */
+export function toPlanInput(plan: StoredPlan): PlanInput | null {
+  if (!plan.invalidationIntent || plan.branches.some((b) => !b.triggerIntent)) return null;
+  return {
+    sessionId: plan.sessionId,
+    slug: plan.slug,
+    pair: plan.pair,
+    thesis: plan.thesis,
+    assumptions: plan.assumptions,
+    invalidation: plan.invalidationIntent,
+    expiresAt: plan.expiresAt,
+    risk: plan.risk,
+    ocoExclusive: plan.ocoExclusive,
+    evalInterval: plan.evalInterval,
+    notes: plan.notes,
+    branches: plan.branches.map((b) => ({
+      id: b.id,
+      label: b.label,
+      trigger: b.triggerIntent!,
+      entry: b.entry,
+      stop: b.stop,
+      targets: b.targets,
+      budgetSharePct: b.budgetSharePct,
     })),
   };
 }
@@ -506,10 +562,8 @@ export function armPlan(rowId: number, now: number = Date.now()): ArmResult {
     };
   }
 
-  /* 1. The gate. Levels are drafts here; validatePlan only inspects structure
-        and drift guards, both of which are present pre-arm. */
-  const asPlan = { ...plan, id: plan.slug, branches: plan.branches } as unknown as TradePlan;
-  const gate = validatePlan(asPlan, now);
+  /* 1. The gate — the same one every draft card lists as still missing. */
+  const gate = armingGate(plan, now);
   if (!gate.valid) return { ok: false, errors: gate.errors, warnings: gate.warnings, resolved: [] };
 
   /* 2. Resolve every derived level to a number NOW. */

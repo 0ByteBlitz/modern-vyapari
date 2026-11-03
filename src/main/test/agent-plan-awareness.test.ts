@@ -66,7 +66,7 @@ describe("the agent's plan tools", () => {
   beforeEach(() => setupTestDb());
   afterEach(() => cleanupTestDb());
 
-  test("NOTHING arms, edits or deletes a plan — the invariant, not the tool count", () => {
+  test("NOTHING arms, deletes, or edits an armed plan — the invariant, not the tool count", () => {
     /* This deliberately does not pin the list. Tools get added; the guarantee
        that must survive every addition is that none of them arms. Arming is the
        owner's signature, and a tool that does not exist cannot be reached by a
@@ -85,8 +85,9 @@ describe("the agent's plan tools", () => {
     ]) {
       assert.ok(!names.includes(forbidden), `${forbidden} must never exist`);
     }
-    /* The one writer that does exist says "draft" in its name and its
-       description, so a reader of the catalogue cannot mistake it for arming. */
+    /* The writers that do exist say "draft" in their names and descriptions,
+       so a reader of the catalogue cannot mistake them for arming.
+       `update_draft` edits drafts only — `updatePlan` refuses anything else. */
     assert.ok(names.includes("draft_plan"));
     const draft = PLAN_TOOLS.find((t) => t.name === "draft_plan")!;
     assert.match(draft.description, /never arm|cannot arm|can never arm/i);

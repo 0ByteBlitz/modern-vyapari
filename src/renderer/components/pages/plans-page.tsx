@@ -17,7 +17,8 @@
  * geometry are different acts, and this is where they are made the same one.
  */
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Trash2, ShieldCheck, AlertTriangle, Activity, X } from "lucide-react";
+import { Plus, Trash2, ShieldCheck, AlertTriangle, Activity, X, Pencil } from "lucide-react";
+import { formatLevel, type PriceLevel } from "@shared/levels";
 import { PlanDetail, PlanWatchNote } from "@/components/plan-detail";
 import { CalibrationPanel } from "@/components/calibration-panel";
 import {
@@ -27,6 +28,8 @@ import {
   type Session,
   type StoredPlanView,
   type PlanInputView,
+  type LevelDraftView,
+  type ConditionIntentView,
   type ArmResultView,
   type PlanDryRun,
   type LevelReferenceView,
@@ -44,7 +47,12 @@ interface Props {
 /* A level as authored in the form: either a typed price, or a promoted
    reference chosen by id. Kept separate from the wire shape so the form can
    hold "nothing chosen yet" without inventing a level. */
-type LevelChoice = { mode: "price"; price: string } | { mode: "ref"; refId: number | null };
+type LevelChoice =
+  | { mode: "price"; price: string }
+  | { mode: "ref"; refId: number | null }
+  /* A draft's level that is neither a typed price nor a saved reference —
+     kept exactly as stored rather than retyped into something else. */
+  | { mode: "kept"; level: LevelDraftView };
 
 interface BranchDraft {
   id: string;
@@ -55,6 +63,8 @@ interface BranchDraft {
   stop: LevelChoice;
   target: LevelChoice;
   budgetSharePct: string;
+  /** Targets after the first, kept as drafted — the form edits one target. */
+  extraTargets: LevelDraftView[];
 }
 
 const emptyBranch = (n: number): BranchDraft => ({
@@ -66,7 +76,29 @@ const emptyBranch = (n: number): BranchDraft => ({
   stop: { mode: "price", price: "" },
   target: { mode: "price", price: "" },
   budgetSharePct: "100",
+  extraTargets: [],
 });
+
+const INTERVALS = ["15m", "1h", "4h", "1d"] as const;
+
+/** A level for display. "not set" for a level nobody chose yet. */
+function levelText(level: LevelDraftView | undefined): string {
+  const kind = (level as { kind?: unknown } | undefined)?.kind;
+  return kind === "static" || kind === "derived" ? formatLevel(level as PriceLevel) : "not set";
+}
+
+const OP_TEXT: Record<ConditionIntentView["operator"], string> = {
+  crosses_above: "crosses above",
+  crosses_below: "crosses below",
+  above: "is above",
+  below: "is below",
+};
+
+function intentText(intent: ConditionIntentView | null | undefined): string {
+  if (!intent) return "not set";
+  const v = typeof intent.value === "number" ? String(intent.value) : levelText(intent.value);
+  return `price ${OP_TEXT[intent.operator]} ${v}`;
+}
 
 const STATE_LABEL: Record<PlanState, string> = {
   draft: "Draft",
@@ -81,6 +113,10 @@ export function PlansPage({ session, focus }: Props) {
   const [plans, setPlans] = useState<StoredPlanView[]>([]);
   const [refs, setRefs] = useState<LevelReferenceView[]>([]);
   const [authoring, setAuthoring] = useState(false);
+  /** The draft the form is editing, or null when it is writing a new plan. */
+  const [editingId, setEditingId] = useState<number | null>(null);
+  /** The plan whose terms are on screen waiting for the owner to sign. */
+  const [confirming, setConfirming] = useState<number | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [armResult, setArmResult] = useState<{ planId: number; res: ArmResultView } | null>(null);
   /* The structural check, run on demand rather than automatically: it replays
@@ -108,6 +144,10 @@ export function PlansPage({ session, focus }: Props) {
   const [maxQuote, setMaxQuote] = useState("250");
   const [ocoExclusive, setOcoExclusive] = useState(true);
   const [branches, setBranches] = useState<BranchDraft[]>([emptyBranch(1)]);
+  const [evalInterval, setEvalInterval] = useState("4h");
+  /* The stored expiry of the draft being edited. Saving with the days field
+     untouched keeps this exact time, rather than restarting the clock. */
+  const [origExpiry, setOrigExpiry] = useState<{ days: string; at: number } | null>(null);
 
   const load = useCallback(async () => {
     const [p, r, candles] = await Promise.all([
@@ -148,6 +188,62 @@ export function PlansPage({ session, focus }: Props) {
      run (§2.8): "the error persisted even after closing the form". */
   function openForm() {
     setProblem(null);
+    resetForm();
+    setAuthoring(true);
+  }
+
+  /** A stored level -> a form choice: a typed price, the saved reference it
+   *  came from, or kept exactly as drafted. */
+  function choiceFor(level: LevelDraftView | undefined): LevelChoice {
+    const l = level as { kind?: unknown; price?: unknown } | undefined;
+    if (!l || (l.kind !== "static" && l.kind !== "derived")) return { mode: "price", price: "" };
+    if (l.kind === "static") return { mode: "price", price: String(l.price) };
+    const ref = refs.find((r) => JSON.stringify(r.level) === JSON.stringify(level));
+    return ref ? { mode: "ref", refId: ref.id } : { mode: "kept", level: level! };
+  }
+
+  function editDraft(p: StoredPlanView) {
+    setProblem(null);
+    const inv = p.invalidationIntent;
+    const unreadable =
+      !inv ||
+      typeof inv.value !== "number" ||
+      (inv.operator !== "above" && inv.operator !== "below") ||
+      p.branches.some((b) => typeof b.triggerIntent?.value !== "number");
+    if (unreadable) {
+      setProblem("This draft has a condition the form can't show. Ask the agent to change it.");
+      return;
+    }
+    const days = String(Math.max(0, Math.ceil((p.expiresAt - Date.now()) / DAY)));
+    setSlug(p.slug);
+    setThesis(p.thesis);
+    setAssumptions(p.assumptions.length ? p.assumptions.map((a) => a.text) : [""]);
+    setInvalidationOp(inv.operator as "above" | "below");
+    setInvalidationValue(String(inv.value));
+    setExpiryDays(days);
+    setOrigExpiry({ days, at: p.expiresAt });
+    /* Blank, not 0: a draft without a budget shows an empty field to fill. */
+    setMaxQuote(p.risk.maxQuote > 0 ? String(p.risk.maxQuote) : "");
+    setOcoExclusive(p.ocoExclusive);
+    setEvalInterval(p.evalInterval);
+    setBranches(
+      p.branches.length === 0
+        ? [emptyBranch(1)]
+        : p.branches.map((b) => ({
+            id: b.id,
+            label: b.label,
+            triggerOp: b.triggerIntent!.operator,
+            triggerValue: String(b.triggerIntent!.value),
+            entry: choiceFor(b.entry),
+            stop: choiceFor(b.stop),
+            target: choiceFor(b.targets[0]),
+            budgetSharePct: String(b.budgetSharePct),
+            extraTargets: b.targets.slice(1),
+          }))
+    );
+    setEditingId(p.rowId);
+    setConfirming(null);
+    setArmResult(null);
     setAuthoring(true);
   }
 
@@ -166,6 +262,9 @@ export function PlansPage({ session, focus }: Props) {
     setMaxQuote("250");
     setOcoExclusive(true);
     setBranches([emptyBranch(1)]);
+    setEvalInterval("4h");
+    setOrigExpiry(null);
+    setEditingId(null);
   }
 
   /** A form choice → the wire shape. Returns null when nothing was chosen, so
@@ -175,6 +274,7 @@ export function PlansPage({ session, focus }: Props) {
       const n = Number(choice.price);
       return Number.isFinite(n) && choice.price.trim() !== "" ? { kind: "static", price: n } : null;
     }
+    if (choice.mode === "kept") return choice.level;
     const ref = refs.find((r) => r.id === choice.refId);
     return ref ? ref.level : null;
   }
@@ -191,22 +291,25 @@ export function PlansPage({ session, focus }: Props) {
          main compiles it. Building the engine's wire format here is what made
          a UI file break when that format changed. */
       invalidation: { subject: "price", operator: invalidationOp, value: Number(invalidationValue) },
-      expiresAt: Date.now() + Number(expiryDays || 0) * DAY,
+      expiresAt:
+        origExpiry && expiryDays === origExpiry.days
+          ? origExpiry.at
+          : Date.now() + Number(expiryDays || 0) * DAY,
       risk: { maxQuote: Number(maxQuote) },
       ocoExclusive,
-      evalInterval: "4h",
+      evalInterval,
       branches: branches.map((b) => ({
         id: b.id,
         label: b.label,
         trigger: { subject: "price", operator: b.triggerOp, value: Number(b.triggerValue) },
         entry: (toLevel(b.entry) ?? {}) as Record<string, unknown>,
         stop: (toLevel(b.stop) ?? {}) as Record<string, unknown>,
-        targets: [toLevel(b.target)].filter(Boolean) as Record<string, unknown>[],
+        targets: [toLevel(b.target), ...b.extraTargets].filter(Boolean) as Record<string, unknown>[],
         budgetSharePct: Number(b.budgetSharePct),
       })),
     };
 
-    const res = await api.createPlan(input);
+    const res = editingId === null ? await api.createPlan(input) : await api.updatePlan(editingId, input);
     if (isError(res)) {
       setProblem(errorText(res));
       return;
@@ -224,6 +327,7 @@ export function PlansPage({ session, focus }: Props) {
 
   async function arm(planId: number) {
     setProblem(null);
+    setConfirming(null);
     const res = await api.armPlan(planId);
     if (isError(res)) {
       setProblem(errorText(res));
@@ -305,7 +409,12 @@ export function PlansPage({ session, focus }: Props) {
         <div className="plans-form">
           <label className="plans-field">
             <span>Name</span>
-            <input value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="range-break" />
+            <input
+              value={slug}
+              onChange={(e) => setSlug(e.target.value)}
+              placeholder="range-break"
+              disabled={editingId !== null}
+            />
           </label>
 
           <label className="plans-field">
@@ -371,7 +480,25 @@ export function PlansPage({ session, focus }: Props) {
             </label>
             <label className="plans-field">
               <span>Risk budget (quote)</span>
-              <input value={maxQuote} onChange={(e) => setMaxQuote(e.target.value)} inputMode="decimal" />
+              <input
+                value={maxQuote}
+                onChange={(e) => setMaxQuote(e.target.value)}
+                inputMode="decimal"
+                placeholder="required to arm"
+              />
+            </label>
+            <label className="plans-field">
+              <span>Checked every</span>
+              <select value={evalInterval} onChange={(e) => setEvalInterval(e.target.value)}>
+                {!(INTERVALS as readonly string[]).includes(evalInterval) && (
+                  <option value={evalInterval}>{evalInterval} bar</option>
+                )}
+                {INTERVALS.map((i) => (
+                  <option key={i} value={i}>
+                    {i} bar
+                  </option>
+                ))}
+              </select>
             </label>
           </div>
 
@@ -432,15 +559,25 @@ export function PlansPage({ session, focus }: Props) {
                   <div className="plans-row" key={slot}>
                     <span className="plans-slot">{slot}</span>
                     <select
-                      value={b[slot].mode === "ref" ? `ref:${(b[slot] as { refId: number | null }).refId ?? ""}` : "price"}
+                      value={
+                        b[slot].mode === "ref"
+                          ? `ref:${(b[slot] as { refId: number | null }).refId ?? ""}`
+                          : b[slot].mode
+                      }
                       onChange={(e) => {
                         const v = e.target.value;
+                        if (v === "kept") return;
                         const next: LevelChoice = v.startsWith("ref:")
                           ? { mode: "ref", refId: Number(v.slice(4)) }
                           : { mode: "price", price: "" };
                         setBranches((p) => p.map((x, j) => (j === i ? { ...x, [slot]: next } : x)));
                       }}
                     >
+                      {b[slot].mode === "kept" && (
+                        <option value="kept">
+                          {levelText((b[slot] as { level: LevelDraftView }).level)}
+                        </option>
+                      )}
                       <option value="price">a price</option>
                       {refs.map((r) => (
                         <option key={r.id} value={`ref:${r.id}`}>
@@ -481,7 +618,7 @@ export function PlansPage({ session, focus }: Props) {
 
           <div className="plans-actions">
             <button className="plans-primary" onClick={() => void save()}>
-              Save draft
+              {editingId === null ? "Save draft" : "Save changes"}
             </button>
             <button
               className="plans-ghost"
@@ -542,17 +679,35 @@ export function PlansPage({ session, focus }: Props) {
           <div className="plans-meta">
             <span>{p.branches.length} branch{p.branches.length === 1 ? "" : "es"}</span>
             <span>{p.assumptions.length} assumption{p.assumptions.length === 1 ? "" : "s"}</span>
-            <span>budget {p.risk.maxQuote}</span>
+            {p.risk.maxQuote > 0 ? (
+              <span>budget {p.risk.maxQuote}</span>
+            ) : (
+              <span className="plans-warn">no budget</span>
+            )}
             <span>expires {new Date(p.expiresAt).toLocaleDateString()}</span>
             {!p.ocoExclusive && <span className="plans-warn">OCO off</span>}
           </div>
           {p.outcomeReason && <p className="plans-outcome">{p.outcomeReason}</p>}
           <PlanWatchNote plan={p} />
 
+          {p.state === "draft" && p.missingBeforeArming.length > 0 && (
+            <div className="plans-arm-fail">
+              <strong>Needed before arming</strong>
+              <ul>
+                {p.missingBeforeArming.map((m, i) => (
+                  <li key={i}>{m}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {p.state === "draft" && (
             <div className="plans-actions" onClick={(e) => e.stopPropagation()}>
-              <button className="plans-primary" onClick={() => void arm(p.rowId)}>
+              <button className="plans-primary" onClick={() => setConfirming(p.rowId)}>
                 <ShieldCheck size={13} /> Arm
+              </button>
+              <button className="plans-ghost" onClick={() => editDraft(p)}>
+                <Pencil size={13} /> Edit
               </button>
               {/* Before committing: would this fire at all? The gate proves a
                   plan can be wrong; this proves it can happen. */}
@@ -562,6 +717,36 @@ export function PlansPage({ session, focus }: Props) {
               <button className="plans-ghost" onClick={() => void discard(p.rowId)}>
                 Discard
               </button>
+            </div>
+          )}
+
+          {confirming === p.rowId && p.state === "draft" && (
+            /* The terms the owner signs, every one of them on screen — including
+               any the agent defaulted rather than the owner chose. */
+            <div className="plans-arm-ok" onClick={(e) => e.stopPropagation()}>
+              <strong>Arm with these terms?</strong>
+              <ul>
+                <li>Budget: {p.risk.maxQuote > 0 ? p.risk.maxQuote : "not set"}</li>
+                <li>Expires: {new Date(p.expiresAt).toLocaleString()}</li>
+                <li>Checked every {p.evalInterval} bar</li>
+                <li>Invalidation: {intentText(p.invalidationIntent)}</li>
+                <li>{p.ocoExclusive ? "The first branch to fire cancels the others" : "More than one branch can fire"}</li>
+                {p.branches.map((b) => (
+                  <li key={b.id}>
+                    {b.label}: when {intentText(b.triggerIntent)}, enter {levelText(b.entry)}, stop{" "}
+                    {levelText(b.stop)}, target {b.targets.map(levelText).join(", ") || "not set"},{" "}
+                    {b.budgetSharePct}% of budget
+                  </li>
+                ))}
+              </ul>
+              <div className="plans-actions">
+                <button className="plans-primary" onClick={() => void arm(p.rowId)}>
+                  <ShieldCheck size={13} /> Arm
+                </button>
+                <button className="plans-ghost" onClick={() => setConfirming(null)}>
+                  Cancel
+                </button>
+              </div>
             </div>
           )}
 
@@ -610,6 +795,13 @@ export function PlansPage({ session, focus }: Props) {
                       <li key={i}>{e}</li>
                     ))}
                   </ul>
+                  {p.state === "draft" && (
+                    <div className="plans-actions" onClick={(e) => e.stopPropagation()}>
+                      <button className="plans-ghost" onClick={() => editDraft(p)}>
+                        <Pencil size={13} /> Edit draft
+                      </button>
+                    </div>
+                  )}
                 </>
               )}
               {armResult.res.warnings.map((w, i) => (
