@@ -886,3 +886,50 @@ The form edits stored conditions through `intentOf`, the inverse of
 `compileIntent`. A condition it cannot represent is refused for editing rather
 than guessed at. Money is still a number in plans; that is known debt, not
 changed here.
+
+---
+
+## The lock only hid the screen (2026-11-03) — and the risk page showed numbers nothing used
+
+**The Windows Hello lock was a picture.** `helloState` lived in the renderer.
+Main never knew the app was locked, so every IPC handler stayed callable behind
+the lock screen; a device without Hello unlocked silently; and nothing relocked
+— walk away from an unlocked app and it stayed open for good.
+
+The lock is now held in main (`security/app-lock.ts`) and enforced **once, in
+`safe()`**: while locked, every handler refuses with `LOCKED`, except the lock
+screen's own three (`security:status`, `security:requestWindowsHello`,
+`activity:list`) and `browser:hide`. A handler added later is refused without
+anyone remembering to; an unlabelled `safe()` call is `"unknown"`, which is
+refused too. `chat:send` is `ipcMain.on`, which `safe()` never sees, so it checks
+the lock itself and answers on `chat:error`. Window controls and the quit prompt
+are never refused.
+
+- **Only requests are refused.** The plan monitor, alerts, paper engine and the
+  notification outbox never cross IPC, so they run while locked — J3. The lock
+  screen's old line, "the app never trades while locked", was false and now says
+  armed plans and alerts keep running.
+- **It relocks** on `powerMonitor` `lock-screen` and `suspend`, and after a chosen
+  period of *system-wide* input idle (5/15/30/60 min, default 15) — someone
+  working in another app is at the machine.
+- **It locks only when Hello can open it.** A lock nothing can unlock would
+  strand the owner, so without Hello the app opens — and says so in a strip
+  under the toolbar that does not dismiss, whenever any lock setting is on.
+- **Main starts locked** until the launch check answers, so a request that
+  arrives while PowerShell is still replying cannot slip through.
+- The shell **unmounts** while locked, so no surface polls a main process that
+  would refuse it, and the embedded browser (a native view the lock screen cannot
+  cover) is hidden by main, not trusted to the renderer.
+- Settings live in `shared_settings`, not the mode database: the lock guards the
+  person, and a different lock per mode would be one more ambiguous state.
+
+**The risk-limits page showed the plan's intent as if it were the engine's.**
+"Max daily loss 5%" sat beside an engine using `max_daily_loss ?? 500` — absolute
+dollars. The defaults are now one exported `RISK_DEFAULTS` the engine reads and
+`risk:limits` serves, so the page cannot drift from it, and the page says the
+true thing about them: `evaluateRisk` has one caller, `order-pipeline.ts`, which
+nothing calls, so **no order passes through these checks yet**. What does limit
+a simulated plan today — the signed maximum spend and the kill switch — is
+stated beside them, and the checks the engine does not make are listed as such.
+Engine behaviour is unchanged. Known debt, not fixed here: the gates do float
+arithmetic and `toFixed` on money (`risk-engine.ts`, gates 2 and 3).

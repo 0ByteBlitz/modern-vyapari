@@ -151,7 +151,7 @@ outranks almost any feature.
 | Agent | `src/main/agent/` | `chat.ts` (provider-neutral agent loop; a session conversation or the *general* one), `tools.ts` + `tool-registry.ts` (`SESSION_SCOPED_TOOLS`), `context.ts`, `review.ts` |
 | Agent UI | `src/renderer/components/` | `agent-mascot.tsx` — the global agent, every surface; `chat-drawer.tsx` — the session agent, only on that session's surfaces (`shared/surfaces.ts`) |
 | Risk | `src/main/risk/` | Pure 8-gate `risk-engine.ts`; `kill-switch.ts` blocks entries, never exits |
-| Security | `src/main/security/` | `safeStorage` credential vault, Windows Hello gate |
+| Security | `src/main/security/` | `safeStorage` credential vault; `app-lock.ts` — the Windows Hello lock, held in main and enforced for every handler in `ipc/safe.ts` |
 | Notifications | `src/main/notify/` | Transactional outbox → Telegram |
 | Renderer | `src/renderer/` | `components/pages/` = surfaces only; `components/ui/` = shadcn; `lib/` = hooks/api |
 | Frozen | `src/main/strategy/`, `src/main/backtest/` | Kept because plans share the evaluator, fill model and risk engine. **Do not build on them.** |

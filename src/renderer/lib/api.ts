@@ -40,6 +40,10 @@ import type {
   UsageTotals,
   UsageReport,
   PlanWatch,
+  HelloAvailability,
+  LockSettings,
+  LockStatus,
+  RiskLimitsView,
 } from "@shared/ipc-types";
 import { isUserFacingError, type UserFacingError } from "@shared/errors";
 import type { QuitSummary } from "@shared/quit";
@@ -48,6 +52,10 @@ import type { QuitSummary } from "@shared/quit";
 export type ChatConversation = number | "general";
 
 export type {
+  HelloAvailability,
+  LockSettings,
+  LockStatus,
+  RiskLimitsView,
   SetupStatus,
   Session,
   Candle,
@@ -127,8 +135,6 @@ export interface ChatMessage {
   content: string;
   timestamp: number;
 }
-
-export type HelloAvailability = "available" | "unavailable" | "unsupported-platform";
 
 export interface HelloResult {
   verified: boolean;
@@ -524,9 +530,13 @@ export interface RendererApi {
   getSelectedSession(): Promise<Result<Session | null>>;
   /** The session open when the app last closed; the general chat offers it as a way back. */
   getLastSession(): Promise<Result<Session | null>>;
-  // Security (app-launch gate)
-  checkWindowsHello(): Promise<Result<HelloAvailability>>;
+  // Security (the app lock, held in main)
+  /** `recheck` asks Windows again whether Hello is set up (Settings). */
+  getLockStatus(recheck?: boolean): Promise<Result<LockStatus>>;
+  setLockSettings(next: LockSettings): Promise<Result<LockSettings>>;
+  /** Unlocks the app in main when verified. */
   requestWindowsHello(reason: string): Promise<Result<HelloResult>>;
+  onLockChanged(callback: (status: LockStatus) => void): () => void;
   // Embedded browser (Phase 1 surface 3)
   browserShow(): Promise<Result<{ ok: true }>>;
   browserHide(): Promise<Result<{ ok: true }>>;
@@ -563,6 +573,8 @@ export interface RendererApi {
   tripKillSwitch(reason?: string): Promise<Result<{ active: boolean; reason: string }>>;
   resetKillSwitch(): Promise<Result<{ active: boolean; reason: string }>>;
   getKillSwitchStatus(): Promise<Result<{ active: boolean; reason: string }>>;
+  /** The numbers the risk engine checks, from the engine itself. */
+  getRiskLimits(): Promise<Result<RiskLimitsView>>;
   listDrawings(symbol: string, intervalMin?: number): Promise<Result<ChartDrawing[]>>;
   saveDrawing(d: {
     id?: number;

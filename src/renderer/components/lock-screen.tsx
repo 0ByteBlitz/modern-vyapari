@@ -12,9 +12,11 @@ interface LockScreenProps {
 type PromptState = "idle" | "prompting" | "failed";
 
 /**
- * App-launch gate: shown once per app start when Windows Hello is available
- * on the device. This is an additive layer on top of credential encryption
- * (safeStorage/DPAPI), not a replacement for it — see security/windows-hello.ts.
+ * The app lock's screen: at launch, when Windows locks, and after the idle
+ * period — only when Windows Hello is available to open it again. Main holds
+ * the lock and refuses requests while it is set (security/app-lock.ts); this
+ * screen only asks for the unlock. An additive layer on top of credential
+ * encryption (safeStorage/DPAPI), not a replacement for it.
  */
 export function LockScreen({ onUnlock }: LockScreenProps) {
   const [state, setState] = useState<PromptState>("idle");
@@ -65,9 +67,10 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
           <span className="brand-tagline-roman">{TAGLINE_ROMAN}</span>
         </div>
         <h1 className="lock-screen-title">Modern Vyapari is locked</h1>
-        {/* The design's copy, kept verbatim: it states the security property
-            (nothing trades while locked) rather than just how to get in. */}
-        <p className="lock-screen-subtitle">Windows Hello · the app never trades while locked</p>
+        {/* States what the lock does and does not stop. The design's copy said
+            "the app never trades while locked", which was false: the lock
+            refuses requests from this window, and the engines carry on (J3). */}
+        <p className="lock-screen-subtitle">Windows Hello · armed plans and alerts keep running while locked</p>
 
         <div className="lock-screen-status">
           {state === "prompting" && (
@@ -105,7 +108,7 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
                 );
               })}
             </div>
-            <div className="lock-away-foot">The app never trades while locked — this is what happened before it was.</div>
+            <div className="lock-away-foot">The latest activity, including anything since the app locked.</div>
           </div>
         )}
       </div>

@@ -13,6 +13,8 @@ import { binanceWS } from "../data/binance-ws";
 import { emitTo } from "../events/outbound";
 import { createLogger } from "../logger";
 import { safe } from "./safe";
+import { RISK_DEFAULTS } from "../risk/risk-engine";
+import type { RiskLimitsView } from "../../shared/ipc-types";
 
 const ipcLog = createLogger("ipc");
 
@@ -44,6 +46,19 @@ ipcMain.handle("killSwitch:status", () =>
       const { killSwitch } = require("../risk/kill-switch");
       return { active: killSwitch.isTripped(), reason: killSwitch.getReason() };
     }, "killSwitch:status")
+  );
+
+  /* ── Risk limits (Settings) ──────────────────────────────────
+     Read from the engine's own defaults, so the page cannot show numbers the
+     engine does not use. */
+ipcMain.handle("risk:limits", () =>
+    safe((): RiskLimitsView => ({
+      maxPositionUsd: String(RISK_DEFAULTS.max_position_size),
+      maxDailyLossUsd: String(RISK_DEFAULTS.max_daily_loss),
+      maxOpenPositions: RISK_DEFAULTS.max_open_positions,
+      maxDailyTrades: RISK_DEFAULTS.max_daily_trades,
+      maxSpreadBps: RISK_DEFAULTS.max_spread_bps,
+    }), "risk:limits")
   );
 
   /* ── Phase 2: Alerts ──────────────────────────────────────── */

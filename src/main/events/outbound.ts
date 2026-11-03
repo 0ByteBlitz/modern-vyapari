@@ -25,7 +25,7 @@
 
 import { BrowserWindow, type WebContents } from "electron";
 import { toUserFacing, type ErrorCode } from "../../shared/errors";
-import type { ArchiveStepEvent, CandleRepairProgress } from "../../shared/ipc-types";
+import type { ArchiveStepEvent, CandleRepairProgress, LockStatus } from "../../shared/ipc-types";
 
 /* ── The channel map ────────────────────────────────────────────────── */
 
@@ -70,6 +70,8 @@ export interface OutboundMap {
    *  not failed, and styling it as a failure would train the owner to ignore
    *  real ones. Author these as plain sentences; nothing internal goes here. */
   "chat:notice": { text: string; conversation: ChatConversation };
+  /** The app locked or unlocked, or its lock settings changed. */
+  "security:lock": LockStatus;
 }
 
 export type OutboundChannel = keyof OutboundMap;

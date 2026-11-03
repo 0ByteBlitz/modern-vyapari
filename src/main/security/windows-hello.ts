@@ -11,7 +11,8 @@ import { execFile } from "child_process";
  * more. Windows-only; a no-op elsewhere (see requestVerification below).
  */
 
-export type HelloAvailability = "available" | "unavailable" | "unsupported-platform";
+import type { HelloAvailability } from "../../shared/ipc-types";
+export type { HelloAvailability };
 
 export interface HelloResult {
   verified: boolean;

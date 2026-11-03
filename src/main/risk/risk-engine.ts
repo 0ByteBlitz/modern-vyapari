@@ -28,6 +28,19 @@ export interface RiskConfig {
   max_spread_bps?: number;
 }
 
+/**
+ * What each gate uses when a session's `risk_config` sets nothing — which,
+ * today, no session does. Exported so Settings shows these numbers rather
+ * than a copy of them. Absolute USD, not a share of equity.
+ */
+export const RISK_DEFAULTS = {
+  max_position_size: 5000,
+  max_daily_loss: 500,
+  max_open_positions: 3,
+  max_daily_trades: 20,
+  max_spread_bps: 50,
+} as const satisfies Required<RiskConfig>;
+
 export interface RiskContext {
   sessionStatus: "active" | "paused" | "archived";
   riskConfig: RiskConfig;
@@ -109,7 +122,7 @@ export function evaluateRisk(intent: OrderIntent, context: RiskContext): RiskAss
   gateResults.push({ gateId: "GATE_1_STOP_LOSS", passed: true });
 
   // Gate 2: Max Position Size Cap
-  const maxPosSize = context.riskConfig.max_position_size ?? 5000;
+  const maxPosSize = context.riskConfig.max_position_size ?? RISK_DEFAULTS.max_position_size;
 
   /* The notional must be *establishable*, not merely absent. A market intent
      carrying only `quantity` (no price, no quoteAmount) used to evaluate to 0
@@ -145,7 +158,7 @@ export function evaluateRisk(intent: OrderIntent, context: RiskContext): RiskAss
   gateResults.push({ gateId: "GATE_2_MAX_POSITION_SIZE", passed: true });
 
   // Gate 3: Max Daily Realized Loss Limit
-  const maxDailyLoss = context.riskConfig.max_daily_loss ?? 500;
+  const maxDailyLoss = context.riskConfig.max_daily_loss ?? RISK_DEFAULTS.max_daily_loss;
   if (context.dailyRealizedPnl <= -maxDailyLoss) {
     const failed: GateResult = {
       gateId: "GATE_3_MAX_DAILY_LOSS",
@@ -158,7 +171,7 @@ export function evaluateRisk(intent: OrderIntent, context: RiskContext): RiskAss
   gateResults.push({ gateId: "GATE_3_MAX_DAILY_LOSS", passed: true });
 
   // Gate 4: Max Open Positions Cap
-  const maxOpen = context.riskConfig.max_open_positions ?? 3;
+  const maxOpen = context.riskConfig.max_open_positions ?? RISK_DEFAULTS.max_open_positions;
   if (intent.side === "buy" && context.openPositionsCount >= maxOpen) {
     const failed: GateResult = {
       gateId: "GATE_4_MAX_OPEN_POSITIONS",
@@ -171,7 +184,7 @@ export function evaluateRisk(intent: OrderIntent, context: RiskContext): RiskAss
   gateResults.push({ gateId: "GATE_4_MAX_OPEN_POSITIONS", passed: true });
 
   // Gate 5: Daily Trade Count Limit
-  const maxDailyTrades = context.riskConfig.max_daily_trades ?? 20;
+  const maxDailyTrades = context.riskConfig.max_daily_trades ?? RISK_DEFAULTS.max_daily_trades;
   if (context.tradesTodayCount >= maxDailyTrades) {
     const failed: GateResult = {
       gateId: "GATE_5_DAILY_TRADE_COUNT",
@@ -184,7 +197,7 @@ export function evaluateRisk(intent: OrderIntent, context: RiskContext): RiskAss
   gateResults.push({ gateId: "GATE_5_DAILY_TRADE_COUNT", passed: true });
 
   // Gate 6: Spread & Liquidity Threshold
-  const maxSpreadBps = context.riskConfig.max_spread_bps ?? 50;
+  const maxSpreadBps = context.riskConfig.max_spread_bps ?? RISK_DEFAULTS.max_spread_bps;
   if (context.currentSpreadBps !== undefined && context.currentSpreadBps > maxSpreadBps) {
     const failed: GateResult = {
       gateId: "GATE_6_SPREAD_LIQUIDITY",

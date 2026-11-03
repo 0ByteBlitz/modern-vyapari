@@ -6,17 +6,20 @@ import { SimulatedAccountPane } from "@/components/account-pane";
 import { AiPane } from "@/components/ai-pane";
 import { FeedPane } from "@/components/feed-pane";
 import { UsagePanel } from "@/components/usage-panel";
-import { api, isError, type SetupStatus, type ActivityEvent } from "@/lib/api";
+import { SecurityPane } from "@/components/security-pane";
+import { api, isError, errorText, type SetupStatus, type ActivityEvent, type RiskLimitsView } from "@/lib/api";
+import { formatUsd } from "@/lib/format";
 import { DENSITIES, getDensity, setDensity, type Density } from "@/lib/density";
 import { RefreshButton } from "@/components/refresh-button";
 
 /**
  * Settings — 200px section nav, one pane at a time.
  *
- * The prototype's structure, with one honesty change: the risk-limit editor is
- * shown as read-only "not enforced yet". Limits that appear editable but are
- * checked by nothing would be the most misleading control in the app — a user
- * would reasonably believe they were protected.
+ * The prototype's structure, with one honesty change: the risk limits are
+ * read-only, and read from the engine. They once showed the plan's intended
+ * values ("max daily loss 5%") while the engine used $500 absolute — numbers
+ * the code did not use. Limits that appear editable but are checked by nothing
+ * would be the most misleading control in the app.
  *
  * **Grouped by what each setting powers** (2026-11-01). The flat list mixed
  * levels — "Integrations" held the exchange, the analysis feed and every key;
@@ -30,6 +33,7 @@ const GROUPS = [
     sections: [
       /* First, because it is the one setting that changes what the app can do. */
       { id: "mode", label: "Mode" },
+      { id: "security", label: "Security" },
       { id: "appearance", label: "Appearance" },
     ],
   },
@@ -62,16 +66,93 @@ const GROUPS = [
 type SectionId = (typeof GROUPS)[number]["sections"][number]["id"];
 export type SettingsSectionId = SectionId;
 
-/** The limits the risk engine will enforce once it exists. Values are the plan's
- *  defaults, displayed so the intended shape is reviewable before it's live. */
-const PLANNED_LIMITS: { label: string; note: string; value: string }[] = [
-  { label: "Max capital per pair", note: "share of total equity", value: "20%" },
-  { label: "Max daily loss", note: "halts the session, not just the order", value: "5%" },
-  { label: "Max open positions", note: "across all sessions", value: "3" },
-  { label: "Max orders per day", note: "exchanges also cap orders per day", value: "50" },
-  { label: "Min time between orders", note: "throttles a misfiring strategy", value: "60s" },
-  { label: "Feed staleness tolerance", note: "no orders on stale data", value: "3 intervals" },
+/** Checks the order path needs and the risk engine does not make. Named so
+ *  their absence is on the page rather than discovered. */
+const NOT_CHECKED: { label: string; note: string }[] = [
+  { label: "Capital per pair", note: "as a share of equity" },
+  { label: "Time between orders", note: "a misfiring trigger is not throttled" },
+  { label: "Price against the venue", note: "the order price is not compared with the venue's" },
+  { label: "Balance", note: "the account is not read before an order" },
+  { label: "Duplicate orders", note: "a repeated order is not recognised" },
 ];
+
+/**
+ * Risk limits — the engine's own numbers (`risk-engine.ts` `RISK_DEFAULTS`,
+ * read over IPC), plus what it does not check.
+ *
+ * "Not on any order path yet" is the truth today: `order-pipeline.ts` is the
+ * only caller of `evaluateRisk`, and nothing calls it. Change that line in the
+ * same PR that wires it.
+ */
+function LimitsPane() {
+  const [limits, setLimits] = useState<RiskLimitsView | null>(null);
+  const [problem, setProblem] = useState<string | null>(null);
+
+  useEffect(() => {
+    void (async () => {
+      const res = await api.getRiskLimits();
+      if (isError(res)) setProblem(errorText(res));
+      else setLimits(res);
+    })();
+  }, []);
+
+  const rows: { label: string; note: string; value: string }[] = limits
+    ? [
+        { label: "Max order size", note: "per order", value: `$${formatUsd(limits.maxPositionUsd)}` },
+        { label: "Max daily loss", note: "realised, per session, in dollars", value: `$${formatUsd(limits.maxDailyLossUsd)}` },
+        { label: "Max open positions", note: "per session", value: String(limits.maxOpenPositions) },
+        { label: "Max trades per day", note: "per session", value: String(limits.maxDailyTrades) },
+        { label: "Max spread", note: "at the moment of the order", value: `${limits.maxSpreadBps} bps` },
+        { label: "Stop-loss", note: "on every buy", value: "required" },
+      ]
+    : [];
+
+  return (
+    <>
+      <section className="panel">
+        <div className="panel-header">
+          <span style={{ fontSize: "12.5px", fontWeight: 600 }}>Risk engine</span>
+          <span style={{ fontSize: "var(--text-sm)", color: "var(--text-faint)" }}>
+            checked in code before an order
+          </span>
+          <span className="mono ml-auto" style={{ fontSize: "var(--text-xs)", color: "var(--caution)" }}>
+            not on any order path yet
+          </span>
+        </div>
+        {problem && <p className="integ-problem" style={{ padding: "8px 12px" }}>{problem}</p>}
+        {rows.map((l) => (
+          <div key={l.label} className="limit-row">
+            <div className="limit-label">
+              <span style={{ fontSize: "var(--text-base)", fontWeight: 600 }}>{l.label}</span>
+              <span style={{ fontSize: "var(--text-xs)", color: "var(--text-faint)" }}>{l.note}</span>
+            </div>
+            <div className="limit-value mono">{l.value}</div>
+          </div>
+        ))}
+        <div className="panel-footer">
+          The engine's own values. No order passes through it yet: simulated fills don't, and live trading
+          isn't built. Today a simulated plan is limited by the most it may spend, signed when you arm it,
+          and by the kill switch, which blocks new entries.
+        </div>
+      </section>
+
+      <section className="panel">
+        <div className="panel-header">
+          <span style={{ fontSize: "12.5px", fontWeight: 600 }}>Not checked</span>
+          <span style={{ fontSize: "var(--text-sm)", color: "var(--text-faint)" }}>by the risk engine</span>
+        </div>
+        {NOT_CHECKED.map((l) => (
+          <div key={l.label} className="limit-row">
+            <div className="limit-label">
+              <span style={{ fontSize: "var(--text-base)", fontWeight: 600 }}>{l.label}</span>
+              <span style={{ fontSize: "var(--text-xs)", color: "var(--text-faint)" }}>{l.note}</span>
+            </div>
+          </div>
+        ))}
+      </section>
+    </>
+  );
+}
 
 function clock(ms: number): string {
   return new Date(ms).toLocaleString([], {
@@ -263,33 +344,9 @@ export function SettingsPage({ setup, setupError, onRefresh, dbStatus, openSecti
         {/* Shown on every section: a setup error is never only one pane's. */}
         {setupError && <p className="integ-problem">{setupError}</p>}
 
-        {section === "limits" && (
-          <section className="panel">
-            <div className="panel-header">
-              <span style={{ fontSize: "12.5px", fontWeight: 600 }}>Hard limits</span>
-              <span style={{ fontSize: "var(--text-sm)", color: "var(--text-faint)" }}>
-                will be enforced in code before every order
-              </span>
-              <span className="mono ml-auto" style={{ fontSize: "var(--text-xs)", color: "var(--caution)" }}>
-                not enforced yet
-              </span>
-            </div>
-            {PLANNED_LIMITS.map((l) => (
-              <div key={l.label} className="limit-row">
-                <div className="limit-label">
-                  <span style={{ fontSize: "var(--text-base)", fontWeight: 600 }}>{l.label}</span>
-                  <span style={{ fontSize: "var(--text-xs)", color: "var(--text-faint)" }}>{l.note}</span>
-                </div>
-                <div className="limit-value mono">{l.value}</div>
-              </div>
-            ))}
-            <div className="panel-footer">
-              These are the values the risk engine will enforce once it exists. They are
-              displayed read-only on purpose: an editable field that nothing checks would imply a
-              protection that does not exist.
-            </div>
-          </section>
-        )}
+        {section === "limits" && <LimitsPane />}
+
+        {section === "security" && <SecurityPane />}
 
         {section === "mode" && <ModePane />}
 
