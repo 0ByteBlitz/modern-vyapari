@@ -1,4 +1,5 @@
-import { app, BrowserWindow, Menu, session } from "electron";
+import { app, BrowserWindow, Menu, session, shell } from "electron";
+import * as fs from "fs";
 import * as path from "path";
 import { registerIpcHandlers } from "./ipc";
 import { initDatabase, getDb, auditLog } from "./db/database";
@@ -65,6 +66,35 @@ export let mainWindow: BrowserWindow | null = null;
    electron-builder, not from here. */
 const ICON_PATH = path.join(__dirname, "..", "..", "assets", process.platform === "win32" ? "icon.ico" : "icon.png");
 
+const APP_USER_MODEL_ID = "com.modernvyapari.app";
+
+/* An unpackaged Windows run has a Start-menu shortcut for this app id that
+   points at the stock electron.exe with no icon of its own (Windows needs one
+   for notifications), and the taskbar draws every window with that id using the
+   shortcut's icon — Electron's. Point those shortcuts at the app icon. Only
+   shortcuts aimed at this checkout's electron.exe are touched; the installer
+   writes its own for a packaged build. */
+function fixDevShortcutIcon(): void {
+  const dir = path.join(app.getPath("appData"), "Microsoft", "Windows", "Start Menu", "Programs");
+  let names: string[];
+  try {
+    names = fs.readdirSync(dir).filter((n) => n.toLowerCase().endsWith(".lnk"));
+  } catch {
+    return;
+  }
+  for (const name of names) {
+    const file = path.join(dir, name);
+    try {
+      const link = shell.readShortcutLink(file);
+      if (path.resolve(link.target) !== path.resolve(process.execPath)) continue;
+      if (link.appUserModelId !== APP_USER_MODEL_ID || link.icon === ICON_PATH) continue;
+      shell.writeShortcutLink(file, "update", { target: link.target, icon: ICON_PATH, iconIndex: 0 });
+    } catch (err) {
+      log.warn(`Could not update the icon of ${name}`, err);
+    }
+  }
+}
+
 function createWindow(): void {
   const win = new BrowserWindow({
     width: 1280,
@@ -114,7 +144,8 @@ function createWindow(): void {
 app.whenReady().then(() => {
   /* Windows only shows an app's notifications under a stable app id; the
      installer sets it from `build.appId`, an unpackaged run needs it here. */
-  if (process.platform === "win32") app.setAppUserModelId("com.modernvyapari.app");
+  if (process.platform === "win32") app.setAppUserModelId(APP_USER_MODEL_ID);
+  if (process.platform === "win32" && !app.isPackaged) fixDevShortcutIcon();
   Menu.setApplicationMenu(null);   // hide native menu — app uses custom titlebar
   if (process.platform === "darwin" && !app.isPackaged) app.dock?.setIcon(ICON_PATH);
 
