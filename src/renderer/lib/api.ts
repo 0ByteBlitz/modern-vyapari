@@ -9,6 +9,8 @@ import type {
   Candle,
   BasisStats,
   FeedStreamState,
+  FeedHealth,
+  WatchedStreams,
   CandleCoverage,
   CandleRepairResult,
   CandleRepairProgress,
@@ -49,6 +51,8 @@ export type {
   Candle,
   BasisStats,
   FeedStreamState,
+  FeedHealth,
+  WatchedStreams,
   CandleCoverage,
   CandleRepairResult,
   CandleRepairProgress,
@@ -409,8 +413,8 @@ export interface RendererApi {
   getTickerSnapshot(): Promise<Result<{ symbol: string; price: number; change24h: number; volume24h: number }[]>>;
   /** Milliseconds for one round trip to the analysis feed; an error when it doesn't answer. */
   pingFeed(): Promise<Result<number>>;
-  /** The analysis feed's live stream, as the socket reports it. */
-  getFeedStream(): Promise<Result<FeedStreamState>>;
+  /** The analysis feed: the socket, and the engine's own streams on it. */
+  getFeedStream(): Promise<Result<FeedHealth>>;
   /** Cross-venue derivatives: Binance futures + Hyperliquid perps, never blended. */
   getDerivatives(symbol: string): Promise<Result<DerivativesMetrics>>;
   /** Measured Revolut X vs. Binance spread for a pair. */

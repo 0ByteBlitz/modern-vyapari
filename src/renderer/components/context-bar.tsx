@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, isError, type FeedStreamState, type Result } from "@/lib/api";
+import { api, isError, type FeedHealth, type FeedStreamState, type Result } from "@/lib/api";
 
 /**
  * Context bar (34px) — what surface you're on, and whether the data behind it
@@ -33,19 +33,33 @@ const REST_POLL_MS = 30_000;
 const seconds = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
 const ago = (ms: number) => (ms < 60_000 ? `${Math.round(ms / 1000)}s` : `${Math.floor(ms / 60_000)}m`);
 
-/** The Binance chip from the stream's state, made worse — never better — by a
- *  failing REST check. */
-function binanceFeed(res: Result<FeedStreamState>, rest: { ok: boolean; ms: number } | null): Feed {
+const INTERVAL_LABEL: Record<number, string> = { 1: "1m", 5: "5m", 15: "15m", 30: "30m", 60: "1h", 240: "4h", 1440: "1d" };
+
+/** The Binance chip from the socket's state, then from the engine's own
+ *  streams — the market list's traffic keeps the socket busy while a plan's
+ *  stream can have stopped, so while anything is watched the worst watched
+ *  stream decides. A failing REST check can make it worse, never better. */
+function binanceFeed(res: Result<FeedHealth>, rest: { ok: boolean; ms: number } | null): Feed {
   const name = "Binance";
   const restNote = rest ? (rest.ok ? `history round trip ${seconds(rest.ms)}` : "history requests failing") : "";
   const withRest = (d: string) => (restNote ? `${d} · ${restNote}` : d);
   if (isError(res)) return { name, tone: "down", value: "error", detail: "stream state unreadable" };
-  const s = res;
+  const s: FeedStreamState = res.socket;
+  const w = res.watched.worst;
   switch (s.state) {
-    case "live":
+    case "live": {
+      const watchedNote = w ? `watching ${res.watched.count} stream${res.watched.count === 1 ? "" : "s"}` : "nothing watched";
+      if (w && w.state === "silent") {
+        return { name, tone: "down", value: `${w.pair} silent ${ago(w.msSinceTick)}`, detail: withRest(`${w.pair} ${INTERVAL_LABEL[w.intervalMin] ?? `${w.intervalMin}m`} has sent nothing for ${ago(w.msSinceTick)}; its plans are waiting · ${watchedNote}`) };
+      }
+      if (w && w.state === "catching_up") {
+        return { name, tone: "caution", value: `${w.pair} catching up`, detail: withRest(`loading bars ${w.pair} missed; its plans resume when they are in · ${watchedNote}`) };
+      }
+      const last = w ? `slowest watched stream ${ago(w.msSinceTick)} ago` : `last update ${ago(s.msSinceLastMessage)} ago`;
       return rest && !rest.ok
-        ? { name, tone: "caution", value: "history down", detail: withRest(`stream live, last update ${ago(s.msSinceLastMessage)} ago`) }
-        : { name, tone: "up", value: "live", detail: withRest(`stream live, last update ${ago(s.msSinceLastMessage)} ago`) };
+        ? { name, tone: "caution", value: "history down", detail: withRest(`stream live, ${last} · ${watchedNote}`) }
+        : { name, tone: "up", value: "live", detail: withRest(`stream live, ${last} · ${watchedNote}`) };
+    }
     case "silent":
       return { name, tone: "down", value: `silent ${ago(s.msSinceLastMessage)}`, detail: withRest("stream open but sending nothing; reconnecting") };
     case "connecting":

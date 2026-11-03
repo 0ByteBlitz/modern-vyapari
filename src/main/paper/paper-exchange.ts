@@ -57,7 +57,7 @@ import * as crypto from "crypto";
 import { createLogger } from "../logger";
 import { ListenerRegistry } from "../events/listener-registry";
 import { FEED_SCOPE_SQL } from "../integrations/feed/symbols";
-import type { PlanWatch } from "../../shared/ipc-types";
+import type { PlanWatch, WatchedStreams } from "../../shared/ipc-types";
 import { enqueue } from "../notify/outbox";
 import { announce } from "../notify/announce";
 import { emit } from "../events/outbound";
@@ -734,6 +734,30 @@ export class PaperExchangeEngine {
         announce(draft);
       }
     }
+  }
+
+  /** The engine's own streams, worst first — what the header badge reports
+   *  while anything is watched. The socket can be busy with the market list
+   *  while one of these has stopped, so the socket alone cannot vouch for them. */
+  public watchedStreams(): WatchedStreams {
+    if (!this.running || this.subscribed.size === 0) return { count: 0, worst: null };
+    const now = Date.now();
+    let worst: WatchedStreams["worst"] = null;
+    let worstRank = -1;
+    for (const key of this.subscribed) {
+      const { symbol, intervalMin } = splitStreamKey(key);
+      const silent = this.silentStreams.get(key);
+      const pause = this.planFeedPaused.get(key);
+      const msSinceTick = now - (this.lastTickAt.get(key) ?? now);
+      const state = silent ? "silent" : pause && !pause.healed ? "catching_up" : "live";
+      /* Silent outranks catching up outranks live; within one, the staler wins. */
+      const rank = (state === "silent" ? 2 : state === "catching_up" ? 1 : 0) * 1e12 + msSinceTick;
+      if (rank > worstRank) {
+        worstRank = rank;
+        worst = { pair: symbol, intervalMin, state, msSinceTick };
+      }
+    }
+    return { count: this.subscribed.size, worst };
   }
 
   /** What the engine is doing with one plan right now — read by the screen

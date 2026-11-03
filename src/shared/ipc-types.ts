@@ -88,6 +88,19 @@ export type FeedStreamState =
   | { state: "silent"; msSinceLastMessage: number }
   | { state: "down" };
 
+/** The streams the engine itself watches (armed plans, open positions), worst
+ *  first. `catching_up` is a gap being refilled before plans resume. */
+export interface WatchedStreams {
+  count: number;
+  worst: { pair: string; intervalMin: number; state: "live" | "silent" | "catching_up"; msSinceTick: number } | null;
+}
+
+/** What the header badge reads: the socket, and the engine's own streams on it. */
+export interface FeedHealth {
+  socket: FeedStreamState;
+  watched: WatchedStreams;
+}
+
 /** Measured Revolut X vs. Binance spread — see `data/basis-monitor.ts`. */
 export interface BasisStats {
   symbol: string;

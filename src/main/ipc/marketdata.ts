@@ -32,7 +32,12 @@ ipcMain.handle("feed:ping", () => safe(() => pingFeed(), "feed:ping"));
 
   /* The live stream, as the socket reports it. A ping proves REST answers; the
      engine runs on the stream, which can be silent while REST is fine. */
-  ipcMain.handle("feed:stream", () => safe(() => binanceWS.streamState(), "feed:stream"));
+  ipcMain.handle("feed:stream", () =>
+    safe(() => {
+      const { paperEngine } = require("../paper/paper-exchange") as typeof import("../paper/paper-exchange");
+      return { socket: binanceWS.streamState(), watched: paperEngine.watchedStreams() };
+    }, "feed:stream")
+  );
 
   /* Cross-venue derivatives (Binance futures + Hyperliquid perps). Already
      available to the agent as a tool; this exposes the same data to the UI. */
