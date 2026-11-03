@@ -10,6 +10,7 @@ import { ipcMain } from "electron";
 import * as candleRepair from "../data/candle-repair";
 import * as derivatives from "../data/derivatives";
 import { binanceWS } from "../data/binance-ws";
+import { feedHosts } from "../data/binance-hosts";
 import { emitTo } from "../events/outbound";
 import { getAnalysisCandles, getTickerSnapshot, pingFeed } from "../data/analysis-candles";
 import { venue } from "../integrations/venue/registry";
@@ -35,7 +36,7 @@ ipcMain.handle("feed:ping", () => safe(() => pingFeed(), "feed:ping"));
   ipcMain.handle("feed:stream", () =>
     safe(() => {
       const { paperEngine } = require("../paper/paper-exchange") as typeof import("../paper/paper-exchange");
-      return { socket: binanceWS.streamState(), watched: paperEngine.watchedStreams() };
+      return { socket: binanceWS.streamState(), watched: paperEngine.watchedStreams(), hosts: feedHosts() };
     }, "feed:stream")
   );
 

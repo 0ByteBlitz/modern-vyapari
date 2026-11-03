@@ -95,10 +95,12 @@ export interface WatchedStreams {
   worst: { pair: string; intervalMin: number; state: "live" | "silent" | "catching_up"; msSinceTick: number } | null;
 }
 
-/** What the header badge reads: the socket, and the engine's own streams on it. */
+/** What the header badge reads: the socket, the engine's own streams on it,
+ *  and which feed hosts are in use (one may be a fallback). */
 export interface FeedHealth {
   socket: FeedStreamState;
   watched: WatchedStreams;
+  hosts: { stream: string; history: string };
 }
 
 /** Measured Revolut X vs. Binance spread — see `data/basis-monitor.ts`. */

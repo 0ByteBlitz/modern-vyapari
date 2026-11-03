@@ -50,6 +50,7 @@ import type {
 } from "./indicator-types";
 import { toNumericCandle, makeIndicatorKey } from "./indicator-types";
 import { isNetworkDisabled } from "../net-guard";
+import { binanceFetch } from "../data/binance-hosts";
 import { createLogger } from "../logger";
 import { toFeedSymbol } from "../integrations/feed/symbols";
 import { FEED_SCOPE_SQL } from "../integrations/feed/symbols";
@@ -499,12 +500,12 @@ export async function fetchKlineRange(
   const insert = db.prepare(KLINE_UPSERT_SQL);
 
   while (cursor < toMs) {
-    const url =
-      `https://api.binance.com/api/v3/klines?symbol=${binanceSymbol}&interval=${binanceInterval}` +
+    const path =
+      `/api/v3/klines?symbol=${binanceSymbol}&interval=${binanceInterval}` +
       `&startTime=${cursor}&endTime=${toMs}&limit=1000`;
 
     try {
-      const res = await fetch(url);
+      const res = await binanceFetch(path);
       if (!res.ok) {
         log.error(`Kline range fetch failed: ${res.status} ${res.statusText}`);
         break;
@@ -598,12 +599,12 @@ export async function backfillFromBinance(
 
   while (cursor < endMs) {
     const limit = Math.min(batchSize, Math.ceil((endMs - cursor) / barMs));
-    const url =
-      `https://api.binance.com/api/v3/klines?symbol=${binanceSymbol}&interval=${binanceInterval}` +
+    const path =
+      `/api/v3/klines?symbol=${binanceSymbol}&interval=${binanceInterval}` +
       `&startTime=${cursor}&limit=${limit}`;
 
     try {
-      const res = await fetch(url);
+      const res = await binanceFetch(path);
       if (!res.ok) {
         log.error(`Binance REST backfill failed: ${res.status} ${res.statusText}`);
         break;
