@@ -305,6 +305,9 @@ export interface PlanBranchView {
   status?: string;
   triggeredAt?: number | null;
   positionId?: number | null;
+  /** The trigger as authored, for editing a draft. Null when the form cannot
+   *  represent the stored condition. */
+  triggerIntent?: ConditionIntentView | null;
 }
 
 export interface StoredPlanView {
@@ -324,6 +327,10 @@ export interface StoredPlanView {
   outcomeReason: string | null;
   notes?: string;
   branches: PlanBranchView[];
+  /** What arming would still refuse, from main's own gate. Empty unless draft. */
+  missingBeforeArming: string[];
+  /** The invalidation as authored — see `PlanBranchView.triggerIntent`. */
+  invalidationIntent: ConditionIntentView | null;
 }
 
 /** An authored condition. The renderer describes; main compiles it into the

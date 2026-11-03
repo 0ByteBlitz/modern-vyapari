@@ -58,6 +58,7 @@ const CATALOGUE: Omit<ToolInfo, "enabled">[] = [
   { id: "list_level_references", label: "See your levels", group: "session", description: "List the named levels the engine can resolve." },
   { id: "create_level_reference", label: "Name a level", group: "session", description: "Save a price as a named level the engine and chart share." },
   { id: "draft_plan", label: "Draft a plan", group: "session", description: "Save a plan as a draft for you to review. It can never arm one." },
+  { id: "update_draft", label: "Edit a draft", group: "session", description: "Change a plan that is still a draft. It can never arm one or edit an armed plan." },
   { id: "get_app_capabilities", label: "Check capabilities", group: "session", description: "What the app can actually do right now, read from the adapter." },
   { id: "get_calibration", label: "Your track record", group: "session", description: "How your theses have actually played out, by assumption tag." },
   { id: "compute_indicators", label: "Compute indicators", group: "analysis", description: "Calculate any of the 24 technical indicators." },
