@@ -23,6 +23,7 @@
  */
 
 import type { Condition, ConditionGroup, ConditionOperator } from "../strategy/strategy-spec";
+import { isCondition } from "../strategy/strategy-spec";
 import type { PriceLevel } from "../../shared/levels";
 import { isPriceLevelLike } from "../../shared/levels";
 
@@ -100,6 +101,19 @@ export function compileIntent(intent: ConditionIntent | null | undefined): Compi
     value: intent.value,
   };
   return { ok: true, group: { logic: "and", conditions: [condition] } };
+}
+
+/**
+ * The intent a stored group was compiled from, so a draft can be edited in
+ * the terms it was authored in. Null for a group `compileIntent` could not
+ * have produced — that is a plan the authoring form cannot represent, and
+ * guessing at it would save a different condition than the one on file.
+ */
+export function intentOf(group: ConditionGroup | null | undefined): ConditionIntent | null {
+  const only = group?.conditions?.length === 1 ? group.conditions[0] : undefined;
+  if (!only || !isCondition(only) || only.indicator !== "price") return null;
+  if (!PLAN_OPERATORS.includes(only.operator) || !validValue(only.value)) return null;
+  return { subject: "price", operator: only.operator, value: only.value };
 }
 
 /** Human description of an intent, for confirmations and audit lines. */

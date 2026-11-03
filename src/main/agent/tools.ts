@@ -256,7 +256,10 @@ export const PLAN_TOOLS = [
           description: "Whether the thesis dies below or above that price.",
         },
         expires_in_days: { type: "number", description: "Hard expiry. Under 180 — further out is a forecast, not a plan." },
-        risk_budget_quote: { type: "number", description: "Most this plan may risk, in quote currency." },
+        risk_budget_quote: {
+          type: "number",
+          description: "Most this plan may risk, in quote currency. Ask the owner — there is no default, and a draft without one cannot arm.",
+        },
         branches: {
           type: "array",
           description: "How the market might resolve. One per path. OCO by default: the first to fire cancels the rest.",
@@ -281,6 +284,50 @@ export const PLAN_TOOLS = [
         },
       },
       required: ["name", "thesis", "invalidation_price"],
+    },
+  },
+  {
+    name: "update_draft",
+    description:
+      "Change a plan that is still a DRAFT — fill in a risk budget, fix a level, add an assumption. Use this " +
+      "instead of drafting again: names are unique per session, so a second draft leaves the first behind. " +
+      "Only the fields you pass change; the rest keep their stored value. Passing branches replaces them all. " +
+      "It cannot arm, and it refuses any plan that is not a draft — armed terms are the owner's signature. " +
+      "Change only what the owner asked for.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        plan_id: { type: "number", description: "The draft's id from list_plans." },
+        thesis: { type: "string", description: "One sentence: what you expect to happen." },
+        assumptions: {
+          type: "array",
+          items: { type: "string" },
+          description: "Replaces the whole list. What must be true for the thesis to work.",
+        },
+        invalidation_price: { type: "number", description: "Price at which the THESIS is wrong — not the stop." },
+        invalidation_direction: { type: "string", enum: ["below", "above"] },
+        expires_in_days: { type: "number", description: "Hard expiry, counted from now. Under 180." },
+        risk_budget_quote: { type: "number", description: "Most this plan may risk, in quote currency." },
+        branches: {
+          type: "array",
+          description: "Replaces every branch. Same shape as draft_plan's branches.",
+          items: {
+            type: "object",
+            properties: {
+              label: { type: "string" },
+              trigger_price: { type: "number" },
+              trigger_direction: { type: "string", enum: ["crosses_above", "crosses_below", "above", "below"] },
+              entry_price: { type: "number" },
+              entry_reference_id: { type: "number" },
+              stop_price: { type: "number" },
+              target_price: { type: "number" },
+              budget_share_pct: { type: "number" },
+            },
+            required: ["label", "trigger_price", "trigger_direction", "stop_price", "target_price"],
+          },
+        },
+      },
+      required: ["plan_id"],
     },
   },
   {
@@ -834,6 +881,53 @@ interface DraftBranchInput {
 const DAY_MS = 86_400_000;
 
 /**
+ * Branches as the agent wrote them → branches as `PlanInput` takes them.
+ *
+ * A reference id becomes the reference's own level, so the plan and the chart
+ * stay one definition. An unknown id is refused rather than silently falling
+ * back to a typed price — a plan quietly built on a different level than the
+ * agent named is the failure this whole layer exists to prevent.
+ */
+function parseDraftBranches(rawBranches: DraftBranchInput[]): planService.PlanInput["branches"] {
+  const levelFor = (price: unknown, refId: unknown): Record<string, unknown> | null => {
+    if (typeof refId === "number") {
+      const ref = levelRefService.getLevelReference(refId);
+      if (!ref) throw new Error(`No level reference with id ${refId}.`);
+      return ref.level as unknown as Record<string, unknown>;
+    }
+    return typeof price === "number" && Number.isFinite(price)
+      ? { kind: "static", price }
+      : null;
+  };
+
+  return rawBranches.map((b, i) => {
+    const label = typeof b.label === "string" && b.label.trim() ? b.label.trim() : `branch ${i + 1}`;
+    const op =
+      b.trigger_direction === "crosses_below" || b.trigger_direction === "above" || b.trigger_direction === "below"
+        ? (b.trigger_direction as "crosses_below" | "above" | "below")
+        : "crosses_above";
+    return {
+      id: `branch-${i + 1}`,
+      label,
+      trigger: {
+        subject: "price" as const,
+        operator: op,
+        value: typeof b.trigger_price === "number" ? b.trigger_price : NaN,
+      },
+      entry: (levelFor(b.entry_price, b.entry_reference_id) ?? {}) as never,
+      stop: (levelFor(b.stop_price, undefined) ?? {}) as never,
+      targets: [levelFor(b.target_price, undefined)].filter(Boolean) as never,
+      budgetSharePct:
+        typeof b.budget_share_pct === "number" && Number.isFinite(b.budget_share_pct)
+          ? b.budget_share_pct
+          : rawBranches.length > 0
+            ? Math.floor(100 / rawBranches.length)
+            : 100,
+    };
+  });
+}
+
+/**
  * Save a plan as a DRAFT. Never armed — that is the owner's signature.
  *
  * The gate deliberately does not run here: `createPlan` stores anything, and
@@ -887,50 +981,22 @@ function toolDraftPlan(sessionId: number, input: Record<string, unknown>): unkno
       ? input.risk_budget_quote
       : 0;
 
-  /* A reference id becomes the reference's own level, so the plan and the chart
-     stay one definition. An unknown id is refused rather than silently falling
-     back to a typed price — a plan quietly built on a different level than the
-     agent named is the failure this whole layer exists to prevent. */
-  const levelFor = (price: unknown, refId: unknown): Record<string, unknown> | null => {
-    if (typeof refId === "number") {
-      const ref = levelRefService.getLevelReference(refId);
-      if (!ref) throw new Error(`No level reference with id ${refId}.`);
-      return ref.level as unknown as Record<string, unknown>;
-    }
-    return typeof price === "number" && Number.isFinite(price)
-      ? { kind: "static", price }
-      : null;
-  };
-
   const rawBranches: DraftBranchInput[] = Array.isArray(input.branches)
     ? (input.branches as DraftBranchInput[])
     : [];
-
-  const branches = rawBranches.map((b, i) => {
-    const label = typeof b.label === "string" && b.label.trim() ? b.label.trim() : `branch ${i + 1}`;
-    const op =
-      b.trigger_direction === "crosses_below" || b.trigger_direction === "above" || b.trigger_direction === "below"
-        ? (b.trigger_direction as "crosses_below" | "above" | "below")
-        : "crosses_above";
-    return {
-      id: `branch-${i + 1}`,
-      label,
-      trigger: {
-        subject: "price" as const,
-        operator: op,
-        value: typeof b.trigger_price === "number" ? b.trigger_price : NaN,
-      },
-      entry: (levelFor(b.entry_price, b.entry_reference_id) ?? {}) as Record<string, unknown>,
-      stop: (levelFor(b.stop_price, undefined) ?? {}) as Record<string, unknown>,
-      targets: [levelFor(b.target_price, undefined)].filter(Boolean) as Record<string, unknown>[],
-      budgetSharePct:
-        typeof b.budget_share_pct === "number" && Number.isFinite(b.budget_share_pct)
-          ? b.budget_share_pct
-          : rawBranches.length > 0
-            ? Math.floor(100 / rawBranches.length)
-            : 100,
-    };
-  });
+  const branches = parseDraftBranches(rawBranches);
+  /* Defaults the owner did not choose. Each is a term they will sign at
+     arming, so the agent is told to name them rather than let them pass as
+     agreed. The risk budget has no default: an absent one stays absent, and
+     the gate lists it. */
+  const defaults: string[] = [];
+  if (!(typeof input.expires_in_days === "number" && Number.isFinite(input.expires_in_days))) {
+    defaults.push("expiry 14 days from now");
+  }
+  if (rawBranches.length > 1 && rawBranches.some((b) => typeof b.budget_share_pct !== "number")) {
+    defaults.push("branch budget shares split evenly");
+  }
+  defaults.push("checked every 4h bar");
 
   const res = planService.createPlan({
     sessionId,
@@ -952,16 +1018,11 @@ function toolDraftPlan(sessionId: number, input: Record<string, unknown>): unkno
 
   if (!res.ok) return { created: false, reason: res.reason };
 
-  /* Report the gate's requirements without running it, so the agent can tell
-     the owner what is still needed instead of leaving them to find out when
-     arming refuses. */
-  const missing: string[] = [];
-  if (assumptions.length === 0) missing.push("at least one assumption");
-  if (riskBudget <= 0) missing.push("a risk budget");
-  if (branches.length === 0) missing.push("at least one branch");
-  if (expiresInDays <= 0) missing.push("an expiry in the future");
+  /* The gate arming will run, run now — the same list the Plans page shows on
+     the draft, so the agent and the owner read one answer. */
+  const missing = res.plan.missingBeforeArming ?? [];
 
-  auditLog("agent_drafted_plan", { sessionId, planId: res.plan.rowId, slug: name, missing });
+  auditLog("agent_drafted_plan", { sessionId, planId: res.plan.rowId, slug: name, missing, defaults });
 
   return {
     created: true,
@@ -969,10 +1030,98 @@ function toolDraftPlan(sessionId: number, input: Record<string, unknown>): unkno
     name,
     state: "draft",
     missing_before_arming: missing,
+    defaults_applied: defaults,
+    note:
+      (missing.length === 0
+        ? "Saved as a draft. Only the owner can arm it — tell them it is ready to review on the Plans page."
+        : `Saved as a draft, but it cannot be armed until: ${missing.join(" ")} Tell the owner what is missing, ` +
+          "and use update_draft to fill it in once they say.") +
+      ` Tell the owner these terms were defaulted, not chosen: ${defaults.join("; ")}.`,
+  };
+}
+
+/**
+ * Change a DRAFT the agent or the owner wrote. Never arms, and refuses any plan
+ * that is not a draft — `updatePlan` enforces that, so an armed plan stays the
+ * terms that were signed.
+ *
+ * Exists because names are unique per session: without it a fix meant a second
+ * draft under a new name, leaving the broken one behind on the Plans page.
+ * Fields left out keep their stored value.
+ */
+function toolUpdateDraft(sessionId: number, input: Record<string, unknown>): unknown {
+  const planId = typeof input.plan_id === "number" ? input.plan_id : NaN;
+  if (!Number.isFinite(planId)) throw new Error("update_draft needs a numeric plan_id from list_plans.");
+  const plan = planService.getPlan(planId);
+  if (!plan) throw new Error(`No plan with id ${planId}.`);
+  if (plan.sessionId !== sessionId) throw new Error(`Plan ${planId} belongs to a different session.`);
+  if (plan.state !== "draft") {
+    throw new Error(
+      `Plan ${planId} is ${plan.state}, not a draft. Armed terms were signed by the owner and cannot be edited.`
+    );
+  }
+  const base = planService.toPlanInput(plan);
+  if (!base) throw new Error(`Plan ${planId} has a condition this tool cannot represent. Ask the owner to edit it.`);
+
+  const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
+  const changed: string[] = [];
+  const next = { ...base };
+
+  if (typeof input.thesis === "string" && input.thesis.trim()) {
+    next.thesis = input.thesis.trim();
+    changed.push("thesis");
+  }
+  if (Array.isArray(input.assumptions)) {
+    next.assumptions = input.assumptions
+      .filter((a): a is string => typeof a === "string" && a.trim().length > 0)
+      .map((text) => ({ text: text.trim() }));
+    changed.push("assumptions");
+  }
+  const invPrice = num(input.invalidation_price);
+  if (invPrice !== null || input.invalidation_direction !== undefined) {
+    next.invalidation = {
+      subject: "price",
+      operator:
+        input.invalidation_direction === "above" || input.invalidation_direction === "below"
+          ? input.invalidation_direction
+          : base.invalidation.operator,
+      value: invPrice ?? base.invalidation.value,
+    };
+    changed.push("invalidation");
+  }
+  const days = num(input.expires_in_days);
+  if (days !== null) {
+    next.expiresAt = Date.now() + days * DAY_MS;
+    changed.push("expiry");
+  }
+  const budget = num(input.risk_budget_quote);
+  if (budget !== null) {
+    next.risk = { ...base.risk, maxQuote: budget };
+    changed.push("risk budget");
+  }
+  if (Array.isArray(input.branches)) {
+    next.branches = parseDraftBranches(input.branches as DraftBranchInput[]);
+    changed.push("branches");
+  }
+  if (changed.length === 0) throw new Error("update_draft was given nothing to change.");
+
+  const res = planService.updatePlan(planId, next);
+  if (!res.ok) return { updated: false, reason: res.reason };
+
+  const missing = planService.getPlan(planId)?.missingBeforeArming ?? [];
+  auditLog("agent_updated_draft", { sessionId, planId, slug: plan.slug, changed, missing });
+
+  return {
+    updated: true,
+    plan_id: planId,
+    name: plan.slug,
+    state: "draft",
+    changed,
+    missing_before_arming: missing,
     note:
       missing.length === 0
-        ? "Saved as a draft. Only the owner can arm it — tell them it is ready to review on the Plans page."
-        : `Saved as a draft, but it cannot be armed until it has: ${missing.join(", ")}. Tell the owner what is missing.`,
+        ? "Draft updated. Only the owner can arm it — tell them it is ready to review on the Plans page."
+        : `Draft updated, but it cannot be armed until: ${missing.join(" ")} Tell the owner what is missing.`,
   };
 }
 
@@ -1196,6 +1345,8 @@ export async function executeSessionTool(
       return toolCreateLevelReference(sessionId, input);
     case "draft_plan":
       return toolDraftPlan(sessionId, input);
+    case "update_draft":
+      return toolUpdateDraft(sessionId, input);
     case "get_order_flow":
       return toolGetOrderFlow(sessionId, input);
     case "get_app_capabilities":
@@ -1227,5 +1378,6 @@ export const SESSION_SCOPED_TOOLS: ReadonlySet<string> = new Set([
   "list_level_references",
   "create_level_reference",
   "draft_plan",
+  "update_draft",
   "get_order_flow",
 ]);

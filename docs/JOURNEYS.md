@@ -103,8 +103,9 @@ plan**, plus a confirmation window after the trigger. Deterministic, reproducibl
 and still the agent's thinking. See `docs/ARCHITECTURE.md`.
 
 **Agent tool scope (owner decision, 2026-08-01): draft-only write tools.** The
-agent gets `create_level_reference` and `draft_plan`. It does not get an arming
-tool, and there must never be a `set_venue` tool.
+agent gets `create_level_reference`, `draft_plan` and `update_draft` (which edits
+a plan only while it is a draft). It does not get an arming tool, and there must
+never be a `set_venue` tool.
 
 ---
 
@@ -184,6 +185,8 @@ gatekeeps is bureaucracy; a gate that teaches is the product.
 | **Agent drafts the plan from the conversation** | ✅ `draft_plan` (draft-only), 2026-08-05 |
 | Author assumptions, invalidation, expiry, budget, OCO branches | ✅ `plans-page.tsx` |
 | Save an incomplete draft — thinking is not committing | ✅ |
+| Edit a draft, by hand or by the agent; each draft lists what arming still needs | ✅ 2026-11-03 (#11) |
+| Arm → every term is on screen before it is signed, defaults included | ✅ 2026-11-03 (#11) |
 | Arm → gate runs, refusals are **visible and specific** | ✅ verified §2.4–2.5 |
 | Arm → every derived level resolves to a concrete number, shown before commit | ✅ `armPlan` returns them |
 | Arm → refuse rather than store a placeholder if a level won't resolve | ✅ |

@@ -342,7 +342,7 @@ Scenario plans — THIS IS THE PRODUCT:
 - The owner authors a thesis; the engine monitors it and acts on it. A plan is a one-shot bet on a path: a thesis, stated assumptions, a thesis invalidation, a hard expiry, its own risk budget, and one or more OCO branches each with a trigger, entry, stop and target.
 - A plan is NEVER backtested. Statistical validation of a single bet on a path is inapplicable, not merely unavailable — a two-trade sample dressed as a backtest launders a guess into a metric. What a plan earns its licence with instead is falsifiability: the four elements above. Do not offer to backtest a plan or to "formalise it as a strategy so we can validate it".
 - The thesis invalidation is NOT the stop. A stop is where the trade is wrong; invalidation is where the thesis is wrong, and it can fire while the position is in profit. If the owner gives you only a stop, that is the thing to point out.
-- YOU CAN SEE AND DRAFT PLANS, AND YOU CAN NEVER ARM ONE. Call list_plans before discussing plans — it is the only way to know what the owner already has. Use get_plan for the assumptions and branch levels before critiquing one. When a conversation produces a real thesis, call draft_plan to save it, then tell the owner what is still missing before it can be armed and that only they can arm it.
+- YOU CAN SEE AND DRAFT PLANS, AND YOU CAN NEVER ARM ONE. Call list_plans before discussing plans — it is the only way to know what the owner already has. Use get_plan for the assumptions and branch levels before critiquing one. When a conversation produces a real thesis, call draft_plan to save it, then tell the owner what is still missing before it can be armed, which terms were defaulted rather than chosen, and that only they can arm it. To change a draft that already exists — a missing risk budget, a level, an assumption — call update_draft on it; never draft it again under a new name. Ask the owner for the risk budget; never pick one yourself.
 - NAME LEVELS RATHER THAN LEAVING THEM AS PROSE. When your analysis lands on a level that matters, call create_level_reference so the engine and the chart share one definition of it. A number you only mention in chat is a number the owner has to retype and the engine cannot resolve. Check list_level_references first so you do not create a second name for a level that already has one.
 - Before telling the owner what happens when something triggers, or describing any capability as available, call get_app_capabilities. Answering from assumption is how someone ends up believing a position is protected when it is not.
 
@@ -425,6 +425,7 @@ const TOOL_SURFACE_MAP: Record<string, string> = {
   list_plans: "plans",
   get_plan: "plans",
   draft_plan: "plans",
+  update_draft: "plans",
   list_level_references: "research",
   create_level_reference: "research",
   get_order_flow: "research",
@@ -842,7 +843,7 @@ async function runChatTurn(
                silently goes stale. `draft_plan` and `create_level_reference`
                shipped earlier today without this — the Plans page would not
                have shown a plan the agent had just written. */
-            if (toolUse.name === "draft_plan") notifyDataUpdated("plan");
+            if (toolUse.name === "draft_plan" || toolUse.name === "update_draft") notifyDataUpdated("plan");
             if (toolUse.name === "create_level_reference") notifyDataUpdated("level");
             if (toolUse.name === "manage_alerts") notifyDataUpdated("alert");
 

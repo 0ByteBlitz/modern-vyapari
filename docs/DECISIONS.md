@@ -820,3 +820,32 @@ cache on the next close. Until it is whole, indicator alerts are left to the
 scheduled closed-bar check, which refills the cache it reads, rather than computed
 across bars that never arrived. The live path also now passes taker-buy volume,
 which it dropped, so a CVD alert read every bar as an unknown split.
+
+## A draft the owner could not finish (2026-11-03, #11)
+
+The agent drafted a plan with no risk budget. Arming refused — "Add a risk
+budget for this plan." — and the Plans page had no way to add one: the form only
+created plans, nothing in the renderer called `updatePlan`, and the agent could
+not amend its own draft. Redrafting needed a new name, so the broken draft stayed
+on the page. `draft_plan` had also saved the missing budget as `0`, so the card
+read "budget 0" — a value, not a gap — and filled in expiry (14 days), branch
+shares (an even split) and the 4h interval without saying so.
+
+- **Drafts open in the form and save through `updatePlan`.** Armed plans stay
+  read-only; `updatePlan` refuses anything that is not a draft.
+- **Each draft lists what arming still needs**, computed in main by
+  `armingGate` — the same `validatePlan` call `armPlan` makes — and sent with the
+  plan. The renderer never re-implements the gate. A refused arm offers *Edit
+  draft*.
+- **The agent gets `update_draft`**, drafts only, through `updatePlan`; it
+  broadcasts `data:updated` and audits `agent_updated_draft`. It never arms.
+  `draft_plan` now reports the gate's own errors instead of a hand-kept copy of
+  them, and names the defaults it applied.
+- **Arm opens the terms first.** Budget, expiry, interval, invalidation, OCO and
+  each branch's trigger, levels and share are shown before the owner signs,
+  defaults and all. A missing budget reads "no budget", not "0".
+
+The form edits stored conditions through `intentOf`, the inverse of
+`compileIntent`. A condition it cannot represent is refused for editing rather
+than guessed at. Money is still a number in plans; that is known debt, not
+changed here.
