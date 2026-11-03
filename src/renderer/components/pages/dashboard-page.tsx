@@ -3,6 +3,7 @@ import { Sparkles, Clock, ShieldCheck, AlertTriangle } from "lucide-react";
 import { PaperEquityChart } from "@/components/paper-equity-chart";
 import { PlanWatchPanel } from "@/components/plan-watch-panel";
 import { PlanDetail } from "@/components/plan-detail";
+import { ReviewDetail } from "@/components/review-detail";
 import {
   api,
   isError,
@@ -17,6 +18,7 @@ import {
 import { formatPrice, formatQty } from "@/lib/format";
 import { describeActivity, ACTIVITY_TONE_COLOR } from "@/lib/activity";
 import { useAppMode } from "@/lib/mode";
+import { readReview } from "@/lib/review-entry";
 
 /**
  * Session dashboard — the answer to "what is the bot doing right now, and
@@ -71,6 +73,7 @@ export function DashboardPage({ activeSession }: { activeSession: Session | null
      "which thing am I looking at" ambiguous, which is the one thing no surface
      here may be. */
   const [planDetail, setPlanDetail] = useState<StoredPlanView | null>(null);
+  const [reviewDetail, setReviewDetail] = useState<JournalEntry | null>(null);
   const [showChores, setShowChores] = useState(false);
 
   const load = useCallback(async () => {
@@ -290,20 +293,19 @@ export function DashboardPage({ activeSession }: { activeSession: Session | null
           </div>
           <div className="panel-body-flush vy-scroll" style={{ flex: 1 }}>
             {reviews.map((r) => {
-              const isWin = r.tags.includes("win");
+              const review = readReview(r);
               return (
-                <div key={r.id} className="review-row">
+                <button key={r.id} type="button" className="review-row" onClick={() => setReviewDetail(r)}>
                   <div className="review-row-head">
                     <span className="mono" style={{ color: "var(--text-faint)" }}>{relTime(r.created_at)}</span>
-                    <span className={isWin ? "v-up" : "v-down"} style={{ fontWeight: 600 }}>
-                      {isWin ? "win" : "loss"}
+                    <span className={`v-${review.outcome.tone}`} style={{ fontWeight: 600 }}>
+                      {review.outcome.label}
                     </span>
-                    <span className="ml-auto" style={{ color: "var(--text-faint)" }}>
-                      {r.tags.split(",")[1] ?? "review"}
-                    </span>
+                    <span className="ml-auto review-row-name">{review.name ?? "review"}</span>
                   </div>
-                  <div className="review-row-text">{r.content}</div>
-                </div>
+                  {review.header && <div className="review-row-meta">{review.header}</div>}
+                  <div className="review-row-text">{review.body}</div>
+                </button>
               );
             })}
             {reviews.length === 0 && (
@@ -324,6 +326,7 @@ export function DashboardPage({ activeSession }: { activeSession: Session | null
           onClose={() => setPlanDetail(null)}
         />
       )}
+      {reviewDetail && <ReviewDetail entry={reviewDetail} onClose={() => setReviewDetail(null)} />}
     </div>
   );
 }

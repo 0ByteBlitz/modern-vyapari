@@ -454,7 +454,10 @@ export async function reviewClosedPosition(positionId: number): Promise<void> {
 
     if (!text) return;
 
-    const tags = ["paper", owner.kind, pos.exit_reason, pnl >= 0 ? "win" : "loss", owner.name].join(",");
+    /* Same rule as the prior-trades count above: a win made money. A flat
+       close is neither, and calling it a win overstated the record. */
+    const outcome = pnl > 0 ? "win" : pnl < 0 ? "loss" : "breakeven";
+    const tags = ["paper", owner.kind, pos.exit_reason, outcome, owner.name].join(",");
     const header =
       `[${pos.symbol}] ${owner.name} — ${pos.exit_reason}, ` +
       `PnL ${pnl >= 0 ? "+" : ""}${pnl.toFixed(2)} USD (${returnPct.toFixed(2)}%), held ${holdMinutes}m\n\n`;
