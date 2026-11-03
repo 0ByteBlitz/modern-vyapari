@@ -1046,8 +1046,27 @@ body {
 
 .activity-text { font-size: var(--text-md); color: var(--muted-foreground); line-height: 1.5; }
 
-.review-row { padding: 8px 10px; border-bottom: 1px solid rgba(32, 40, 52, 0.7); display: flex; flex-direction: column; gap: 4px; }
-.review-row-head { display: flex; align-items: baseline; gap: 6px; font-size: var(--text-sm); }
+.review-row {
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(32, 40, 52, 0.7);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+.review-row:hover { background: var(--surface-4); }
+.review-row-head { display: flex; align-items: baseline; gap: 6px; font-size: var(--text-sm); min-width: 0; }
+.review-row-name { color: var(--text-faint); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.review-row-meta {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .review-row-text {
   font-size: var(--text-md);
   color: var(--muted-foreground);
@@ -3814,6 +3833,21 @@ ol.md-list li { list-style: decimal; }
 .detail-close:hover { color: var(--foreground); background: var(--surface-3); }
 
 .detail-body { padding: 12px; overflow-y: auto; }
+
+.review-detail-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--text-xs);
+  color: var(--text-faint);
+  margin-bottom: 10px;
+}
+.review-detail-text {
+  font-size: var(--text-md);
+  line-height: 1.6;
+  color: var(--text-dim);
+  white-space: pre-wrap;
+}
 
 .detail-thesis {
   font-size: var(--text-md);
