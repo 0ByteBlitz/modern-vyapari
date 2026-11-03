@@ -173,8 +173,173 @@ left is adapters, the choice, and removing the defaults.
 - **S2-9 feed half** — a feed port, and the last two `source = 'binance'` predicates (down from 18).
 - **S2-8 single runtime owner** — six timers across four files today; design in `ARCHITECTURE.md`.
 - **S2-1 Fibonacci as data · S2-3 anchored VWAP/profile tools · S2-5 base-rate check · S3-4 Elliott rule-checker.**
-- **J-4 `onDrift: reconfirm` queue · N-2 lesson recall · N-3 backup (L-3) · N-4 read-only MCP client.**
+- **J-4 `onDrift: reconfirm` queue · N-2 lesson recall · N-3 backup (L-3; proposal P-3) · N-4 read-only MCP client.**
 - **Telegram inbound commands** — the remote kill switch from `PLAN.md` §7.1 (`/pause`, allowlisted to one chat).
+
+**Proposals awaiting an owner decision** (3 November 2026) — issues the owner
+logged that change what the app *is*, not just how it works. Each states the
+problem, the journey, the options and a recommendation; **no code until the
+owner answers its questions**, and the answer goes into `DECISIONS.md`. In
+flight elsewhere, so not proposed here: the agent's audit trail, editing a
+draft, reviews on the dashboard, Research → Charts, and the enforced Windows
+Hello lock with its Security section in Settings.
+
+- **P-1 Direction and instrument as a venue capability** (J2, J6, J7). *Problem:*
+  the agent refuses shorts because the plan model cannot express one.
+  `PlanBranch` has no direction "because the venue is spot-only"
+  (`plans/trade-plan.ts` ~103); the system prompt says *spot only*
+  (`agent/chat.ts` ~326); `VenueCapabilities` (`integrations/venue/port.ts`
+  ~100) has no field for what a venue can trade. One venue's limit is baked
+  into the product's one object — vendor lock-in by another route. The
+  original reasoning still holds: a short field on a spot venue is a control
+  that does not control. *Options:* **(a)** keep spot-only and say so honestly
+  (the agent explains the limit instead of refusing flatly); **(b)** add
+  `direction` to the plan and `instruments: ("spot" | "margin" | "perp" |
+  "option")[]` plus `canShort` to the capabilities, with arming refused when
+  the active venue cannot carry the plan's direction; **(c)** (b) plus a paper
+  model for margin and perps. *What (b)/(c) touch:* `plan_branches` gains
+  `direction` (migration defaults `long`, so v21 rows keep their meaning);
+  the falsifiability gate checks stop/target geometry per direction (a short's
+  stop sits above entry); the risk engine sizes by distance-to-stop for either
+  side and adds a leverage/notional gate; the paper fill model needs borrow
+  cost, funding (the derivatives feed already reads Binance and Hyperliquid
+  funding) and a liquidation price that closes the position before the stop
+  if leverage puts it there; P&L views sign by direction and show funding paid
+  as its own line. *Keeping the control real:* the direction picker renders
+  only the directions the active venue declares; a plan whose direction the
+  venue cannot carry is refused at arming with a reason, and drafting one is
+  allowed only in simulated mode with a visible *simulated only* tag.
+  *Recommend:* (a) now — the honest refusal costs a prompt line — and (b)
+  when V-3 adds the first venue that can short, so the field arrives with a
+  call site that branches on it. (c) only after Sprint 4. *Owner decides:*
+  are shorts wanted on paper before any live venue can carry them? Which
+  instrument first — margin spot or perps? Is leverage ever in scope, or is
+  the risk budget always unlevered notional?
+
+- **P-2 The research browser** (J1). *Problem:* the Browser page is a
+  general-purpose browser with a persistent cookie jar
+  (`persist:research-browser`, `browser/embedded-browser.ts` ~24), so the
+  owner's logins live there. The agent can read, screenshot and drive it
+  (`read_browser_page`, `screenshot_browser`, `navigate_browser`,
+  `agent/chat.ts` ~453), so a logged-in page's content reaches the AI
+  provider, and any page can put text in front of a model that holds write
+  tools. It is exempt from the app's navigation lockdown (`isResearchBrowserWebContents`, ~189; `main.ts`
+  ~21); it is a single tab and opens popups in place. Its header comment said
+  the app never reads it — false since the owner's 2026-07-19 decision
+  (`DESIGN-NOTES.md`, *Owner-accepted risk*); corrected in this PR. The agent
+  already reads the web through `browser/agent-fetch.ts`: in-memory cookies,
+  text only, nothing it can click. *Options:* **(a)** remove the page and its
+  three tools; links open in the system browser (`shell.openExternal`,
+  http(s) only); **(b)** keep the page, remove the three tools, so it is the
+  owner's browser and never the agent's; **(c)** keep everything, add tabs and
+  a non-persistent partition. *Recommend:* (a). The agent's reading needs are
+  met by `fetch_url`; the owner's browsing is better served by their own
+  browser, with its updates, password manager and extensions; and the app
+  sheds an exemption from its own hardening and a ToS risk on the owner's
+  TradingView account. *Owner decides:* is there a page you read *only* inside
+  the app (and why)? Do you rely on the agent seeing what you see, which (a)
+  and (b) end — would pasting a URL into chat do?
+
+- **P-3 Backup, export and recovery — instead of accounts** (J0, J5; L-3,
+  N-3). *Problem:* there are no accounts by design; everything — plans,
+  journal, calibration record, chat, paper history — lives in `userData`
+  (`data/`, `logs/`, `credentials/`). Keys are encrypted with `safeStorage`
+  (DPAPI on Windows), so they cannot move to another machine or survive an OS
+  reinstall. L-3 (*backup taken and restored once*) and N-3 are unbuilt, and
+  the Revolut X private key was deliberately left unmigrated for want of a
+  backup (`DECISIONS.md`, *Per-integration secrets*). A dead disk loses the
+  whole record J5 exists to keep. *Options:* **(a)** scheduled local backup:
+  `VACUUM INTO` a dated file in a folder the owner picks (zero dependency),
+  rotated, each one opened and integrity-checked after writing; **(b)** (a)
+  plus **export/import**: one file holding the DB and, optionally, the
+  secrets, re-encrypted under a passphrase (scrypt + AES-256-GCM from
+  `node:crypto` — no dependency) so it moves machines, restored through a
+  screen that shows what it contains before replacing anything; **(c)**
+  Litestream to object storage (N-3) — a second binary and a cloud account.
+  *Recommend:* (b). Restore starts the app **paused** like any startup, and
+  the backup is *tested*: each run restores into a temporary file and checks
+  the plan count, so *last good backup* on screen is measured, not assumed.
+  Secrets are excluded unless the owner ticks them in and sets a passphrase;
+  the passphrase is never stored. Once this exists, migrating the Revolut X
+  key to the new store is safe. *Owner decides:* include secrets in exports
+  at all, or always re-enter keys on a new machine? Backup folder default
+  (Documents, or must the owner pick)? How many to keep? Does simulated mode's
+  database get backed up too?
+
+- **P-4 Security settings beyond the lock** (J0, J7; the Hello lock itself is
+  in flight). *Problem:* the database is plaintext at rest — journal, theses
+  and chat are readable by anything running as the owner. Keys show only
+  present/absent. Once unlocked, everything stays unlocked. Nothing controls
+  what reaches the AI provider beyond the per-tool switches
+  (`agent/tool-registry.ts`, `tools-menu.tsx`). Chat is kept forever (only a
+  manual clear, `agent/chat.ts` ~74); `audit_log` is an ordinary table any
+  code can rewrite. *Proposals, each separable:*
+  1. **Database at rest.** SQLCipher means replacing `node:sqlite` with a
+     native dependency on every platform; the zero-dep alternative is to
+     encrypt the file with a `safeStorage`-wrapped key on close and decrypt to
+     a temp file on open — which leaves plaintext on disk while running and
+     loses everything on a crash before close. *Recommend:* neither yet; rely
+     on OS disk encryption (BitLocker/FileVault), say so in Settings, and
+     encrypt **backups and exports** (P-3), which are the copies that leave
+     the machine.
+  2. **Per-key detail** — added, last used, *rotate* (replace in place) and
+     *remove*, from metadata kept beside the vault; never the key.
+  3. **Re-verify for sensitive actions** — Hello again before arming in live
+     mode, exporting with secrets, changing a key or the venue, wiping data.
+  4. **What goes to the AI provider** — one screen listing what a turn sends
+     (chart data, journal, plans, chat history, web content) with switches for
+     the optional parts, and a per-session *never send the journal* option.
+  5. **Retention** — chat and logs kept for N days (default: forever, stated),
+     the journal and plans never pruned automatically — they are the record.
+  6. **Wipe local data** — removes `data/`, `credentials/` and `logs/` after a
+     typed confirmation and re-verification, offering an export first.
+  7. **Tamper-evident audit log** — each row carries a hash of the previous;
+     Diagnostics shows *chain intact* or the first broken row.
+  *Owner decides:* is OS disk encryption an acceptable answer for the DB?
+  Which actions need re-verification? Retention defaults? Is the audit chain
+  worth it before live trading exists?
+
+- **P-5 Profile, customisation, analytics** (J0, J2, J3, J5). *Problem:* the
+  agent knows nothing about the owner between sessions except the journal;
+  every layout and verbosity choice is fixed; and nothing measures the thing
+  the app exists to fix — following the plan. *Proposals:*
+  1. **Trader profile** the agent reads every turn (risk appetite, markets,
+     timeframes, quiet hours): one settings form, injected into
+     `agent/context.ts`, never written by the agent. Quiet hours also hold
+     Telegram notifications other than exits.
+  2. **Multiple local profiles** — separate DBs per profile. Simulated and
+     live are already separate databases (`DECISIONS.md`, *app modes*), which
+     is the practice-vs-real split; a profile layer on top doubles the states
+     to keep unambiguous. *Recommend:* not now.
+  3. **Customisation** — default chart layout, density and font scale,
+     which events notify, agent verbosity, page-jumping when the agent uses a
+     tool on/off. Per-tool switches exist already.
+  4. **Performance analytics** — plan outcomes (target, stop, invalidated,
+     expired) from the calibration record; **follow-through**: drafted → armed
+     → cancelled before trigger, and how often a plan was edited after arming,
+     which is J3 measured; P&L against simply holding the pair over the plan's
+     life; slippage, paper now and venue fills once live.
+  5. **Usage analytics** — local only, opt-in, never sent anywhere; the app
+     has no server to send them to, and this proposal does not add one.
+  *Recommend:* 4 (follow-through first), then 1, then 3; skip 2. *Owner
+  decides:* what belongs in the profile? Should the agent mention the profile
+  when a draft breaks it (*this is a 1m plan; you said you trade 4h*)?
+
+- **P-6 Known debt: money as numbers** (J3, J6). The hard rule says money is
+  a string end to end; this records where it is not, so Sprint 4 does not
+  inherit it. `PlanRiskBudget.maxQuote` and `maxQuotePerBranch` are numbers
+  (`plans/trade-plan.ts`); static `PriceLevel` prices and `ResolvedLevel.price`
+  are numbers (`shared/levels.ts`); the paper engine reads string columns
+  into numbers and fills with float arithmetic (`paper/paper-exchange.ts`,
+  `applySlippage`); the risk engine formats with `toFixed`
+  (`risk/risk-engine.ts` ~153) and so does the trade review header
+  (`agent/review.ts` ~456). Paper and display tolerate float error; an order
+  quantity does not. *Recommend:* a decimal-string module in `src/shared/`
+  (compare, add, multiply, round to a venue's step), adopted first at the
+  boundary where a quantity becomes an order (S4-1), then in the risk engine
+  and plan budgets; indicator maths stays float, since its output is a level,
+  not an amount. *Owner decides:* a zero-dependency helper, or a decimal
+  library (and which zero-dep alternative it beat)?
 
 **Maintainer-led, with safety review: Sprint 4** (S4-1…S4-6) — real order
 placement, venue-side TP/SL, reconciliation, the approvals queue. Discuss in an
