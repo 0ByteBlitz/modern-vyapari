@@ -119,7 +119,15 @@ class AlertEngine {
 
   /** Add a new alert. Persists to DB, caches in memory, and keeps the
    *  relevant Binance stream alive regardless of what the UI has open. */
-  addAlert(condition: Condition, label: string, symbol: string, intervalMin: number, sessionId?: number): AlertRecord {
+  addAlert(
+    condition: Condition,
+    label: string,
+    symbol: string,
+    intervalMin: number,
+    sessionId: number | undefined,
+    /** Who asked for it — `agent:session:<id>`, `owner`… — for the audit log. */
+    actor: string
+  ): AlertRecord {
     const db = getDb();
     const now = Date.now();
     const stored: StoredAlertCondition = { symbol, intervalMin, condition };
@@ -146,17 +154,21 @@ class AlertEngine {
     this.activeAlerts.set(record.id, record);
     binanceWS.subscribeInternal(symbol, intervalMin);
 
-    auditLog("alert_created", { alertId: record.id, label, symbol, intervalMin, condition });
+    auditLog("alert_created", { alertId: record.id, actor, sessionId: sessionId ?? null, label, symbol, intervalMin, condition });
     return record;
   }
 
-  /** Remove (dismiss) an alert. */
-  removeAlert(alertId: number): void {
+  /** Remove (dismiss) an alert. Audited whoever does it: a removed alert is a
+   *  watch that stopped, and the log must say who stopped it. False when there
+   *  was nothing to remove. */
+  removeAlert(alertId: number, actor: string): boolean {
     const db = getDb();
     const alert = this.activeAlerts.get(alertId);
-    db.prepare("UPDATE alerts SET status = 'dismissed' WHERE id = ?").run(alertId);
+    const res = db.prepare("UPDATE alerts SET status = 'dismissed' WHERE id = ? AND status != 'dismissed'").run(alertId);
+    if (Number(res.changes) > 0) auditLog("alert_removed", { alertId, actor, label: alert?.label ?? null });
     this.activeAlerts.delete(alertId);
     if (alert) binanceWS.unsubscribeInternal(alert.symbol, alert.intervalMin);
+    return Number(res.changes) > 0;
   }
 
   /** Get all non-dismissed alerts from database (active and triggered). */

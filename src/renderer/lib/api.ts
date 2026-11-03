@@ -24,6 +24,8 @@ import type {
   OrderRecord,
   JournalEntry,
   ActivityEvent,
+  ActivityScope,
+  AgentNavigation,
   SessionSummary,
   PortfolioSummary,
   ChartDrawing,
@@ -66,6 +68,8 @@ export type {
   OrderRecord,
   JournalEntry,
   ActivityEvent,
+  ActivityScope,
+  AgentNavigation,
   SessionSummary,
   PortfolioSummary,
   ChartDrawing,
@@ -545,7 +549,7 @@ export interface RendererApi {
     opts?: { kind?: string; query?: string; limit?: number }
   ): Promise<Result<JournalEntry[]>>;
   journalCounts(sessionId: number): Promise<Result<Record<string, number>>>;
-  listActivity(limit?: number): Promise<Result<ActivityEvent[]>>;
+  listActivity(limit?: number, scope?: ActivityScope): Promise<Result<ActivityEvent[]>>;
   /** One session's events, plus the app-wide ones that affect its plans. */
   listSessionActivity(sessionId: number, limit?: number): Promise<Result<ActivityEvent[]>>;
   portfolioSummary(includeArchived?: boolean): Promise<Result<PortfolioSummary>>;
@@ -606,8 +610,9 @@ export interface RendererApi {
   onNotifyEvent(callback: (event: { kind: string; title: string; body: string; at: number }) => void): () => void;
   /** Agent-driven navigation — the agent switches the UI to the surface it's
    *  working on so the user sees what the agent is doing in real time. */
-  onAgentNavigate(callback: (surface: string) => void): () => void;
-  onAgentActing(callback: (acting: boolean) => void): () => void;
+  onAgentNavigate(callback: (nav: AgentNavigation) => void): () => void;
+  /** What the agent is doing, named by main per tool; null when idle. */
+  onAgentActing(callback: (activity: string | null) => void): () => void;
   onDataUpdated(callback: (data: { kind: string }) => void): () => void;
   // Phase 2: Indicators
   listIndicatorCatalog(): Promise<Result<any[]>>;

@@ -139,13 +139,13 @@ const api = {
   // Agent navigation — the agent navigates the UI to the surface it's working on
   // so the user sees what the agent sees (e.g. switches to Research before taking
   // a screenshot of the chart).
-  onAgentNavigate: (callback: (surface: string) => void) => {
-    const handler = (_event: any, surface: string) => callback(surface);
+  onAgentNavigate: (callback: (nav: { surface: string; focusPlanId?: number }) => void) => {
+    const handler = (_event: any, nav: { surface: string; focusPlanId?: number }) => callback(nav);
     ipcRenderer.on("agent:navigate", handler);
     return () => ipcRenderer.removeListener("agent:navigate", handler);
   },
-  onAgentActing: (callback: (acting: boolean) => void) => {
-    const handler = (_event: any, acting: boolean) => callback(acting);
+  onAgentActing: (callback: (activity: string | null) => void) => {
+    const handler = (_event: any, activity: string | null) => callback(activity);
     ipcRenderer.on("agent:acting", handler);
     return () => ipcRenderer.removeListener("agent:acting", handler);
   },
@@ -195,7 +195,7 @@ const api = {
   listJournal: (sessionId: number, opts?: { kind?: string; query?: string; limit?: number }) =>
     ipcRenderer.invoke("journal:list", sessionId, opts),
   journalCounts: (sessionId: number) => ipcRenderer.invoke("journal:counts", sessionId),
-  listActivity: (limit?: number) => ipcRenderer.invoke("activity:list", limit),
+  listActivity: (limit?: number, scope?: "events" | "all" | "agent") => ipcRenderer.invoke("activity:list", limit, scope),
   listSessionActivity: (sessionId: number, limit?: number) =>
     ipcRenderer.invoke("activity:listForSession", sessionId, limit),
   portfolioSummary: (includeArchived?: boolean) => ipcRenderer.invoke("portfolio:summary", includeArchived),

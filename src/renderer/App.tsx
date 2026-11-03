@@ -92,23 +92,28 @@ export default function App() {
     });
   }, []);
 
-  const [agentActing, setAgentActing] = useState(false);
+  /* What the agent is doing, named by main per tool ("Drafting a plan"). Not
+     the page title: the page on screen is often not where the tool works. */
+  const [agentActivity, setAgentActivity] = useState<string | null>(null);
+  /* The plan a turn drafted, to open on Plans. `key` re-opens it when the same
+     plan is focused twice. */
+  const [agentFocusPlan, setAgentFocusPlan] = useState<{ planId: number; key: number } | null>(null);
 
-  /* Agent-driven navigation: when the agent uses a tool that targets a specific
-     page (e.g. screenshot_research → Research, screenshot_browser → Browser),
-     the main process sends an 'agent:navigate' event so the UI switches to that
-     surface. This way the user sees what the agent is looking at in real time,
-     like modern AI assistants that navigate to the page they're working on. */
+  /* Agent-driven navigation: main moves the UI at most once per turn, to where
+     the turn's work landed — Plans with the drafted plan open, for instance —
+     plus before a tool that reads the screen itself (a chart screenshot). */
   useEffect(() => {
-    const offNav = api.onAgentNavigate((s) => {
+    const offNav = api.onAgentNavigate(({ surface: s, focusPlanId }) => {
       const valid: Surface[] = [
         "dashboard", "orders", "plans", "journal", "research", "alerts",
         "portfolio", "markets", "approvals", "settings", "browser",
       ];
-      if (valid.includes(s as Surface)) setSurface(s as Surface);
+      if (!valid.includes(s as Surface)) return;
+      setSurface(s as Surface);
+      if (focusPlanId !== undefined) setAgentFocusPlan({ planId: focusPlanId, key: Date.now() });
     });
-    const offActing = api.onAgentActing((acting) => {
-      setAgentActing(acting);
+    const offActing = api.onAgentActing((activity) => {
+      setAgentActivity(activity);
     });
     return () => {
       offNav();
@@ -305,11 +310,11 @@ export default function App() {
         alertHistory={alertHistory}
         onClearAlerts={() => setAlertHistory([])}
       />
-      <main className={`app-main ${agentActing ? "agent-acting" : ""}`}>
-        {agentActing && (
+      <main className={`app-main ${agentActivity ? "agent-acting" : ""}`}>
+        {agentActivity && (
           <div className="agent-acting-badge">
             <div className="agent-acting-badge-dot" />
-            <span>Agent acting on {meta.title}…</span>
+            <span>Agent: {agentActivity}…</span>
           </div>
         )}
         <SessionRail
@@ -335,7 +340,7 @@ export default function App() {
             )}
             {surface === "dashboard" && <DashboardPage activeSession={activeSession} />}
             {surface === "orders" && <OrdersPage activeSession={activeSession} />}
-            {surface === "plans" && activeSession && <PlansPage session={activeSession} />}
+            {surface === "plans" && activeSession && <PlansPage session={activeSession} focus={agentFocusPlan} />}
             {surface === "journal" && <JournalPage activeSession={activeSession} />}
             {/* Research is the full charting workspace (KLineChart + drawing
                 tools), scoped to the session's pair. Markets stays the

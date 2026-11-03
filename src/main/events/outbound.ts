@@ -37,10 +37,11 @@ import type { ArchiveStepEvent, CandleRepairProgress } from "../../shared/ipc-ty
  * without the compiler noticing.
  */
 export interface OutboundMap {
-  /** Switch the visible surface, so the user watches the agent work. */
-  "agent:navigate": string;
-  /** Toggle the "agent is working" indicator. */
-  "agent:acting": boolean;
+  /** Move the owner to where the agent's turn landed, once per turn;
+   *  `focusPlanId` opens that plan on the Plans surface. */
+  "agent:navigate": { surface: string; focusPlanId?: number };
+  /** What the agent is doing ("Drafting a plan"), or null when idle. */
+  "agent:acting": string | null;
   /** Something an agent tool wrote is now stale on screen. */
   "data:updated": { kind: string };
   /** Embedded research browser navigation state. */

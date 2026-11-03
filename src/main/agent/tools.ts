@@ -17,6 +17,7 @@ import { describeThreshold, formatLevel } from "../../shared/levels";
 import type { PriceLevel } from "../../shared/levels";
 import type { Condition } from "../strategy/strategy-spec";
 import { createLogger } from "../logger";
+import { agentActor } from "./tool-audit";
 
 const log = createLogger("tools");
 
@@ -1130,7 +1131,7 @@ function toolManageAlerts(sessionId: number, input: Record<string, unknown>): un
         typeof input.interval_minutes === "number" && VALID_INTERVALS.includes(input.interval_minutes)
           ? input.interval_minutes
           : 60;
-      const alert = alertEngine.addAlert(condition, label, symbol, intervalMin, sessionId);
+      const alert = alertEngine.addAlert(condition, label, symbol, intervalMin, sessionId, agentActor(sessionId));
       return {
         ok: true,
         alert: { id: alert.id, label: alert.label, symbol: alert.symbol, interval_minutes: alert.intervalMin, status: alert.status },
@@ -1139,7 +1140,14 @@ function toolManageAlerts(sessionId: number, input: Record<string, unknown>): un
     case "remove": {
       const alertId = typeof input.alert_id === "number" ? input.alert_id : 0;
       if (!alertId) throw new Error("alert_id is required for remove action");
-      alertEngine.removeAlert(alertId);
+      /* Only this session's alerts, and only one that exists: "removed" for an
+         id that matched nothing is a success the log would record as fact. */
+      if (!alertEngine.getSessionAlerts(sessionId).some((a) => a.id === alertId)) {
+        return { error: `No alert ${alertId} in this session. Call manage_alerts with action "list" for the ids.` };
+      }
+      if (!alertEngine.removeAlert(alertId, agentActor(sessionId))) {
+        return { error: `Alert ${alertId} was already removed.` };
+      }
       return { ok: true, removed: alertId };
     }
     case "list": {
