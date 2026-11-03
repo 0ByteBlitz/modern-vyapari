@@ -79,7 +79,8 @@ ipcMain.handle("alerts:remove", (_e, alertId: number) =>
       low: candle.low,
       close: candle.close,
       volume: candle.volume,
-    });
+      takerBuyVolume: candle.takerBuyVolume ?? null,
+    }, candle.closed);
   });
 
   alertEngine.onAlert((event) => {
