@@ -5,8 +5,13 @@ import { createLogger } from "../logger";
 import { toFeedSymbol, fromFeedSymbol, hasFeed } from "../integrations/feed/symbols";
 import { emitTo } from "../events/outbound";
 import { ListenerRegistry } from "../events/listener-registry";
+import type { FeedStreamState } from "../../shared/ipc-types";
 
 const log = createLogger("binance-ws");
+
+/** Binance pushes every couple of seconds, so a minute of nothing on an open
+ *  socket is a dead link: the badge says *silent* and the watchdog reconnects. */
+export const STREAM_SILENT_MS = 60_000;
 
 // Interval mappings between minutes and Binance strings
 const INTERVAL_STRINGS: Record<number, string> = {
@@ -175,6 +180,15 @@ class BinanceWSManager {
    *  open socket. */
   public msSinceLastMessage(): number | null {
     return this.isConnected() && this.lastMessageAt > 0 ? Date.now() - this.lastMessageAt : null;
+  }
+
+  /** The stream as the socket reports it, for health readouts. Silence is
+   *  judged by the same threshold the watchdog reconnects on. */
+  public streamState(): FeedStreamState {
+    if (this.isConnecting()) return { state: "connecting" };
+    const ms = this.msSinceLastMessage();
+    if (ms !== null) return ms > STREAM_SILENT_MS ? { state: "silent", msSinceLastMessage: ms } : { state: "live", msSinceLastMessage: ms };
+    return this.hasSubscribers() ? { state: "down" } : { state: "idle" };
   }
 
   /** True when a backoff reconnect is already pending. */

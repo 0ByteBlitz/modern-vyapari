@@ -75,6 +75,19 @@ export interface TickerSnapshotRow {
   volume24h: number;
 }
 
+/**
+ * The analysis feed's live stream, as the socket itself reports it — what
+ * plans, alerts and paper stops actually run on. `idle` means nothing is
+ * subscribed, so no socket is the correct state; `silent` means open but
+ * delivering nothing (a half-open connection still reads as connected).
+ */
+export type FeedStreamState =
+  | { state: "idle" }
+  | { state: "connecting" }
+  | { state: "live"; msSinceLastMessage: number }
+  | { state: "silent"; msSinceLastMessage: number }
+  | { state: "down" };
+
 /** Measured Revolut X vs. Binance spread — see `data/basis-monitor.ts`. */
 export interface BasisStats {
   symbol: string;

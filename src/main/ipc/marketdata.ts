@@ -30,6 +30,10 @@ ipcMain.handle("candles:tickerSnapshot", () => safe(() => getTickerSnapshot(), "
   /* A real round trip to the analysis feed, for health readouts. */
 ipcMain.handle("feed:ping", () => safe(() => pingFeed(), "feed:ping"));
 
+  /* The live stream, as the socket reports it. A ping proves REST answers; the
+     engine runs on the stream, which can be silent while REST is fine. */
+  ipcMain.handle("feed:stream", () => safe(() => binanceWS.streamState(), "feed:stream"));
+
   /* Cross-venue derivatives (Binance futures + Hyperliquid perps). Already
      available to the agent as a tool; this exposes the same data to the UI. */
 ipcMain.handle("derivatives:get", (_e, symbol: string) =>

@@ -164,6 +164,7 @@ const api = {
     ipcRenderer.invoke("candles:analysis", symbol, intervalMinutes, limit),
   getTickerSnapshot: () => ipcRenderer.invoke("candles:tickerSnapshot"),
   pingFeed: () => ipcRenderer.invoke("feed:ping"),
+  getFeedStream: () => ipcRenderer.invoke("feed:stream"),
   getDerivatives: (symbol: string) => ipcRenderer.invoke("derivatives:get", symbol),
   getBasisStats: (symbol: string, sinceMs?: number) => ipcRenderer.invoke("basis:stats", symbol, sinceMs),
 

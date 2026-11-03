@@ -66,9 +66,8 @@ work is what settles the surfaces they would theme.
   Settings is grouped (General · Trading · AI · Data · Alerts · System) with
   each key beside what it powers: the venue's under Exchange, the AI provider's
   and Browserbase under AI, Telegram under Alerts; the review model is a picker;
-  the simulated venue says *simulated*, not *connected*; the feed badge is a
-  measured round trip. *Next:* one word for the mode; the context bar's feed
-  latency still reads the candle cache.
+  the simulated venue says *simulated*, not *connected*; the feed badge reads
+  the live stream. *Next:* one word for the mode.
 - **U-2 Motion system** (all journeys) — `--dur-*` / `--ease-*` tokens exist;
   move the ~10 literal durations and the chat drawer, surface switches, list
   inserts and price ticks onto them. Motion says *appeared* or *changed*, never
@@ -117,9 +116,11 @@ left is adapters, the choice, and removing the defaults.
 - **V-2 Venue choice in onboarding** — once a second adapter exists.
 
 **Outages: the plan keeps executing, or the owner knows it isn't** (J3) — in order.
-1. **The header badge measures the live socket** — the context bar's feed latency
-   reads the candle cache today; it should report the stream itself, and say
-   *silent* when the stream is.
+1. **The header badge measures the live socket** — *landed.* The Binance chip
+   reads the stream's own state (`feed:stream`): *live*, *silent 2m*,
+   *connecting*, *down* or *idle*, with silence judged by the watchdog's own
+   threshold. The REST round trip is still checked, every 30s, and can only
+   make a live chip worse (*history down*).
 2. **Fallback to Binance's other hosts** — REST and stream retry the feed's
    alternate hosts before declaring the feed down. Lives in the feed adapter once
    S2-9's port exists; until then, in `data/` only, never at the call sites.
