@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, isError } from "@/lib/api";
+import { api, isError, type FeedHealth, type FeedStreamState, type Result } from "@/lib/api";
 
 /**
  * Context bar (34px) — what surface you're on, and whether the data behind it
@@ -13,6 +13,8 @@ interface Feed {
   name: string;
   tone: "up" | "caution" | "down" | "idle";
   value: string;
+  /** The tooltip: what the chip measured. */
+  detail?: string;
 }
 
 const TONE_COLOR: Record<Feed["tone"], string> = {
@@ -22,6 +24,55 @@ const TONE_COLOR: Record<Feed["tone"], string> = {
   idle: "var(--muted-foreground)",
 };
 
+/** The stream read is local (no network), so it can be frequent enough that a
+ *  silence shows within seconds of the watchdog's threshold. */
+const STREAM_POLL_MS = 5_000;
+/** Network round trips stay slow. */
+const REST_POLL_MS = 30_000;
+
+const seconds = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
+const ago = (ms: number) => (ms < 60_000 ? `${Math.round(ms / 1000)}s` : `${Math.floor(ms / 60_000)}m`);
+
+const INTERVAL_LABEL: Record<number, string> = { 1: "1m", 5: "5m", 15: "15m", 30: "30m", 60: "1h", 240: "4h", 1440: "1d" };
+
+/** The Binance chip from the socket's state, then from the engine's own
+ *  streams — the market list's traffic keeps the socket busy while a plan's
+ *  stream can have stopped, so while anything is watched the worst watched
+ *  stream decides. A failing REST check can make it worse, never better. */
+function binanceFeed(res: Result<FeedHealth>, rest: { ok: boolean; ms: number } | null): Feed {
+  const name = "Binance";
+  const restNote = rest ? (rest.ok ? `history round trip ${seconds(rest.ms)}` : "history requests failing") : "";
+  const withRest = (d: string) => (restNote ? `${d} · ${restNote}` : d);
+  if (isError(res)) return { name, tone: "down", value: "error", detail: "stream state unreadable" };
+  const s: FeedStreamState = res.socket;
+  const w = res.watched.worst;
+  switch (s.state) {
+    case "live": {
+      const watchedNote = w ? `watching ${res.watched.count} stream${res.watched.count === 1 ? "" : "s"}` : "nothing watched";
+      if (w && w.state === "silent") {
+        return { name, tone: "down", value: `${w.pair} silent ${ago(w.msSinceTick)}`, detail: withRest(`${w.pair} ${INTERVAL_LABEL[w.intervalMin] ?? `${w.intervalMin}m`} has sent nothing for ${ago(w.msSinceTick)}; its plans are waiting · ${watchedNote}`) };
+      }
+      if (w && w.state === "catching_up") {
+        return { name, tone: "caution", value: `${w.pair} catching up`, detail: withRest(`loading bars ${w.pair} missed; its plans resume when they are in · ${watchedNote}`) };
+      }
+      const last = w ? `slowest watched stream ${ago(w.msSinceTick)} ago` : `last update ${ago(s.msSinceLastMessage)} ago`;
+      return rest && !rest.ok
+        ? { name, tone: "caution", value: "history down", detail: withRest(`stream live, ${last} · ${watchedNote}`) }
+        : { name, tone: "up", value: "live", detail: withRest(`stream live, ${last} · ${watchedNote}`) };
+    }
+    case "silent":
+      return { name, tone: "down", value: `silent ${ago(s.msSinceLastMessage)}`, detail: withRest("stream open but sending nothing; reconnecting") };
+    case "connecting":
+      return { name, tone: "caution", value: "connecting", detail: withRest("stream connecting") };
+    case "down":
+      return { name, tone: "down", value: "down", detail: withRest("stream disconnected; retrying") };
+    case "idle":
+      return rest && !rest.ok
+        ? { name, tone: "down", value: "down", detail: withRest("nothing streaming") }
+        : { name, tone: "idle", value: "idle", detail: withRest("nothing streaming") };
+  }
+}
+
 export function ContextBar({ title, subtitle }: { title: string; subtitle?: string }) {
   /* The venue's name comes from the active adapter, not a literal. This bar
      reports *execution* health, so labelling it "RevX" when the venue is
@@ -29,10 +80,8 @@ export function ContextBar({ title, subtitle }: { title: string; subtitle?: stri
   const [venueName, setVenueName] = useState("Venue");
   /* The simulated venue has no connection, so it has no latency to show. */
   const [simulatedVenue, setSimulatedVenue] = useState(false);
-  const [feeds, setFeeds] = useState<Feed[]>([
-    { name: "Binance", tone: "idle", value: "…" },
-    { name: "Venue", tone: "idle", value: "…" },
-  ]);
+  const [binanceChip, setBinanceChip] = useState<Feed>({ name: "Binance", tone: "idle", value: "…" });
+  const [venueChip, setVenueChip] = useState<Feed>({ name: "Venue", tone: "idle", value: "…" });
 
   useEffect(() => {
     let cancelled = false;
@@ -48,43 +97,59 @@ export function ContextBar({ title, subtitle }: { title: string; subtitle?: stri
     };
   }, []);
 
+  /* The Binance chip reads the live stream, because that is what plans, alerts
+     and paper stops run on (2026-11-03). A REST round trip — what it showed
+     before — answers fine while the socket is silent, so the badge read green
+     while nothing was being watched. REST is still checked, slower, because
+     history and backfill depend on it; it can only make a live chip worse. */
+  useEffect(() => {
+    let cancelled = false;
+    let rest: { ok: boolean; ms: number } | null = null;
+
+    const pingRest = async () => {
+      const t0 = Date.now();
+      const r = await api.pingFeed();
+      rest = { ok: !isError(r), ms: Date.now() - t0 };
+    };
+
+    const read = async () => {
+      const res = await api.getFeedStream();
+      if (cancelled) return;
+      setBinanceChip(binanceFeed(res, rest));
+    };
+
+    void pingRest().then(read);
+    const streamId = setInterval(() => void read(), STREAM_POLL_MS);
+    const restId = setInterval(() => void pingRest(), REST_POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(streamId);
+      clearInterval(restId);
+    };
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
 
     const poll = async () => {
-      // Both feeds are measured by an actual round trip, not assumed. This
-      // bar previously hardcoded Binance as healthy, which made it worse than
-      // useless: it read green while the market page couldn't load at all.
-      //
-      // And measured SEPARATELY, against the feed itself (2026-11-02). It timed
-      // a candle read, which the local cache answers in ~0 ms whether or not
-      // Binance is reachable, and gave both chips one shared time.
-      const timed = async <T,>(call: () => Promise<T>): Promise<[T, number]> => {
-        const t0 = Date.now();
-        const r = await call();
-        return [r, Date.now() - t0];
-      };
-      const [[binance, binanceMs], [venueHealth, venueMs]] = await Promise.all([
-        timed(() => api.pingFeed()),
-        timed(() => api.getTickers()),
-      ]);
+      if (simulatedVenue) {
+        setVenueChip({ name: "Venue", tone: "idle", value: "simulated" });
+        return;
+      }
+      // Measured by an actual round trip, not assumed.
+      const t0 = Date.now();
+      const health = await api.getTickers();
+      const ms = Date.now() - t0;
       if (cancelled) return;
-
-      const chip = (name: string, failed: boolean, ms: number): Feed =>
-        failed
-          ? { name, tone: "down", value: "error" }
-          : { name, tone: ms > 3000 ? "caution" : "up", value: `${(ms / 1000).toFixed(1)}s` };
-
-      setFeeds([
-        chip("Binance", isError(binance), binanceMs),
-        simulatedVenue
-          ? { name: "Venue", tone: "idle", value: "simulated" }
-          : chip(venueName, isError(venueHealth), venueMs),
-      ]);
+      setVenueChip(
+        isError(health)
+          ? { name: venueName, tone: "down", value: "error", detail: "not responding" }
+          : { name: venueName, tone: ms > 3000 ? "caution" : "up", value: seconds(ms), detail: `last round trip ${seconds(ms)}` }
+      );
     };
 
     void poll();
-    const id = setInterval(() => void poll(), 30_000);
+    const id = setInterval(() => void poll(), REST_POLL_MS);
     return () => {
       cancelled = true;
       clearInterval(id);
@@ -93,6 +158,8 @@ export function ContextBar({ title, subtitle }: { title: string; subtitle?: stri
        the initial placeholder and the health row would read "Venue" forever,
        even after the adapter's name arrived. */
   }, [venueName, simulatedVenue]);
+
+  const feeds = [binanceChip, venueChip];
 
   return (
     <div className="context-bar">
@@ -110,7 +177,7 @@ export function ContextBar({ title, subtitle }: { title: string; subtitle?: stri
           key={f.name}
           className={`feed-pill ${f.tone === "down" || f.tone === "caution" ? "feed-pill-bad" : ""}`}
           style={f.tone === "down" || f.tone === "caution" ? { color: TONE_COLOR[f.tone] } : undefined}
-          title={`${f.name} — ${f.tone === "down" ? "not responding" : `last round trip ${f.value}`}`}
+          title={f.detail ? `${f.name} — ${f.detail}` : f.name}
         >
           <span
             className={`feed-dot ${f.tone === "up" ? "feed-dot-live" : ""}`}

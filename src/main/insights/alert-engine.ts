@@ -12,7 +12,7 @@ import { makeIndicatorKey } from "./indicator-types";
 import { computeFromCandles } from "./indicators";
 import type { Condition } from "../strategy/strategy-spec";
 import { evaluateConditionGroup } from "../strategy/strategy-spec";
-import { binanceWS } from "../data/binance-ws";
+import { binanceWS, STREAM_SILENT_MS } from "../data/binance-ws";
 import { describeThreshold } from "../../shared/levels";
 import { createLogger } from "../logger";
 import { ListenerRegistry } from "../events/listener-registry";
@@ -246,7 +246,7 @@ class AlertEngine {
      unknown reads as "not watching". */
   private liveSpans = new Map<string, Array<[number, number]>>();
   /** Silence longer than this ends a span — the feed watchdog's dead-link line. */
-  private readonly LIVE_GAP_MS = 60_000;
+  private readonly LIVE_GAP_MS = STREAM_SILENT_MS;
 
   private noteLive(key: string, at: number): void {
     let spans = this.liveSpans.get(key);

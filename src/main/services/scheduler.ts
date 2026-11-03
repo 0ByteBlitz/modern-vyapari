@@ -5,7 +5,7 @@ import { syncRecentFromBinance } from "../insights/indicators";
 import { lastBeatBeforeThisRun } from "../paper/monitor-heartbeat";
 import { enqueue } from "../notify/outbox";
 import { announce } from "../notify/announce";
-import { binanceWS } from "../data/binance-ws";
+import { binanceWS, STREAM_SILENT_MS } from "../data/binance-ws";
 import { getDb } from "../db/database";
 import { createLogger } from "../logger";
 import { FEED_SCOPE_SQL } from "../integrations/feed/symbols";
@@ -373,7 +373,7 @@ export class BackgroundSchedulerService {
        never closes, so the socket's own reconnect never runs. Binance pushes
        updates every couple of seconds, so a minute of nothing is a dead link. */
     const silentMs = binanceWS.msSinceLastMessage();
-    if (silentMs !== null && silentMs > 60_000) {
+    if (silentMs !== null && silentMs > STREAM_SILENT_MS) {
       log.warn(`[scheduler] Binance WS open but silent for ${Math.round(silentMs / 1000)}s — reconnecting...`);
       binanceWS.reconnect();
       return;
