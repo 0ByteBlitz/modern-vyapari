@@ -140,6 +140,13 @@ function usePlanWatch(rowId: number): PlanWatch | null {
 
 function watchLine(watch: PlanWatch, mode: string, canFire: boolean): { text: string; off: boolean } {
   if (!watch.watched) return { text: "Not being watched — restart the app if this lasts.", off: true };
+  if (watch.feedSilentSince !== null) {
+    const since = new Date(watch.feedSilentSince).toLocaleString([], { dateStyle: "short", timeStyle: "short" });
+    return {
+      text: `No price data since ${since}. Decisions and paper stops wait until it returns; the app keeps reconnecting.`,
+      off: true,
+    };
+  }
   if (watch.feedPausedSince !== null) {
     const since = new Date(watch.feedPausedSince).toLocaleString([], { dateStyle: "short", timeStyle: "short" });
     return {
@@ -162,7 +169,9 @@ export function PlanWatchNote({ plan }: { plan: StoredPlanView }) {
   if (!watch || (plan.state !== "planned" && plan.state !== "triggered")) return null;
   const text = !watch.watched
     ? "Not being watched"
-    : watch.feedPausedSince !== null
+    : watch.feedSilentSince !== null
+      ? "No price data — not being watched"
+      : watch.feedPausedSince !== null
       ? "Paused — price bars missing"
       : watch.entryBlocked === "session_paused"
         ? "Session paused — a trigger opens no position"

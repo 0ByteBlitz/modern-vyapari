@@ -90,6 +90,9 @@ interface SubscriptionInfo {
 
 class BinanceWSManager {
   private ws: WebSocket | null = null;
+  /** Last time the socket opened or delivered anything. An open socket can go
+   *  silent (a half-open connection) and still report itself connected. */
+  private lastMessageAt = 0;
   // Keyed by `${symbol}:${intervalMin}`
   private subscriptions = new Map<string, SubscriptionInfo>();
   private tickerWebContentsSet = new Set<WebContents>();
@@ -166,6 +169,12 @@ class BinanceWSManager {
    *  no socket is the correct idle state, not a fault to repair. */
   public hasSubscribers(): boolean {
     return this.subscriptions.size > 0 || this.tickerWebContentsSet.size > 0;
+  }
+
+  /** Milliseconds since the open socket last delivered anything; null with no
+   *  open socket. */
+  public msSinceLastMessage(): number | null {
+    return this.isConnected() && this.lastMessageAt > 0 ? Date.now() - this.lastMessageAt : null;
   }
 
   /** True when a backoff reconnect is already pending. */
@@ -284,11 +293,13 @@ class BinanceWSManager {
 
     currentWs.onopen = () => {
       log.info("Connected");
+      if (this.ws === currentWs) this.lastMessageAt = Date.now();
       if (this.ws === currentWs) this.sendSubscriptionUpdate();
     };
 
     currentWs.onmessage = (event) => {
       if (this.ws !== currentWs) return;
+      this.lastMessageAt = Date.now();
       try {
         const data = JSON.parse(event.data.toString());
         if (data.e === "kline") {
