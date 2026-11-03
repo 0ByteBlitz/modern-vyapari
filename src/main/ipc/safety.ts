@@ -53,7 +53,7 @@ ipcMain.handle("alerts:list", (_e, sessionId?: number) =>
 
 ipcMain.handle("alerts:remove", (_e, alertId: number) =>
     safe(() => {
-      alertEngine.removeAlert(alertId);
+      alertEngine.removeAlert(alertId, "owner");
       return { ok: true };
     }, "alerts:remove")
   );

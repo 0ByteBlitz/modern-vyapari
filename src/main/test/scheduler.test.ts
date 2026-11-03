@@ -27,7 +27,8 @@ describe("Background Job Scheduler Suite", () => {
       "BTC Target Alert",
       "BTC-USD",
       15,
-      session.id
+      session.id,
+      "owner"
     );
 
     const checked = await backgroundScheduler.runMissedAlertCheck();

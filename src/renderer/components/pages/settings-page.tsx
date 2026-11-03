@@ -223,16 +223,21 @@ export function SettingsPage({ setup, setupError, onRefresh, dbStatus, openSecti
     openSection ?? (setup && !setup.hasAnthropicApiKey ? "ai" : "mode")
   );
   const [audit, setAudit] = useState<ActivityEvent[]>([]);
+  const [auditScope, setAuditScope] = useState<"all" | "agent">("all");
 
   const loadAudit = useCallback(async () => {
-    const res = await api.listActivity(80);
+    const res = await api.listActivity(80, auditScope);
     if (isError(res)) return false;
     setAudit(res);
     return true;
-  }, []);
+  }, [auditScope]);
 
   useEffect(() => {
-    if (section === "audit") void loadAudit();
+    if (section !== "audit") return;
+    void loadAudit();
+    return api.onDataUpdated(({ kind }) => {
+      if (kind === "audit") void loadAudit();
+    });
   }, [section, loadAudit]);
 
   return (
@@ -308,6 +313,15 @@ export function SettingsPage({ setup, setupError, onRefresh, dbStatus, openSecti
           <section className="panel">
             <div className="panel-header">
               <span style={{ fontSize: "12.5px", fontWeight: 600 }}>Audit log</span>
+              <label className="flex cursor-pointer select-none items-center gap-1.5" style={{ fontSize: "var(--text-xs)", color: "var(--text-faint)" }}>
+                <input
+                  type="checkbox"
+                  className="accent-primary"
+                  checked={auditScope === "agent"}
+                  onChange={(e) => setAuditScope(e.target.checked ? "agent" : "all")}
+                />
+                agent only
+              </label>
               <span className="ml-auto">
                 <RefreshButton onRefresh={loadAudit} title="Refresh the audit log" />
               </span>
@@ -340,7 +354,7 @@ export function SettingsPage({ setup, setupError, onRefresh, dbStatus, openSecti
             </table>
             {audit.length === 0 && <div className="empty-state">Nothing recorded yet.</div>}
             <div className="panel-footer">
-              Append-only. Written before an action is taken, never after.
+              Append-only. Engine actions are written before they are taken; agent tool calls when they finish, with the outcome.
             </div>
           </section>
         )}

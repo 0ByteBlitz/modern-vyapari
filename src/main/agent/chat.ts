@@ -1,4 +1,5 @@
 import { WebContents } from "electron";
+import { randomUUID } from "node:crypto";
 import { getDb } from "../db/database";
 import { recordUsage, dailyLimitReached, dailyLimitError } from "./usage";
 import * as derivatives from "../data/derivatives";
@@ -17,6 +18,7 @@ import { SESSION_TOOLS, PHASE2_TOOLS, PLAN_TOOLS, CONTEXT_TOOLS, SESSION_SCOPED_
 import { disabledToolIds } from "./tool-registry";
 import { aiProvider } from "../ai/registry";
 import type { AiMessage, AiModelInfo, AiToolResult, AiToolSpec } from "../ai/port";
+import { auditToolCall, resultError } from "./tool-audit";
 
 export interface ChatMessage {
   id?: number;
@@ -368,24 +370,26 @@ Charts tab (in-app charting surface):
 - For chart analysis, call screenshot_research first (to see the visual layout, drawings, and context), then read_research_chart (to get exact numbers for any levels or indicators you identified visually).`;
 
 /**
- * Navigate the renderer to a specific surface so the user sees what the agent
- * is doing — like modern AI assistants that move to the page they're working
- * on. Fires an IPC event the renderer's App component listens for.
+ * Navigate the renderer to a surface so the owner sees where the agent's work
+ * landed. `focusPlanId` opens that plan on the Plans surface. Fires an IPC
+ * event the renderer's App component listens for.
  */
-function navigateAgent(surface: string): void {
+function navigateAgent(surface: string, focusPlanId?: number): void {
   const { mainWindow } = require("../main");
   if (mainWindow && !mainWindow.isDestroyed()) {
-    emitTo(mainWindow.webContents, "agent:navigate", surface);
+    emitTo(mainWindow.webContents, "agent:navigate", { surface, focusPlanId });
   }
 }
 
 /**
- * Toggle the agent-acting visual state in the renderer (purple border glow + top badge).
+ * What the agent is doing right now, for the badge over the stage — or null
+ * when it is not running a tool. Named per tool here, never derived from the
+ * page on screen: the page is often not where the tool works (#3).
  */
-function setAgentActing(acting: boolean): void {
+function setAgentActing(activity: string | null): void {
   const { mainWindow } = require("../main");
   if (mainWindow && !mainWindow.isDestroyed()) {
-    emitTo(mainWindow.webContents, "agent:acting", acting);
+    emitTo(mainWindow.webContents, "agent:acting", activity);
   }
 }
 
@@ -410,50 +414,96 @@ function surfaceKeepsConversation(surface: string, general: boolean): boolean {
 /** Short pause to let React re-render after a navigation event. */
 const waitForRender = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
-/** Surface mapping for every agent tool to make tool execution visual on screen */
+/**
+ * Where each tool's work can be seen.
+ *
+ * The agent no longer jumps to every tool's page as it runs it: five tools
+ * meant five jumps with a pause each, and a turn that drafted a plan and then
+ * wrote a journal note ended on the Journal (#4). It now moves at most once,
+ * when the turn ends, to the most relevant surface (`TOOL_WEIGHT`). The only
+ * exception is a tool that reads the screen itself (`SCREEN_TOOLS`): it must
+ * have its page open before it runs.
+ */
 const TOOL_SURFACE_MAP: Record<string, string> = {
-  // Research tools -> Research tab
   read_candles: "research",
   compute_indicators: "research",
   list_indicators: "research",
   screenshot_research: "research",
   read_research_chart: "research",
   manage_alerts: "research",
-
-  // Plan tools -> the Plans surface. Reading a plan while the owner looks at
-  // something else is the "agent works where you can watch it" contract.
-  list_plans: "plans",
-  get_plan: "plans",
-  draft_plan: "plans",
   list_level_references: "research",
   create_level_reference: "research",
   get_order_flow: "research",
 
+  list_plans: "plans",
+  get_plan: "plans",
+  draft_plan: "plans",
   get_execution_basis: "plans",
 
-  // Memory & journal tools -> Journal tab
   read_session_memory: "journal",
   write_journal: "journal",
 
-  // Trade query tools -> Orders tab
   query_trades: "orders",
 
-  // Derivatives & macro tools -> Markets tab
   get_derivatives_metrics: "markets",
 
-  /* Embedded-browser tools -> Browser tab. These genuinely concern that tab:
-     two read it, one drives it.
-
-     `fetch_url` is deliberately NOT here. It runs in an isolated headless
+  /* `fetch_url` is deliberately NOT here. It runs in an isolated headless
      window with its own cookie-less session — the Browser tab has nothing to
-     do with it. Mapping it here switched the UI to that tab and left the user
-     staring at whatever was already loaded there (DuckDuckGo's home page),
-     which reads as "it opened a browser and failed to load anything". The
-     agent-acting badge is the honest signal for invisible work. */
+     do with it. Mapping it switched the UI to that tab and left the user
+     staring at whatever was already loaded there, which reads as "it opened a
+     browser and failed to load anything". The badge says what it is doing. */
   read_browser_page: "browser",
   screenshot_browser: "browser",
   navigate_browser: "browser",
 };
+
+/** Tools that read or drive what is on screen, so their page opens first. */
+const SCREEN_TOOLS = new Set(["screenshot_research", "read_browser_page", "screenshot_browser", "navigate_browser"]);
+
+/* Which surface the turn ends on: the heaviest successful tool, the later one
+   on a tie. A drafted plan outranks everything, since that is what the owner
+   has to act on; a write outranks a read. Unlisted tools weigh 1. */
+const TOOL_WEIGHT: Record<string, number> = {
+  draft_plan: 3,
+  write_journal: 2,
+  create_level_reference: 2,
+  manage_alerts: 2,
+};
+
+/** The badge text per tool. A tool not listed here reads "Working". */
+const TOOL_ACTIVITY: Record<string, string> = {
+  read_candles: "Reading candles",
+  compute_indicators: "Computing indicators",
+  list_indicators: "Listing indicators",
+  screenshot_research: "Looking at the chart",
+  read_research_chart: "Reading the chart",
+  list_level_references: "Reading levels",
+  create_level_reference: "Naming a level",
+  get_order_flow: "Reading order flow",
+  list_plans: "Reading plans",
+  get_plan: "Reading a plan",
+  draft_plan: "Drafting a plan",
+  get_execution_basis: "Checking the execution basis",
+  read_session_memory: "Reading session memory",
+  write_journal: "Writing to the journal",
+  query_trades: "Reading trades",
+  get_derivatives_metrics: "Reading derivatives data",
+  fetch_url: "Fetching a web page",
+  read_browser_page: "Reading the browser page",
+  screenshot_browser: "Looking at the browser page",
+  navigate_browser: "Opening a page in the browser",
+  get_app_capabilities: "Checking what the app can do",
+  get_calibration: "Reading the calibration record",
+};
+
+function toolActivity(name: string, input: Record<string, unknown>): string {
+  if (name === "manage_alerts") {
+    if (input.action === "add") return "Adding an alert";
+    if (input.action === "remove") return "Removing an alert";
+    return "Reading alerts";
+  }
+  return TOOL_ACTIVITY[name] ?? "Working";
+}
 
 async function dispatchTool(name: string, input: Record<string, unknown>, sessionId: number): Promise<unknown> {
   /* Backstop for the filter in sendChatMessage: a session tool called from the
@@ -742,6 +792,12 @@ async function runChatTurn(
   const conv = provider.createConversation(apiMessages);
 
   let fullAssistantResponse = "";
+  /* Groups the audit rows of this reply's tool calls. */
+  const turnId = randomUUID();
+  /* Where the turn's work landed, and what is on screen already (see
+     TOOL_SURFACE_MAP). The owner is moved once, when the turn ends. */
+  let landing: { surface: string; weight: number; planId?: number } | null = null;
+  let shownSurface: string | null = null;
   /* Set when a rejected web_search sends us round again, so the retry does not
      re-emit the notice and cannot loop. */
   let retriedWithoutSearch = false;
@@ -816,17 +872,19 @@ async function runChatTurn(
 
       // Execute every requested tool call, in order, before continuing.
       const toolResultBlocks: AiToolResult[] = [];
-      setAgentActing(true);
       try {
         for (const toolUse of toolUseBlocks) {
+          const input = (toolUse.input as Record<string, unknown>) ?? {};
+          setAgentActing(toolActivity(toolUse.name, input));
           const targetSurface = TOOL_SURFACE_MAP[toolUse.name];
-          if (targetSurface && surfaceKeepsConversation(targetSurface, general)) {
-            navigateAgent(targetSurface);
-            // Deliberate pause so the user visually sees the page switch and purple active glow
+          const reachable = Boolean(targetSurface && surfaceKeepsConversation(targetSurface, general));
+          if (reachable && SCREEN_TOOLS.has(toolUse.name) && shownSurface !== targetSurface) {
+            navigateAgent(targetSurface!);
+            shownSurface = targetSurface!;
+            // Let the page paint before the tool reads it.
             await waitForRender(800);
           }
 
-          const label = toolUse.name.replace(/_/g, " ");
           // Machine-readable marker rather than prose. The renderer splits on
           // these to show a tool chip and to break the reply into separate
           // blocks — without it, the text either side of a tool call runs
@@ -835,7 +893,30 @@ async function runChatTurn(
           fullAssistantResponse += marker;
           emitTo(sender, "chat:chunk", { text: marker, conversation });
           try {
-            const result = await dispatchTool(toolUse.name, (toolUse.input as Record<string, unknown>) ?? {}, sessionId ?? 0);
+            const result = await dispatchTool(toolUse.name, input, sessionId ?? 0);
+            const failed = resultError(result);
+            auditToolCall({
+              sessionId,
+              tool: toolUse.name,
+              input,
+              model: params.model,
+              turnId,
+              outcome: failed ? "error" : "ok",
+              error: failed ?? undefined,
+              result,
+            });
+            notifyDataUpdated("audit");
+
+            if (!failed && reachable) {
+              const weight = TOOL_WEIGHT[toolUse.name] ?? 1;
+              if (!landing || weight >= landing.weight) {
+                const planId =
+                  toolUse.name === "draft_plan" && typeof (result as { plan_id?: unknown })?.plan_id === "number"
+                    ? (result as { plan_id: number }).plan_id
+                    : undefined;
+                landing = { surface: targetSurface!, weight, planId };
+              }
+            }
 
             if (toolUse.name === "write_journal") notifyDataUpdated("journal");
             /* Every tool that writes must broadcast, or the surface it wrote to
@@ -868,6 +949,8 @@ async function runChatTurn(
             const message = e instanceof Error ? e.message : String(e);
             log.error(`Tool "${toolUse.name}" failed:`, message);
             if (e instanceof Error && e.stack) log.error(e.stack);
+            auditToolCall({ sessionId, tool: toolUse.name, input, model: params.model, turnId, outcome: "error", error: message });
+            notifyDataUpdated("audit");
             const errMarker = `\n\n[[toolerror:${toolUse.name}:${message.replace(/[\r\n]+/g, " ").slice(0, 200)}]]\n\n`;
             fullAssistantResponse += errMarker;
             emitTo(sender, "chat:chunk", { text: errMarker, conversation });
@@ -875,7 +958,7 @@ async function runChatTurn(
           }
         }
       } finally {
-        setAgentActing(false);
+        setAgentActing(null);
       }
 
       // Append the results so the next iteration sees its own prior tool calls.
@@ -935,7 +1018,14 @@ async function runChatTurn(
     emitError(sender, "chat:error", err, { conversation });
     break attempt;
   } finally {
-    setAgentActing(false);
+    setAgentActing(null);
   }
+  }
+
+  /* The one move of the turn, after the reply: to where its work landed — the
+     plan it drafted, opened — unless the owner is already looking there. */
+  const end = landing as { surface: string; weight: number; planId?: number } | null;
+  if (end && (end.surface !== shownSurface || end.planId !== undefined)) {
+    navigateAgent(end.surface, end.planId);
   }
 }

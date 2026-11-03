@@ -226,7 +226,7 @@ export async function archiveSession(sessionId: number, report: StepReporter): P
   try {
     // In-memory first so the engine releases each alert's stream subscription…
     for (const alert of alertEngine.getSessionAlerts(sessionId)) {
-      alertEngine.removeAlert(alert.id);
+      alertEngine.removeAlert(alert.id, "owner:archive");
       summary.alertsCleared += 1;
     }
     // …then a DB sweep, in case rows exist that the engine never loaded.
