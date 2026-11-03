@@ -1032,6 +1032,53 @@ Ordered by value, not by ease.
 - Locale / full localisation.
 - A second venue, only if basis risk proves to be the binding constraint.
 
+### Exploratory opportunities — improve plan quality (J1–J5)
+
+These are candidates for future work, not commitments. Prioritize them by whether
+they make the owner's thesis clearer, improve the signed plan, or make unattended
+behavior more observable.
+
+- **Evidence brief before a plan is signed (J1/J2).** For each important claim,
+  show supporting and opposing evidence, where it came from, when it was
+  observed, and what remains unknown. Separate app-computed market facts from
+  external material. Keep retrieved web content untrusted.
+- **Thesis challenge (J2).** Present the strongest case for and against the
+  owner's thesis, then name the evidence that would distinguish them. Check that
+  assumptions, trigger, invalidation, stop/target geometry, expiry, and budget
+  agree. This informs the owner's decision; it never arms or edits a plan.
+- **Risk receipt (J2/J6).** Show deterministic checks, measured values, limits,
+  and refusal reasons in one place. The agent may explain a result, but only code
+  determines whether a check passes.
+- **Arm-time evidence snapshot (J2/J4/J5).** Preserve a compact, versioned
+  record of the evidence and exact terms the owner signed. Later drift critiques
+  and reviews can compare current conditions with the original context. Store
+  provenance and normalized facts rather than whole fetched pages; decide
+  retention and migration behavior before implementation.
+- **Thesis-based drift critique (J4).** Explain what changed, which original
+  assumption it affects, and what evidence is missing. The monitor keeps sole
+  authority over deterministic plan-state transitions; the agent can propose an
+  amendment for the owner to consider.
+- **Evidence-aware calibration (J5).** Track thesis correctness separately from
+  trade outcome, retain sample-count and monitor-gap safeguards, and assess
+  whether prior evidence held up as supported, contradicted, or unresolved.
+  Never let the model grade its own forecast as ground truth or blend simulated
+  and live records.
+- **Earned, condition-based alerts (J0/J3/J4).** Once calibration has enough
+  reviewed plans, consider alerts for specific measured changes, stale data, or
+  monitor health. Each alert should identify the condition, evidence, time, and
+  available owner action; avoid generic market warnings.
+- **Evidence coverage and freshness (J1).** Show which existing market inputs
+  are available and current. Add new sources only to answer a concrete plan
+  question, with reliable timestamps and clear source identity; do not add feeds
+  simply to increase indicator count.
+
+**Suggested order:** define the evidence brief, then offer an on-demand thesis
+challenge beside the existing falsifiability gate. Measure traceability,
+unsupported claims, useful draft changes, latency, and cost. Add snapshots after
+the report format stabilizes; finish J4 critique and J3 observability before
+proactive alerts or expanding live capability. Additional model calls are
+justified only if they show measurable value over a bounded review.
+
 ---
 
 ## 6. Risk register
