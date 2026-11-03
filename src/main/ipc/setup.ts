@@ -8,8 +8,8 @@
  */
 import { ipcMain, app } from "electron";
 import * as credentials from "../security/credentials";
-import * as windowsHello from "../security/windows-hello";
-import type { SetupStatus } from "../../shared/ipc-types";
+import * as appLock from "../security/app-lock";
+import type { LockSettings, SetupStatus } from "../../shared/ipc-types";
 import { auditLog } from "../db/database";
 import { appMode, readMode, resolveMode, writeMode, isAppMode } from "../modes/app-mode";
 import { liveVenue, liveExecutionBuilt } from "../integrations/venue/registry";
@@ -106,16 +106,15 @@ ipcMain.handle("setup:clearBrowserbaseKey", () =>
     }, "setup:clearBrowserbaseKey")
   );
 
-  /* ── Security (app-launch gate) ────────────────────────────── */
-  /* Development only: `VYAPARI_SKIP_HELLO=1` on an UNPACKAGED run skips the
-     launch gate, so the app can be driven and screenshotted without a person at
-     the fingerprint reader. A packaged build ignores the variable — the
-     installed app always asks. Opt-in per launch, never stored. */
-ipcMain.handle("security:checkWindowsHello", () =>
-    safe(() => {
-      if (!app.isPackaged && process.env.VYAPARI_SKIP_HELLO === "1") return "unavailable" as const;
-      return windowsHello.checkAvailability();
-    }, "security:checkWindowsHello")
+  /* ── Security (the app lock, held in main — security/app-lock.ts) ── */
+  /* `recheck` asks Windows again, for the Settings pane; the lock screen and
+     the shell read the launch answer, which is instant. */
+ipcMain.handle("security:status", (_e, recheck?: boolean) =>
+    safe(() => appLock.lockStatus(recheck === true), "security:status")
+  );
+
+ipcMain.handle("security:setLockSettings", (_e, next: LockSettings) =>
+    safe(() => appLock.writeLockSettings(next), "security:setLockSettings")
   );
 
 ipcMain.handle("security:requestWindowsHello", (_e, reason: string) =>
@@ -127,7 +126,7 @@ ipcMain.handle("security:requestWindowsHello", (_e, reason: string) =>
       // the fix — AllowSetForegroundWindow covers the case this doesn't).
       const { mainWindow } = require("../main");
       mainWindow?.focus();
-      return windowsHello.requestVerification(reason || "Unlock Modern Vyapari");
+      return appLock.unlockWithHello(reason || "Unlock Modern Vyapari");
     }, "security:requestWindowsHello")
   );
 

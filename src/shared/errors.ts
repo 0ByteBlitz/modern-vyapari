@@ -27,6 +27,7 @@ export type ErrorCode =
   | "DATABASE"          // local storage failure
   | "UNSUPPORTED"       // deliberately not allowed (e.g. non-USD analysis)
   | "NOT_IMPLEMENTED"   // not built yet — distinct from "not allowed"
+  | "LOCKED"            // the app is locked; main refuses until Windows Hello unlocks it
   | "INTERNAL";         // anything we didn't anticipate
 
 export interface UserFacingError {
@@ -75,6 +76,7 @@ const MESSAGES: Record<ErrorCode, { message: string; hint?: string }> = {
      allowed" are different facts, and a stub that borrows the wrong one reads as
      a permanent refusal instead of missing work. */
   NOT_IMPLEMENTED: { message: "That part of the app isn't built yet." },
+  LOCKED: { message: "The app is locked.", hint: "Unlock it with Windows Hello." },
   INTERNAL: {
     message: "Something went wrong.",
     hint: "Details are in the log file (Settings › Diagnostics).",

@@ -23,7 +23,7 @@ import { AgentMascot } from "@/components/agent-mascot";
 import { AlertToastHost } from "@/components/alert-toast";
 import { formatUsd, formatPct } from "@/lib/format";
 import { ModeContext } from "@/lib/mode";
-import type { AppMode } from "@/lib/api";
+import type { AppMode, HelloAvailability, LockStatus } from "@/lib/api";
 
 /** Surface titles + subtitles for the context bar. */
 function surfaceMeta(surface: Surface, session: Session | null, mode: AppMode): { title: string; sub: string } {
@@ -58,7 +58,49 @@ function surfaceMeta(surface: Surface, session: Session | null, mode: AppMode): 
   }
 }
 
+const UNANSWERED: LockStatus = {
+  locked: true,
+  hello: "available",
+  settings: { lockAtLaunch: true, lockWithWindows: true, idleMinutes: null },
+};
+
+/**
+ * The app lock. Main holds it (security/app-lock.ts) and refuses requests
+ * while it is set; this only follows it. The shell unmounts while locked, so
+ * nothing on screen polls a main process that would refuse it, and every
+ * surface reloads fresh after the unlock.
+ */
 export default function App() {
+  const [lock, setLock] = useState<LockStatus | null>(null);
+
+  const readLock = useCallback(async () => {
+    const res = await api.getLockStatus();
+    /* Unanswerable means locked: an error here must never open the app. */
+    setLock(isError(res) ? UNANSWERED : res);
+  }, []);
+
+  useEffect(() => {
+    const off = api.onLockChanged(setLock);
+    void readLock();
+    return off;
+  }, [readLock]);
+
+  if (lock === null) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <p className="animate-pulse text-sm text-muted-foreground">Loading…</p>
+      </div>
+    );
+  }
+  if (lock.locked) return <LockScreen onUnlock={() => void readLock()} />;
+  /* The owner asked for a lock this device cannot provide: said on every
+     surface, not left to be discovered. */
+  const { lockAtLaunch, lockWithWindows, idleMinutes } = lock.settings;
+  const wantsLock = lockAtLaunch || lockWithWindows || idleMinutes !== null;
+  return <Shell lockNotice={wantsLock && lock.hello !== "available" ? lock.hello : null} />;
+}
+
+function Shell({ lockNotice }: { lockNotice: Exclude<HelloAvailability, "available"> | null }) {
   const [dbStatus, setDbStatus] = useState("…");
   const [setup, setSetup] = useState<SetupStatus | null>(null);
   const [setupError, setSetupError] = useState("");
@@ -120,18 +162,6 @@ export default function App() {
       offActing();
     };
   }, []);
-  // App-launch gate: "checking" while we ask Windows whether Hello is set up
-  // on this device, "locked" if so (until the user verifies), "unlocked"
-  // once verified or immediately if Hello isn't available (fails open).
-  const [helloState, setHelloState] = useState<"checking" | "locked" | "unlocked">("checking");
-
-  useEffect(() => {
-    void (async () => {
-      const res = await api.checkWindowsHello();
-      setHelloState(!isError(res) && res === "available" ? "locked" : "unlocked");
-    })();
-  }, []);
-
   /* Main decides: simulated mode needs only an AI provider; live mode also
      needs the venue. Re-deriving it here from venue-specific key flags is what
      used to lock onboarding to one exchange. */
@@ -225,16 +255,6 @@ export default function App() {
     setSurface("dashboard");
   };
 
-  /* ── App-launch gate ── */
-  if (helloState === "checking") {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <p className="animate-pulse text-sm text-muted-foreground">Loading…</p>
-      </div>
-    );
-  }
-  if (helloState === "locked") return <LockScreen onUnlock={() => setHelloState("unlocked")} />;
-
   if (showOnboarding === true) {
     return (
       <OnboardingPage
@@ -310,6 +330,13 @@ export default function App() {
         alertHistory={alertHistory}
         onClearAlerts={() => setAlertHistory([])}
       />
+      {lockNotice && (
+        <div className="lock-notice" role="status">
+          {lockNotice === "unavailable"
+            ? "No lock: Windows Hello isn't set up. Add a PIN or fingerprint in Windows Settings › Accounts › Sign-in options."
+            : "No lock: this system has no Windows Hello."}
+        </div>
+      )}
       <main className={`app-main ${agentActivity ? "agent-acting" : ""}`}>
         {agentActivity && (
           <div className="agent-acting-badge">

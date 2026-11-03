@@ -36,6 +36,40 @@ export interface SetupStatus {
   publicKeyPem: string | null;
 }
 
+/* ── App lock (Windows Hello) ────────────────────────────────────────── */
+
+export type HelloAvailability = "available" | "unavailable" | "unsupported-platform";
+
+/** The owner's lock preferences. One set for both modes — the lock guards the
+ *  person, not a world. */
+export interface LockSettings {
+  lockAtLaunch: boolean;
+  /** Lock when Windows locks (Win+L, sleep, switching user). */
+  lockWithWindows: boolean;
+  /** Minutes of no keyboard or mouse input before the app locks; null = never. */
+  idleMinutes: number | null;
+}
+
+/** Held in main. While `locked`, main refuses every request except the ones
+ *  the lock screen needs — hiding the screen alone protected nothing. */
+export interface LockStatus {
+  locked: boolean;
+  hello: HelloAvailability;
+  settings: LockSettings;
+}
+
+/* ── Risk limits ─────────────────────────────────────────────────────── */
+
+/** The numbers the risk engine checks, read from the engine itself. Money is
+ *  a string, as everywhere on this boundary. */
+export interface RiskLimitsView {
+  maxPositionUsd: string;
+  maxDailyLossUsd: string;
+  maxOpenPositions: number;
+  maxDailyTrades: number;
+  maxSpreadBps: number;
+}
+
 /* ── Sessions ────────────────────────────────────────────────────────── */
 
 export interface Session {

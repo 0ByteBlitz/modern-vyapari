@@ -470,6 +470,16 @@ body {
   background: var(--background);
 }
 
+/* No dismiss: the app has no lock for as long as this shows. */
+.lock-notice {
+  flex-shrink: 0;
+  padding: 4px 16px;
+  font-size: var(--text-sm);
+  color: var(--caution);
+  background: rgba(255, 138, 61, 0.08);
+  border-bottom: 1px solid rgba(255, 138, 61, 0.3);
+}
+
 .app-main {
   flex: 1;
   display: flex;

@@ -231,7 +231,16 @@ export function describeActivity(ev: ActivityEvent): DescribedActivity {
     case "browserbase_key_cleared":
     case "telegram_configured":
     case "telegram_disconnected":
+    case "app_unlocked":
+    case "lock_settings_changed":
       return { tag: "chore", tone: "chore", chore: true, text: ev.action.replace(/_/g, " ") };
+    case "app_locked":
+      return {
+        tag: "chore",
+        tone: "chore",
+        chore: true,
+        text: d.reason === "idle" ? "app locked — no input for the idle period" : "app locked — Windows locked",
+      };
 
     default:
       /* Never dropped. An unrecognised action still shows, with whatever the

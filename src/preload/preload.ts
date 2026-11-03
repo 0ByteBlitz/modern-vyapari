@@ -106,9 +106,15 @@ const api = {
   selectSession: (id: number | null) => ipcRenderer.invoke("sessions:select", id),
   getSelectedSession: () => ipcRenderer.invoke("sessions:getSelected"),
   getLastSession: () => ipcRenderer.invoke("sessions:getLast"),
-  // Security (app-launch gate)
-  checkWindowsHello: () => ipcRenderer.invoke("security:checkWindowsHello"),
+  // Security (the app lock, held in main)
+  getLockStatus: (recheck?: boolean) => ipcRenderer.invoke("security:status", recheck),
+  setLockSettings: (next: unknown) => ipcRenderer.invoke("security:setLockSettings", next),
   requestWindowsHello: (reason: string) => ipcRenderer.invoke("security:requestWindowsHello", reason),
+  onLockChanged: (callback: (status: any) => void) => {
+    const handler = (_event: any, data: any) => callback(data);
+    ipcRenderer.on("security:lock", handler);
+    return () => ipcRenderer.removeListener("security:lock", handler);
+  },
   // Embedded browser (Phase 1 surface 3)
   browserShow: () => ipcRenderer.invoke("browser:show"),
   browserHide: () => ipcRenderer.invoke("browser:hide"),
@@ -203,6 +209,7 @@ const api = {
   tripKillSwitch: (reason?: string) => ipcRenderer.invoke("killSwitch:trip", reason),
   resetKillSwitch: () => ipcRenderer.invoke("killSwitch:reset"),
   getKillSwitchStatus: () => ipcRenderer.invoke("killSwitch:status"),
+  getRiskLimits: () => ipcRenderer.invoke("risk:limits"),
 
   listDrawings: (symbol: string, intervalMin?: number) => ipcRenderer.invoke("drawings:list", symbol, intervalMin),
   saveDrawing: (d: unknown) => ipcRenderer.invoke("drawings:save", d),

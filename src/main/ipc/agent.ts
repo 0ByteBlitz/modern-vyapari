@@ -12,6 +12,8 @@ import * as toolRegistry from "../agent/tool-registry";
 import { setResearchView, clearResearchView } from "../agent/research-view";
 import { createLogger } from "../logger";
 import { emitError } from "../events/outbound";
+import { isLocked } from "../security/app-lock";
+import { AppError } from "../../shared/errors";
 import { buildUsageReport, setDailyLimitUsd } from "../agent/usage";
 import { reviewModelStatus, setReviewModel } from "../agent/review";
 import { safe } from "./safe";
@@ -93,6 +95,11 @@ ipcMain.on("chat:send", (e, sessionId: number | null, messages: any[], params?: 
        renderer sat with `isStreaming` true, the composer disabled, and no
        error — indistinguishable from "the agent just doesn't answer". A
        fire-and-forget call still owes the caller a failure. */
+    /* `on`, so `safe()` never sees it: the app lock is checked here instead. */
+    if (isLocked()) {
+      emitError(e.sender, "chat:error", new AppError("LOCKED"), { conversation: sessionId ? sessionId : "general" });
+      return;
+    }
     chat
       .sendChatMessage(sessionId, messages, params || { model: "claude-3-5-sonnet-latest", effort: "high" }, e.sender)
       .catch((err) => {

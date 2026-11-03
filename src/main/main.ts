@@ -2,6 +2,7 @@ import { app, BrowserWindow, Menu, session, shell } from "electron";
 import * as fs from "fs";
 import * as path from "path";
 import { registerIpcHandlers } from "./ipc";
+import { startAppLock } from "./security/app-lock";
 import { initDatabase, getDb, auditLog } from "./db/database";
 import { initSharedStore, adoptLegacyLessons, adoptLegacyUsage } from "./db/shared-store";
 import { readMode, resolveMode, lockMode, appMode, writeMode } from "./modes/app-mode";
@@ -200,6 +201,9 @@ app.whenReady().then(() => {
   adoptLegacyUsage(getDb(), mode);
   /* The app opens on Home with no session selected (sessions/service.ts). */
   clearSelectionForLaunch();
+  /* The lock is decided in main before the window can ask anything; requests
+     are refused until it is (security/app-lock.ts). */
+  startAppLock();
   registerIpcHandlers();
 
   // Phase 3: paper trading engine + the post-trade review loop that hangs off
