@@ -116,6 +116,49 @@ left is adapters, the choice, and removing the defaults.
 - **V-1 Connection forms from the auth spec** — render a venue's setup form from its declared `IntegrationAuthSpec`, so a new venue needs no hand-built form.
 - **V-2 Venue choice in onboarding** — once a second adapter exists.
 
+**Outages: the plan keeps executing, or the owner knows it isn't** (J3) — in order.
+1. **The header badge measures the live socket** — the context bar's feed latency
+   reads the candle cache today; it should report the stream itself, and say
+   *silent* when the stream is.
+2. **Fallback to Binance's other hosts** — REST and stream retry the feed's
+   alternate hosts before declaring the feed down. Lives in the feed adapter once
+   S2-9's port exists; until then, in `data/` only, never at the call sites.
+3. **Background running** — today closing the window quits (`main.ts`,
+   *window-all-closed*), nothing notices the machine sleeping, and nothing starts
+   the app after a reboot, so armed plans can look watched while nothing watches
+   them.
+   - **Running unseen is the owner's choice, asked when it matters.** One
+     setting, Settings › System › *When the window closes with plans armed*:
+     **Ask** (default) · *Keep watching in the background* · *Quit*. First
+     launch does not ask — with no plans yet the question cannot be weighed;
+     onboarding only states that plans are watched while the app runs.
+   - While the setting is *Ask*, closing the window with plans armed or
+     positions open asks in the existing quit dialog: *Keep watching in the
+     background* · *Quit* · *Cancel*, and *Remember my choice* writes that
+     same setting. With nothing armed and nothing open, closing quits.
+   - Closing then hides the window instead of quitting (`window-all-closed`
+     no longer calls `app.quit()`); the real quit is the tray menu or the
+     dialog. Launching the app again shows the hidden window (the
+     single-instance lock is already there).
+   - In the background the tray icon is always present and its menu says what
+     is being watched (*watching 2 plans*). **Windows 11 puts new tray icons
+     in the overflow (^) and an app cannot pin itself**, so the first close
+     shows a Windows notification that says where the app went — *under ^
+     near the clock* — and how to quit it; clicking it reopens the window. Background
+     running grants nothing new: the same engine and feed calls, and the agent
+     never runs unprompted.
+   - Arming says *This plan is watched only while the app is running*, so the
+     condition is known before the first close, not learned from a missed
+     trigger.
+   - Keeping the machine awake while anything is armed (`powerSaveBlocker`) is
+     its own setting, off until the owner turns it on.
+   - When it sleeps anyway (`powerMonitor` suspend/resume), record the gap,
+     resume through the feed-gap path, and tell the owner on Telegram how long
+     plans were unwatched.
+   - Optional start at login, off by default, starting minimised to the tray.
+   - Write `docs/RUNTIME.md` — the code already cites it for the catch-up rule
+     in three places and the file does not exist.
+
 **Larger pieces**
 - **S2-9 feed half** — a feed port, and the last two `source = 'binance'` predicates (down from 18).
 - **S2-8 single runtime owner** — six timers across four files today; design in `ARCHITECTURE.md`.
