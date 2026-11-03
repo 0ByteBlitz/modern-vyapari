@@ -751,3 +751,37 @@ appear would be a close button that does nothing**, so main falls back to the
 native box when the renderer is loading, crashed, or silent for 1.5 s, and the
 dialog acknowledges only after it has rendered.
 
+
+## Live alerts read bars, not stream updates (2026-11-03) — RSI over copies of one bar
+
+The Binance stream sends the forming bar every couple of seconds, then once more
+when it closes. The alert engine pushed every one of those into its 200-entry
+buffer, so the buffer was mostly copies of the forming bar. A *crosses* alert
+compared an update with the update two seconds before it, and RSI, EMA and the
+rest were computed over the copies: **an indicator alert could fire on a value
+that is on no chart**, and the closed-bar check, reading real bars, disagreed
+with it.
+
+The buffer now holds one entry per bar start; an update to the forming bar
+replaces it. It is seeded from the candle cache, which the stream writes to
+before it emits, so an indicator has its warm-up at once instead of after
+fifteen 4h bars of streaming. While it holds fewer bars than it can, the cache
+is read again on each close: at startup the first update can arrive before the
+cache is backfilled, and the first run of the app showed an RSI alert sitting
+on a two-bar buffer, unable to fire.
+
+**Which alerts read the forming bar.** The same split as the paper engine:
+
+- **Price and volume alerts** are evaluated on every update, against the
+  previous bar. A level that traded intrabar is a fact, as a paper stop is
+  checked on every tick. Every hit the closed-bar check could find, the live
+  check sees first, on the bar's last update.
+- **Indicator alerts** are evaluated only when a bar closes, on the same bars the
+  closed-bar check reads, so the two agree. A forming bar's RSI repaints until
+  the close, and an alert on it would fire on a number the chart later drops.
+
+A buffer with a hole (an outage the cache never refilled) is read again from the
+cache on the next close. Until it is whole, indicator alerts are left to the
+scheduled closed-bar check, which refills the cache it reads, rather than computed
+across bars that never arrived. The live path also now passes taker-buy volume,
+which it dropped, so a CVD alert read every bar as an unknown split.

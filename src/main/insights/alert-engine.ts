@@ -6,7 +6,7 @@
  * and emits events to the renderer for the Bot Working Area UI.
  */
 
-import { getDb, auditLog, withTransaction } from "../db/database";
+import { getDb, auditLog, withTransaction, isDbReady } from "../db/database";
 import type { CandleNumeric } from "./indicator-types";
 import { makeIndicatorKey } from "./indicator-types";
 import { computeFromCandles } from "./indicators";
@@ -15,6 +15,7 @@ import { evaluateConditionGroup } from "../strategy/strategy-spec";
 import { binanceWS } from "../data/binance-ws";
 import { describeThreshold } from "../../shared/levels";
 import { createLogger } from "../logger";
+import { FEED_SCOPE_SQL } from "../integrations/feed/symbols";
 import { ListenerRegistry } from "../events/listener-registry";
 import { announceAlert } from "../notify/announce";
 import { enqueueWithin } from "../notify/outbox";
@@ -222,28 +223,70 @@ class AlertEngine {
   }
 
   /**
-   * Called on each new candle from the Binance WS stream.
-   * Evaluates all active alerts against the updated data.
+   * Called on each update from the Binance WS stream — every couple of seconds
+   * while a bar forms, and once more with `closed` when it is final.
+   *
+   * The buffer holds one entry per bar: an update to the forming bar replaces
+   * it. It used to push every update, so the buffer was mostly copies of the
+   * forming bar; "previous" was the update two seconds earlier, and RSI or an
+   * EMA ran over those copies, a number on no chart. (2026-11-03)
+   *
+   * Price and volume alerts read every update, against the previous bar: a
+   * level traded intrabar is a fact, as a paper stop is checked on every tick.
+   * Indicator alerts read only closed bars, the bars the closed-bar check in
+   * `evaluateHistoricalCandles` reads, so the two agree. A forming bar's RSI
+   * repaints until the close.
    */
-  onCandle(symbol: string, intervalMin: number, candle: CandleNumeric): void {
+  onCandle(symbol: string, intervalMin: number, candle: CandleNumeric, closed: boolean): void {
+    // A socket can outlive the database at shutdown; nothing could be recorded.
+    if (!isDbReady()) return;
     // Update the candle buffer
     const bufferKey = `${symbol}:${intervalMin}`;
     let buffer = this.candleBuffers.get(bufferKey);
     if (!buffer) {
-      buffer = [];
+      /* Seeded from the cache, so an indicator has its warm-up at once rather
+         than after RSI(14)'s fifteen bars of streaming — sixty hours on 4h. */
+      buffer = this.seedBuffer(symbol, intervalMin);
       this.candleBuffers.set(bufferKey, buffer);
     }
-    buffer.push(candle);
-    if (buffer.length > this.BUFFER_SIZE) {
-      buffer.splice(0, buffer.length - this.BUFFER_SIZE);
+    const last = buffer[buffer.length - 1];
+    if (last && candle.timestamp < last.timestamp) return;
+    if (last && candle.timestamp === last.timestamp) {
+      buffer[buffer.length - 1] = candle;
+    } else {
+      buffer.push(candle);
+      if (buffer.length > this.BUFFER_SIZE) {
+        buffer.splice(0, buffer.length - this.BUFFER_SIZE);
+      }
+    }
+
+    /* A hole (an outage the cache never refilled) would put an indicator
+       across bars that never arrived, so indicators read only the unbroken
+       run of bars ending at this one. On a close with a hole, or with fewer
+       bars than the buffer holds, the cache is read again: at startup the
+       first update can arrive before the cache is backfilled, and a backfill
+       can fill a hole later. A run too short for the indicator's warm-up gives
+       no value and the alert does not fire; the closed-bar check, which
+       refills the cache first, covers that bar. */
+    const barMs = intervalMin * 60_000;
+    let run = unbrokenTail(buffer, barMs);
+    if (closed && (run.length < buffer.length || buffer.length < this.BUFFER_SIZE)) {
+      const merged = new Map<number, CandleNumeric>();
+      for (const b of this.seedBuffer(symbol, intervalMin)) merged.set(b.timestamp, b);
+      for (const b of buffer) merged.set(b.timestamp, b);
+      const rebuilt = [...merged.values()].sort((a, b) => a.timestamp - b.timestamp).slice(-this.BUFFER_SIZE);
+      buffer.splice(0, buffer.length, ...rebuilt);
+      run = unbrokenTail(buffer, barMs);
     }
 
     // Evaluate only alerts scoped to this exact symbol/interval — otherwise
     // an alert meant for BTC-USD would also fire off an unrelated ETH-USD tick.
     for (const [alertId, alert] of this.activeAlerts) {
       if (alert.symbol !== symbol || alert.intervalMin !== intervalMin) continue;
+      const onPrice = alert.condition.indicator === "price" || alert.condition.indicator === "volume";
+      if (!onPrice && !closed) continue;
       try {
-        const triggered = this.evaluateAlert(alert.condition, symbol, buffer);
+        const triggered = this.evaluateAlert(alert.condition, symbol, onPrice ? buffer : run);
         if (triggered.hit) {
           this.triggerAlert(alertId, alert, triggered.currentValue);
         }
@@ -251,6 +294,31 @@ class AlertEngine {
         // Silently skip — indicator might need more warmup data
       }
     }
+  }
+
+  /** The newest cached bars for a stream, oldest first. The stream writes each
+   *  update to the cache before it is emitted, so the forming bar is included. */
+  private seedBuffer(symbol: string, intervalMin: number): CandleNumeric[] {
+    const rows = getDb()
+      .prepare(
+        `SELECT start_ms, open, high, low, close, volume, taker_buy_volume FROM candles
+         WHERE symbol = ? AND interval_min = ? AND ${FEED_SCOPE_SQL}
+         ORDER BY start_ms DESC LIMIT ?`
+      )
+      .all(symbol, intervalMin, this.BUFFER_SIZE) as any[];
+
+    return rows.reverse().map((r) => ({
+      timestamp: r.start_ms,
+      open: parseFloat(r.open),
+      high: parseFloat(r.high),
+      low: parseFloat(r.low),
+      close: parseFloat(r.close),
+      volume: parseFloat(r.volume),
+      takerBuyVolume:
+        r.taker_buy_volume === null || r.taker_buy_volume === undefined || r.taker_buy_volume === ""
+          ? null
+          : parseFloat(r.taker_buy_volume),
+    }));
   }
 
   /**
@@ -413,6 +481,13 @@ class AlertEngine {
 
     auditLog("alert_triggered", { alertId, label: alert.label, currentValue });
   }
+}
+
+/** The newest bars in which each is one interval after the one before it. */
+function unbrokenTail(buffer: CandleNumeric[], barMs: number): CandleNumeric[] {
+  let i = buffer.length - 1;
+  while (i > 0 && buffer[i]!.timestamp - buffer[i - 1]!.timestamp === barMs) i--;
+  return buffer.slice(Math.max(0, i));
 }
 
 /** Singleton alert engine instance. */
