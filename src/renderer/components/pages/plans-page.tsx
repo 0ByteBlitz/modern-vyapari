@@ -18,7 +18,7 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { Plus, Trash2, ShieldCheck, AlertTriangle, Activity, X } from "lucide-react";
-import { PlanDetail } from "@/components/plan-detail";
+import { PlanDetail, PlanWatchNote } from "@/components/plan-detail";
 import { CalibrationPanel } from "@/components/calibration-panel";
 import {
   api,
@@ -533,6 +533,7 @@ export function PlansPage({ session }: Props) {
             {!p.ocoExclusive && <span className="plans-warn">OCO off</span>}
           </div>
           {p.outcomeReason && <p className="plans-outcome">{p.outcomeReason}</p>}
+          <PlanWatchNote plan={p} />
 
           {p.state === "draft" && (
             <div className="plans-actions" onClick={(e) => e.stopPropagation()}>
@@ -611,9 +612,6 @@ export function PlansPage({ session }: Props) {
         <PlanDetail
           plan={detail}
           price={price}
-          /* Watching only happens on an active session — the engine skips
-              paused and archived ones, exactly as it does for strategies. */
-          monitored={session.status === "active"}
           onClose={() => setDetail(null)}
         />
       )}

@@ -34,6 +34,7 @@ import type {
   AiModelInfo,
   UsageTotals,
   UsageReport,
+  PlanWatch,
 } from "@shared/ipc-types";
 import { isUserFacingError, type UserFacingError } from "@shared/errors";
 import type { QuitSummary } from "@shared/quit";
@@ -73,6 +74,7 @@ export type {
   AiModelInfo,
   UsageTotals,
   UsageReport,
+  PlanWatch,
 };
 
 
@@ -582,6 +584,8 @@ export interface RendererApi {
   dryRunPlan(id: number): Promise<Result<PlanDryRun>>;
   /** Omit the session for the cross-session record, which is the useful one. */
   planCalibration(sessionId?: number): Promise<Result<CalibrationRecord>>;
+  /** What the engine is doing with this plan right now. */
+  planWatch(id: number): Promise<Result<PlanWatch>>;
   transitionPlan(id: number, to: PlanState, reason?: string): Promise<Result<{ ok: boolean; reason?: string }>>;
   // Phase 2: Backtests
   listBacktests(sessionId: number): Promise<Result<BacktestRow[]>>;

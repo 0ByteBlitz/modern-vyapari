@@ -224,6 +224,7 @@ const api = {
   armPlan: (id: number) => ipcRenderer.invoke("plans:arm", id),
   dryRunPlan: (id: number) => ipcRenderer.invoke("plans:dryRun", id),
   planCalibration: (sessionId?: number) => ipcRenderer.invoke("plans:calibration", sessionId),
+  planWatch: (id: number) => ipcRenderer.invoke("plans:watch", id),
   transitionPlan: (id: number, to: string, reason?: string) =>
     ipcRenderer.invoke("plans:transition", id, to, reason),
 

@@ -1,7 +1,8 @@
 import { formatLevel } from "@shared/levels";
 import type { PriceLevel } from "@shared/levels";
 import { describeThreshold } from "@shared/levels";
-import type { StoredPlanView, PlanBranchView, LevelDraftView } from "@/lib/api";
+import { useEffect, useState } from "react";
+import { api, isError, type StoredPlanView, type PlanBranchView, type LevelDraftView, type PlanWatch } from "@/lib/api";
 import { formatPrice } from "@/lib/format";
 import { DetailModal, DetailSection, LevelRow } from "@/components/detail-modal";
 import { useAppMode } from "@/lib/mode";
@@ -117,20 +118,73 @@ function triggerValue(group: unknown): unknown {
   return g?.conditions?.[0]?.value ?? "—";
 }
 
+/** What the engine is doing with this plan, re-read on every data broadcast —
+ *  a feed pause, a session pause and the kill switch all arrive that way. */
+function usePlanWatch(rowId: number): PlanWatch | null {
+  const [watch, setWatch] = useState<PlanWatch | null>(null);
+  useEffect(() => {
+    let live = true;
+    const load = () =>
+      void api.planWatch(rowId).then((r) => {
+        if (live) setWatch(isError(r) ? null : r);
+      });
+    load();
+    const off = api.onDataUpdated(load);
+    return () => {
+      live = false;
+      off();
+    };
+  }, [rowId]);
+  return watch;
+}
+
+function watchLine(watch: PlanWatch, mode: string, canFire: boolean): { text: string; off: boolean } {
+  if (!watch.watched) return { text: "Not being watched — restart the app if this lasts.", off: true };
+  if (watch.feedPausedSince !== null) {
+    const since = new Date(watch.feedPausedSince).toLocaleString([], { dateStyle: "short", timeStyle: "short" });
+    return {
+      text: `Paused — price bars are missing from ${since}. Decisions resume once they load; stops and targets still apply.`,
+      off: true,
+    };
+  }
+  if (watch.entryBlocked === "session_paused")
+    return { text: "Watched, but a trigger opens no position while the session is paused. Resume the session to allow entries.", off: true };
+  if (watch.entryBlocked === "kill_switch")
+    return { text: "Watched, but a trigger opens no position while the kill switch is on.", off: true };
+  if (!canFire) return { text: "Watched on every closed bar until it resolves.", off: false };
+  return { text: `Watched on every closed bar. A trigger opens a ${mode} position with the branch's stop and target.`, off: false };
+}
+
+/** The card's one-line version: shown only when the plan is not simply being
+ *  watched with entries open. */
+export function PlanWatchNote({ plan }: { plan: StoredPlanView }) {
+  const watch = usePlanWatch(plan.rowId);
+  if (!watch || (plan.state !== "planned" && plan.state !== "triggered")) return null;
+  const text = !watch.watched
+    ? "Not being watched"
+    : watch.feedPausedSince !== null
+      ? "Paused — price bars missing"
+      : watch.entryBlocked === "session_paused"
+        ? "Session paused — a trigger opens no position"
+        : watch.entryBlocked === "kill_switch"
+          ? "Kill switch on — a trigger opens no position"
+          : null;
+  return text ? <p className="plans-warn">{text}</p> : null;
+}
+
 export function PlanDetail({
   plan,
   price,
-  monitored,
   onClose,
 }: {
   plan: StoredPlanView;
   /** Last analysis-feed close, for distances. Null when unavailable. */
   price: number | null;
-  /** Whether the engine is watching this plan right now. */
-  monitored: boolean;
   onClose: () => void;
 }) {
   const mode = useAppMode();
+  const watch = usePlanWatch(plan.rowId);
+  const line = watch && watchLine(watch, mode, plan.branches.some((b) => (b.status ?? "pending") === "pending"));
   const left = plan.expiresAt - Date.now();
   const expiry =
     left <= 0
@@ -167,12 +221,8 @@ export function PlanDetail({
         </div>
       </div>
 
-      {(plan.state === "planned" || plan.state === "triggered") && (
-        <p className={`detail-watch ${monitored ? "" : "detail-watch-off"}`}>
-          {monitored
-            ? `Watched on every closed bar. A trigger opens a ${mode} position with the branch's stop and target.`
-            : "Not being watched — the session is paused or archived."}
-        </p>
+      {(plan.state === "planned" || plan.state === "triggered") && line && (
+        <p className={`detail-watch ${line.off ? "detail-watch-off" : ""}`}>{line.text}</p>
       )}
 
       <DetailSection title="Assumptions" note="what must be true">

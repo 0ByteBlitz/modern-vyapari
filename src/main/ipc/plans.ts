@@ -11,6 +11,7 @@ import * as planService from "../plans/plan-service";
 import { dryRunPlan } from "../plans/plan-dryrun";
 import { AppError } from "../../shared/errors";
 import { buildCalibration } from "../plans/calibration";
+import { emit } from "../events/outbound";
 import { safe } from "./safe";
 
 export function registerPlans(): void {
@@ -50,7 +51,25 @@ ipcMain.handle("plans:dryRun", (_e, id: number) =>
   );
 
 ipcMain.handle("plans:transition", (_e, id: number, to: string, reason?: string) =>
-    safe(() => planService.transitionPlan(id, to as never, reason), "plans:transition")
+    safe(() => {
+      const result = planService.transitionPlan(id, to as never, reason);
+      if (!result.ok) return result;
+      /* The engine keeps its own copy of the watched plans. Without a reload a
+         plan ended here would still be evaluated — and could still fire. The
+         engine's own transitions reload after its loop; this one must too. */
+      const { paperEngine } = require("../paper/paper-exchange") as typeof import("../paper/paper-exchange");
+      paperEngine.reloadStrategies();
+      emit("data:updated", { kind: "plan" });
+      return result;
+    }, "plans:transition")
+  );
+
+  /* Read from the running engine, never inferred from the session's status. */
+  ipcMain.handle("plans:watch", (_e, id: number) =>
+    safe(() => {
+      const { paperEngine } = require("../paper/paper-exchange") as typeof import("../paper/paper-exchange");
+      return paperEngine.planWatch(id);
+    }, "plans:watch")
   );
 
   /* Statistics about the PLANNER, not about a plan — grouped by assumption tag,

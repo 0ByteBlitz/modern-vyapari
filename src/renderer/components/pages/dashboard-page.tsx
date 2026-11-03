@@ -321,7 +321,6 @@ export function DashboardPage({ activeSession }: { activeSession: Session | null
         <PlanDetail
           plan={planDetail}
           price={price}
-          monitored={activeSession.status === "active"}
           onClose={() => setPlanDetail(null)}
         />
       )}

@@ -240,6 +240,7 @@ levels were worth at the moment it fired.*
 | **The owner is told what happened, in plan language** | ✅ N-1 — trigger and close notifications carry the thesis and whether a position opened |
 | **A closed plan position is reviewed** | ✅ J-2, 2026-08-01 |
 | **A missed analysis-feed interval pauses plan decisions until the missing bars are back** | ✅ feed-gap gate, 2026-11-03 |
+| **The plan says what the engine is doing with it** — watched, paused for missing bars, or watched with entries refused (session paused, kill switch) | ✅ read from the running engine, 2026-11-03 — no longer inferred from the session |
 
 **Found by walking this journey, 2026-08-01:** the owner armed a plan, went
 looking for what it was doing, and found nothing. `plan-monitor.ts` was imported
@@ -278,10 +279,14 @@ stream's plan decisions. The engine refills the missing bars from the analysis
 feed's REST history and rebuilds its buffer; decisions resume on the first
 closed bar after every bar since the gap is present. Waiting a bar would not do
 it — the hole stays in the buffer and every indicator is computed across it. A
-refill that fails or comes back partial leaves the plans paused, and each
-closed bar tries again. A buffer seeded from a cache that went stale while the
-app was shut is refilled the same way, but only announced if the refill fails:
-the downtime itself is already the `monitor_gap` entry. Open paper positions
+refill that fails or comes back partial leaves the plans paused and is retried
+on live ticks at most once a minute, and on every close — not only at the next
+close, which on a 4h plan is hours after the feed came back. Recovery is
+reported when the bars load; the next close is then the next decision. A buffer
+loaded from the cache at startup is checked for holes too (the cache only
+holds bars from while the app was running), refilled the same way, and only
+announced if the refill fails: the downtime itself is already the
+`monitor_gap` entry. Open paper positions
 keep checking stop/target on every tick throughout, and cannot be protected
 while no ticks arrive — local paper protection, not venue-side; live execution
 remains unbuilt.

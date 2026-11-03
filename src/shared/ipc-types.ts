@@ -562,3 +562,24 @@ export interface AiModelInfo {
   /** The adapter's suggested default — its cheapest capable model. */
   recommended?: boolean;
 }
+
+/* ── Plan watch state ───────────────────────────────────────────────── */
+
+/**
+ * What the engine is doing with one armed plan right now, as main knows it.
+ *
+ * The screen used to infer "watched" from the session's status and was wrong
+ * both ways: a paused session's plans are still evaluated (expiry,
+ * invalidation and triggers are all recorded, only the entry is refused), and
+ * an active session's plans can be waiting on missing price bars.
+ */
+export interface PlanWatch {
+  /** The running engine holds this plan and evaluates it on closed bars. */
+  watched: boolean;
+  /** Plan decisions wait for missing bars on this plan's stream; the open time
+   *  of the first missing bar, or null when the stream is complete. */
+  feedPausedSince: number | null;
+  /** Why a trigger would be recorded but open no position; null when it would,
+   *  or when no branch is left to fire. */
+  entryBlocked: "session_paused" | "kill_switch" | null;
+}
