@@ -71,7 +71,12 @@ interface FeedPause {
   cause: "stream" | "startup";
   healed: boolean;
   announced: boolean;
+  /** When the last refill started; 0 until the first. */
+  attemptedAt: number;
 }
+
+/** How often a failed refill is retried while ticks keep arriving. */
+const HEAL_RETRY_MS = 60_000;
 
 /** True when every bar from `fromTs` (or the buffer's oldest, if the gap is
  *  older than the buffer) to the newest is present, one interval apart. */
@@ -293,7 +298,7 @@ export class PaperExchangeEngine {
       wanted.add(key);
 
       if (!this.candleBuffers.has(key)) {
-        this.candleBuffers.set(key, this.seedBuffer(session.pair, intervalMin));
+        this.seedStream(session.pair, intervalMin);
       }
 
       this.positions.set(strat.id, position);
@@ -311,7 +316,7 @@ export class PaperExchangeEngine {
       const key = `${plan.pair}:${intervalMin}`;
       wanted.add(key);
       if (!this.candleBuffers.has(key)) {
-        this.candleBuffers.set(key, this.seedBuffer(plan.pair, intervalMin));
+        this.seedStream(plan.pair, intervalMin);
       }
       /* Re-adopt open positions. `listWatchedPlans` returns `triggered` plans
          as well as `planned` ones precisely so this can happen: a restart that
@@ -344,6 +349,32 @@ export class PaperExchangeEngine {
     log.info(
       `Loaded ${this.activeStrategies.size} active paper strategies and ${this.watchedPlans.length} armed plans.`
     );
+  }
+
+  /**
+   * Load a stream's buffer from the cache, and refill any hole in it before a
+   * decision runs on it. The cache only holds bars from while the app was
+   * running, so a restart after downtime loads history with holes in the
+   * middle — which the per-tick check never sees, because it only compares a
+   * new bar with the newest one.
+   */
+  private seedStream(symbol: string, intervalMin: number) {
+    const key = `${symbol}:${intervalMin}`;
+    const buffer = this.seedBuffer(symbol, intervalMin);
+    this.candleBuffers.set(key, buffer);
+    const barMs = intervalMin * 60_000;
+    const hole = buffer.findIndex((b, i) => i > 0 && b.timestamp - buffer[i - 1]!.timestamp !== barMs);
+    if (hole < 0) return;
+    this.planFeedPaused.set(key, {
+      from: buffer[hole - 1]!.timestamp,
+      to: buffer[hole]!.timestamp,
+      cause: "startup",
+      healed: false,
+      announced: false,
+      attemptedAt: 0,
+    });
+    emit("data:updated", { kind: "feed" });
+    void this.healStream(symbol, intervalMin);
   }
 
   private seedBuffer(symbol: string, intervalMin: number): CandleNumeric[] {
@@ -485,6 +516,7 @@ export class PaperExchangeEngine {
       const pause = this.planFeedPaused.get(key);
       if (pause) {
         pause.healed = false;
+        pause.attemptedAt = 0;
       } else {
         /* A buffer seeded from a cache that went stale while the app was shut
            is refilled quietly — `monitor_gap` already reported the downtime —
@@ -496,14 +528,21 @@ export class PaperExchangeEngine {
           cause: this.liveStreams.has(key) ? "stream" : "startup",
           healed: false,
           announced: false,
+          attemptedAt: 0,
         };
         this.planFeedPaused.set(key, next);
         if (next.cause === "stream") this.announcePause(symbol, intervalMin, next);
         else emit("data:updated", { kind: "feed" });
       }
-      void this.healStream(symbol, intervalMin);
     }
     this.liveStreams.add(key);
+    /* Refill at once on a new gap, then retry on live ticks at most once a
+       minute. Waiting for the next close instead would leave a 4h plan without
+       decisions for hours after the feed had already come back. */
+    const unhealed = this.planFeedPaused.get(key);
+    if (unhealed && !unhealed.healed && Date.now() - unhealed.attemptedAt >= HEAL_RETRY_MS) {
+      void this.healStream(symbol, intervalMin);
+    }
     if (last && last.timestamp === c.timestamp) {
       buffer[buffer.length - 1] = c;
     } else {
@@ -558,13 +597,8 @@ export class PaperExchangeEngine {
       void this.healStream(symbol, intervalMin);
       return;
     }
-    if (pause) {
-      this.planFeedPaused.delete(key);
-      if (pause.announced) {
-        auditLog("analysis_feed_recovered", { symbol, intervalMin, from: pause.from, at: c.timestamp });
-      }
-      emit("data:updated", { kind: "feed" });
-    }
+    /* Refilled: the bars were already reported back when they loaded. */
+    if (pause) this.planFeedPaused.delete(key);
     this.evaluatePlansOnBar(symbol, intervalMin, this.candleBuffers.get(key) ?? buffer);
   }
 
@@ -582,6 +616,7 @@ export class PaperExchangeEngine {
     if (inFlight) return inFlight;
     const pause = this.planFeedPaused.get(key);
     if (!pause) return Promise.resolve();
+    pause.attemptedAt = Date.now();
 
     const barMs = intervalMin * 60_000;
     const newest = this.candleBuffers.get(key)?.at(-1)?.timestamp ?? pause.from;
@@ -606,7 +641,13 @@ export class PaperExchangeEngine {
       buffer.splice(0, buffer.length, ...rebuilt);
 
       if (contiguousFrom(buffer, pause.from, barMs)) {
+        /* Reported now, when the bars are back; the next close is simply the
+           next decision, as it would have been without a gap. */
         pause.healed = true;
+        if (pause.announced) {
+          auditLog("analysis_feed_recovered", { symbol, intervalMin, from: pause.from, at: Date.now() });
+        }
+        emit("data:updated", { kind: "feed" });
       } else {
         log.warn(`${key} still has missing bars; plan decisions stay paused.`);
         if (!pause.announced) this.announcePause(symbol, intervalMin, pause);
@@ -642,7 +683,7 @@ export class PaperExchangeEngine {
     return {
       watched: true,
       /* The first bar that did not arrive, not the last one that did. */
-      feedPausedSince: pause ? pause.from + intervalMin * 60_000 : null,
+      feedPausedSince: pause && !pause.healed ? pause.from + intervalMin * 60_000 : null,
       /* The same two refusals as `planEntryAllowed`, in the same order. */
       entryBlocked: !canFire
         ? null
