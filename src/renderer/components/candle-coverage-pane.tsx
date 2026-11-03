@@ -191,7 +191,7 @@ export function CandleCoveragePane() {
           {rows?.length === 0 && (
             <tr>
               <td colSpan={7} style={{ color: "var(--text-faint)" }}>
-                No cached analysis history yet. Open a pair on Research or Markets.
+                No cached analysis history yet. Open a pair on Charts or Markets.
               </td>
             </tr>
           )}

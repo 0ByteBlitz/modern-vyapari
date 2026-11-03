@@ -15,7 +15,7 @@ below has its own step table; this is the summary.
 | Journey | State |
 |---|---|
 | J0 · Daily loop | ✅ Built — Home with no session selected, *while you were away*, plan distances, the global agent |
-| J1 · Hunch → thesis | ✅ Built — Research, order flow, a global and a per-session agent with web search and fetch |
+| J1 · Hunch → thesis | ✅ Built — Charts, order flow, a global and a per-session agent with web search and fetch |
 | J2 · Thesis → plan | ✅ Built — falsifiability gate; the agent drafts, never arms |
 | J3 · Plan executes while away | 🟡 **Paper only** — monitor, execution and notifications built; proven on seeded bars, not yet driven by a live stream; the app must be running |
 | J4 · Structure moved → critique | 🟡 Drift measured and acted on; the agent's critique and the reconfirm queue (J-4) are not built |
