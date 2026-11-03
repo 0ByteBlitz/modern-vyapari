@@ -19,6 +19,7 @@
 import { getDb } from "../db/database";
 import { backfillFromBinance, syncRecentFromBinance } from "../insights/indicators";
 import { createLogger } from "../logger";
+import { binanceFetch } from "./binance-hosts";
 import { FEED_SCOPE_SQL, fromFeedSymbol } from "../integrations/feed/symbols";
 
 const log = createLogger("candles");
@@ -69,7 +70,7 @@ const NON_TRENDING = new Set([
  * something to paint immediately; the stream then keeps it live.
  */
 export async function getTickerSnapshot(): Promise<TickerSnapshot[]> {
-  const res = await fetch("https://api.binance.com/api/v3/ticker/24hr");
+  const res = await binanceFetch("/api/v3/ticker/24hr");
   if (!res.ok) throw new Error(`Binance 24h ticker failed: ${res.status} ${res.statusText}`);
 
   const rows = (await res.json()) as Array<{
@@ -117,13 +118,14 @@ export async function getTickerSnapshot(): Promise<TickerSnapshot[]> {
  */
 export async function pingFeed(): Promise<number> {
   const t0 = Date.now();
-  const res = await fetch("https://api.binance.com/api/v3/ping");
+  const res = await binanceFetch("/api/v3/ping");
   if (!res.ok) throw new Error(`Binance ping failed: ${res.status} ${res.statusText}`);
   return Date.now() - t0;
 }
 
 const DEFAULT_LIMIT = 300;
-const MAX_LIMIT = 1500;
+/** The most bars one call serves — and so the longest gap the alert catch-up can check. */
+export const MAX_LIMIT = 1500;
 
 /**
  * Cached Binance candles for a symbol/interval, newest last, auto-backfilled
@@ -239,23 +241,6 @@ export async function getAnalysisCandles(
       volume: r.volume,
       takerBuyVolume: r.taker_buy_volume ?? null,
     }));
-
-  try {
-    const { alertEngine } = require("../insights/alert-engine");
-    const numericCandles = result.map((c) => ({
-      timestamp: c.start,
-      open: parseFloat(c.open),
-      high: parseFloat(c.high),
-      low: parseFloat(c.low),
-      close: parseFloat(c.close),
-      volume: parseFloat(c.volume),
-      takerBuyVolume:
-        c.takerBuyVolume === null || c.takerBuyVolume === undefined ? null : parseFloat(c.takerBuyVolume),
-    }));
-    alertEngine.evaluateHistoricalCandles(symbol, intervalMin, numericCandles);
-  } catch (err) {
-    log.error("Historical alert evaluation failed", err);
-  }
 
   return result;
 }

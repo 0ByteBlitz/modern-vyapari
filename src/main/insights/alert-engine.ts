@@ -12,7 +12,7 @@ import { makeIndicatorKey } from "./indicator-types";
 import { computeFromCandles } from "./indicators";
 import type { Condition } from "../strategy/strategy-spec";
 import { evaluateConditionGroup } from "../strategy/strategy-spec";
-import { binanceWS } from "../data/binance-ws";
+import { binanceWS, STREAM_SILENT_MS } from "../data/binance-ws";
 import { describeThreshold } from "../../shared/levels";
 import { createLogger } from "../logger";
 import { FEED_SCOPE_SQL } from "../integrations/feed/symbols";
@@ -188,14 +188,26 @@ class AlertEngine {
   }
 
   /**
-   * Evaluate active alerts against historical/synced candles.
-   * Catches alerts that triggered while the app was closed or offline.
+   * Evaluate active alerts against closed bars, oldest first, stopping at each
+   * alert's first hit. Catches what the live check didn't see: the app closed,
+   * the machine asleep, the stream down. Returns the alerts that fired.
    */
-  evaluateHistoricalCandles(symbol: string, intervalMin: number, candles: CandleNumeric[]): void {
-    if (candles.length < 2) return;
+  evaluateHistoricalCandles(
+    symbol: string,
+    intervalMin: number,
+    candles: CandleNumeric[],
+    /** Per alert, the first bar start to check. Without one, bars from the
+     *  alert's creation on are checked. */
+    fromByAlert?: Map<number, number>
+  ): Map<number, number> {
+    /** Alert id → start of the bar it fired on. */
+    const fired = new Map<number, number>();
+    if (candles.length < 2) return fired;
+    const barMs = intervalMin * 60_000;
 
     for (const [alertId, alert] of Array.from(this.activeAlerts.entries())) {
       if (alert.symbol !== symbol || alert.intervalMin !== intervalMin) continue;
+      const from = fromByAlert?.get(alertId) ?? alert.created_at - 60_000;
 
       /* Replay the history bar by bar, handing each evaluation the candles that
          PRECEDE the bar as well as the bar itself.
@@ -209,17 +221,50 @@ class AlertEngine {
          number that never existed. */
       for (let i = 1; i < candles.length; i++) {
         const c = candles[i]!;
-        if (c.timestamp < alert.created_at - 60_000) continue;
+        if (c.timestamp < from || c.timestamp < alert.created_at - 60_000) continue;
 
         const window = candles.slice(0, i + 1);
         const triggered = this.evaluateAlert(alert.condition, symbol, window);
         if (triggered.hit) {
-          log.info(`[alert-engine] Offline/historical trigger for alert #${alertId} "${alert.label}" on ${symbol} @ $${c.close}`);
-          this.triggerAlert(alertId, alert, triggered.currentValue ?? c.close, c.timestamp);
+          const watched = this.wasLive(`${symbol}:${intervalMin}`, c.timestamp, c.timestamp + barMs);
+          log.info(`[alert-engine] Closed-bar trigger for alert #${alertId} "${alert.label}" on ${symbol} @ $${c.close} (stream ${watched ? "live" : "not live"})`);
+          this.triggerAlert(alertId, alert, triggered.currentValue ?? c.close, { barStart: c.timestamp, watched });
+          fired.set(alertId, c.timestamp);
           break;
         }
       }
     }
+    return fired;
+  }
+
+  /* When the live stream was delivering each symbol:interval, as [from, to]
+     spans. A closed-bar check also runs while the stream is up, and what it
+     finds there was not missed — the app was watching, the live check just
+     didn't fire (an indicator alert waits for an unbroken run of bars, so a
+     hole in the live buffer leaves that bar to this check). The
+     wording of the alert depends on which it was, so it is recorded rather
+     than assumed. In memory: a previous run's coverage is unknown, and
+     unknown reads as "not watching". */
+  private liveSpans = new Map<string, Array<[number, number]>>();
+  /** Silence longer than this ends a span — the feed watchdog's dead-link line. */
+  private readonly LIVE_GAP_MS = STREAM_SILENT_MS;
+
+  private noteLive(key: string, at: number): void {
+    let spans = this.liveSpans.get(key);
+    if (!spans) {
+      spans = [];
+      this.liveSpans.set(key, spans);
+    }
+    const last = spans[spans.length - 1];
+    if (last && at - last[1] <= this.LIVE_GAP_MS) last[1] = at;
+    else spans.push([at, at]);
+    if (spans.length > 500) spans.splice(0, spans.length - 500);
+  }
+
+  /** Whether the live stream covered the whole of [from, to]. */
+  private wasLive(key: string, from: number, to: number): boolean {
+    const spans = this.liveSpans.get(key) ?? [];
+    return spans.some(([a, b]) => a <= from && b >= Math.min(to, Date.now()) - this.LIVE_GAP_MS);
   }
 
   /**
@@ -242,6 +287,7 @@ class AlertEngine {
     if (!isDbReady()) return;
     // Update the candle buffer
     const bufferKey = `${symbol}:${intervalMin}`;
+    this.noteLive(bufferKey, Date.now());
     let buffer = this.candleBuffers.get(bufferKey);
     if (!buffer) {
       /* Seeded from the cache, so an indicator has its warm-up at once rather
@@ -400,19 +446,31 @@ class AlertEngine {
     return { hit, currentValue };
   }
 
-  /** Mark an alert as triggered and notify listeners. */
-  private triggerAlert(alertId: number, alert: AlertRecord, currentValue: number | null, triggeredAt?: number): void {
-    const now = triggeredAt ?? Date.now();
+  /** Mark an alert as triggered and notify listeners. `bar` is set when a
+   *  closed bar fired it rather than the live price: its value is historical,
+   *  and `watched` says whether the live stream was up for that bar. */
+  private triggerAlert(
+    alertId: number,
+    alert: AlertRecord,
+    currentValue: number | null,
+    bar?: { barStart: number; watched: boolean }
+  ): void {
+    const now = bar?.barStart ?? Date.now();
 
     const cond = alert.condition;
-    const measured = currentValue !== null ? ` — now ${currentValue}` : "";
+    const measured = currentValue !== null ? (bar ? ` at ${currentValue}` : ` — now ${currentValue}`) : "";
+    const barEnd = new Date(now + alert.intervalMin * 60_000).toLocaleString();
+    const when = !bar
+      ? ""
+      : bar.watched
+        ? `\nOn the ${intervalLabel(alert.intervalMin)} bar that closed at ${barEnd}.`
+        : `\nOn the ${intervalLabel(alert.intervalMin)} bar that closed at ${barEnd}, while the app wasn't watching.`;
     const notification = {
       kind: "alert_triggered",
-      title: `${alert.symbol} — ${triggeredAt ? "missed alert" : "alert"}: ${alert.label}`,
+      title: `${alert.symbol} — ${bar && !bar.watched ? "missed alert" : "alert"}: ${alert.label}`,
       body:
         `${(cond?.indicator || "price").toUpperCase()} ${(cond?.operator || "").replace(/_/g, " ")} ` +
-        `${describeThreshold(cond?.value)}${measured}` +
-        (triggeredAt ? `\nFired at ${new Date(now).toLocaleString()}, while the app wasn't watching.` : ""),
+        `${describeThreshold(cond?.value)}${measured}${when}`,
       dedupeKey: `alert:${alertId}:${now}`,
     };
 
@@ -441,7 +499,7 @@ class AlertEngine {
         const opText = (cond?.operator || "").replace(/_/g, " ");
         const valText = describeThreshold(cond?.value);
         const valSnap = currentValue !== null ? ` (measured: ${currentValue})` : "";
-        const offlineTag = triggeredAt ? " (Offline/Historical)" : "";
+        const offlineTag = !bar ? "" : bar.watched ? " (closed bar)" : " (closed bar, app not watching)";
         const text = `Alert Triggered${offlineTag}: "${alert.label}" — ${alert.symbol} ${indName} ${opText} ${valText}${valSnap}`;
 
         getDb()
@@ -481,6 +539,13 @@ class AlertEngine {
 
     auditLog("alert_triggered", { alertId, label: alert.label, currentValue });
   }
+}
+
+/** "15m", "4h", "1d" — how the owner names a bar. */
+export function intervalLabel(intervalMin: number): string {
+  if (intervalMin % 1440 === 0) return `${intervalMin / 1440}d`;
+  if (intervalMin % 60 === 0) return `${intervalMin / 60}h`;
+  return `${intervalMin}m`;
 }
 
 /** The newest bars in which each is one interval after the one before it. */

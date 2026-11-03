@@ -752,6 +752,41 @@ native box when the renderer is loading, crashed, or silent for 1.5 s, and the
 dialog acknowledges only after it has rendered.
 
 
+## Alerts while nobody was watching (2026-11-03) — a 100-minute window, and "now" for a past price
+
+Price alerts are evaluated on the live stream, so while the app is closed or the
+machine sleeps nothing evaluates them. The catch-up that covers that time had
+three faults of the bug-class shape: **a value presented with more confidence
+than it earned.**
+
+**The window was a fixed 100 bars.** For a 1m alert that is 100 minutes, so a
+crossing earlier in a night's closure was missed without a word. The check now
+runs from where the last one ended, persisted per alert in `settings`
+(`alert_checked_through`), to the last closed bar. An alert with no record starts
+from the previous run's last heartbeat (`lastBeatBeforeThisRun`), or from its
+creation. Only closed bars are checked; the forming bar is the live check's job.
+
+**A gap it could not check was silent.** One call serves at most `MAX_LIMIT`
+(1,500) bars, about 25 hours of 1m bars, and the cache can have holes from
+stream outages. Holes are refilled from the feed once; whatever still is missing
+before the newest bar returned is sent to the owner (Telegram, desktop, in-app)
+as *not checked from X to Y*. Bars newer than what the feed returned are not
+reported. The next check covers them.
+
+**The wording described something that had not happened.** A missed alert said
+"— now {value}" for a historical close; it now says "at {value}" and names the
+bar's close time. And the sweep runs every 3 minutes *while the app is open*,
+where everything it found was labelled "while the app wasn't watching". It can
+find things while the stream is live: the live check reads stream updates, not
+bars, so indicator values differ, and the first update after a start or
+reconnect has nothing to compare against. The alert engine now records when the
+stream was delivering each pair. A bar the stream covered fully is reported as
+an alert on that bar; only one it did not is a *missed alert*.
+
+Removed: `getAnalysisCandles` also replayed alerts over whatever window a chart
+happened to load, forming bar included, and labelled any hit "missed". The
+scheduled check covers that time properly.
+
 ## Live alerts read bars, not stream updates (2026-11-03) — RSI over copies of one bar
 
 The Binance stream sends the forming bar every couple of seconds, then once more

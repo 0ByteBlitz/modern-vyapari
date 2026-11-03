@@ -42,8 +42,10 @@ const INTERVAL_LABEL: Record<number, string> = { 1: "1m", 5: "5m", 15: "15m", 30
 function binanceFeed(res: Result<FeedHealth>, rest: { ok: boolean; ms: number } | null): Feed {
   const name = "Binance";
   const restNote = rest ? (rest.ok ? `history round trip ${seconds(rest.ms)}` : "history requests failing") : "";
-  const withRest = (d: string) => (restNote ? `${d} · ${restNote}` : d);
   if (isError(res)) return { name, tone: "down", value: "error", detail: "stream state unreadable" };
+  /* Named always, since after a failure either may be a fallback host. */
+  const hostNote = `stream ${res.hosts.stream}, history ${res.hosts.history}`;
+  const withRest = (d: string) => [d, restNote, hostNote].filter(Boolean).join(" · ");
   const s: FeedStreamState = res.socket;
   const w = res.watched.worst;
   switch (s.state) {

@@ -1,12 +1,85 @@
-import { alertEngine } from "../insights/alert-engine";
+import { alertEngine, intervalLabel, type AlertRecord } from "../insights/alert-engine";
 import { getPaperBalance } from "../paper/account";
-import { getAnalysisCandles } from "../data/analysis-candles";
+import { getAnalysisCandles, MAX_LIMIT, type CandleDto } from "../data/analysis-candles";
+import { syncRecentFromBinance } from "../insights/indicators";
+import { lastBeatBeforeThisRun } from "../paper/monitor-heartbeat";
+import { enqueue } from "../notify/outbox";
+import { announce } from "../notify/announce";
 import { binanceWS, STREAM_SILENT_MS } from "../data/binance-ws";
 import { getDb } from "../db/database";
 import { createLogger } from "../logger";
 import { FEED_SCOPE_SQL } from "../integrations/feed/symbols";
 
 const log = createLogger("scheduler");
+
+/** Bars fetched before an alert's window, so indicators have history to start from. */
+const WARMUP_BARS = 100;
+
+/* Alert id → the bar start the next closed-bar check begins at. */
+const CHECKED_KEY = "alert_checked_through";
+
+function readCheckedThrough(): Record<number, number> {
+  const row = getDb().prepare("SELECT value FROM settings WHERE key = ?").get(CHECKED_KEY) as
+    | { value: string }
+    | undefined;
+  if (!row) return {};
+  try {
+    const parsed = JSON.parse(row.value) as Record<string, unknown>;
+    const out: Record<number, number> = {};
+    for (const [id, ms] of Object.entries(parsed)) if (typeof ms === "number" && Number.isFinite(ms)) out[Number(id)] = ms;
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+function writeCheckedThrough(map: Record<number, number>): void {
+  getDb()
+    .prepare("INSERT INTO settings(key, value) VALUES(?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+    .run(CHECKED_KEY, JSON.stringify(map));
+}
+
+/** The [start, end) spans of bars between `from` and `until` (bar starts,
+ *  inclusive) that are missing from `starts` (ascending). */
+function uncheckedSpans(starts: number[], from: number, until: number, barMs: number): Array<[number, number]> {
+  const spans: Array<[number, number]> = [];
+  let expect = from;
+  for (const t of starts) {
+    if (t < expect) continue;
+    if (t > until) break;
+    if (t > expect) spans.push([expect, t]);
+    expect = t + barMs;
+  }
+  if (expect <= until) spans.push([expect, until + barMs]);
+  return spans;
+}
+
+/** Start of the first bar missing between `from` and the newest bar, or null. */
+function firstHole(candles: CandleDto[], from: number, barMs: number): number | null {
+  for (let i = 1; i < candles.length; i++) {
+    const prev = candles[i - 1]!.start;
+    if (candles[i]!.start - prev > barMs && candles[i]!.start > from) return Math.max(prev + barMs, from);
+  }
+  return null;
+}
+
+/** Tell the owner, on every channel, that an alert was not checked for a while. */
+function reportUnchecked(alert: AlertRecord, spans: Array<[number, number]>): void {
+  const at = (ms: number) => new Date(ms).toLocaleString();
+  const listed = spans.slice(0, 3).map(([a, b]) => `${at(a)} to ${at(b)}`);
+  const more = spans.length > 3 ? ` and ${spans.length - 3} more gaps` : "";
+  const draft = {
+    kind: "alert_unchecked",
+    title: `${alert.symbol} — alert not checked: ${alert.label}`,
+    body:
+      `Not checked from ${listed.join(", ")}${more} (${intervalLabel(alert.intervalMin)} bars). ` +
+      `If price reached the level then, this alert did not see it; look at the chart for that time.`,
+    dedupeKey: `alert_unchecked:${alert.id}:${spans[0]![0]}:${spans[spans.length - 1]![1]}`,
+  };
+  log.warn(`[scheduler] Alert #${alert.id} not checked: ${listed.join(", ")}${more}`);
+  enqueue(draft);
+  announce(draft);
+}
 
 export class BackgroundSchedulerService {
   private alertCheckTimer: NodeJS.Timeout | null = null;
@@ -92,7 +165,17 @@ export class BackgroundSchedulerService {
   }
 
   /**
-   * Job 1: Periodic check for missed price alerts across all active alert pairs.
+   * Job 1: check every closed bar each active alert has not been checked on.
+   *
+   * Each alert's window runs from where the last check ended — persisted, so it
+   * survives a restart — up to the last closed bar. An alert with no record
+   * yet starts from when the previous run was last alive, or from its
+   * creation. This used to be a fixed 100 bars: 100 minutes for a 1m alert,
+   * so a crossing earlier in a night's closure was missed without a word.
+   *
+   * What the feed cannot serve (more than `MAX_LIMIT` bars back) or did not
+   * return (holes in the series) is reported to the owner as unchecked, with
+   * its times — never left to read as "price never came".
    */
   public async runMissedAlertCheck(): Promise<number> {
     const activeAlerts = alertEngine.getSessionAlerts();
@@ -100,36 +183,95 @@ export class BackgroundSchedulerService {
 
     if (activeRules.length === 0) return 0;
 
-    log.info(`[scheduler] Checking for missed offline events across ${activeRules.length} active alert rules...`);
+    log.info(`[scheduler] Checking closed bars for ${activeRules.length} active alert rules...`);
     let checkedCount = 0;
+    const checkedThrough = readCheckedThrough();
+    const lastAlive = lastBeatBeforeThisRun();
+    const now = Date.now();
 
     // Group rules by symbol & interval
-    const targets = new Map<string, { symbol: string; intervalMin: number }>();
+    const targets = new Map<string, { symbol: string; intervalMin: number; alerts: AlertRecord[] }>();
     for (const rule of activeRules) {
       const key = `${rule.symbol}:${rule.intervalMin}`;
-      if (!targets.has(key)) {
-        targets.set(key, { symbol: rule.symbol, intervalMin: rule.intervalMin });
+      let target = targets.get(key);
+      if (!target) {
+        target = { symbol: rule.symbol, intervalMin: rule.intervalMin, alerts: [] };
+        targets.set(key, target);
       }
+      target.alerts.push(rule);
     }
 
-    for (const { symbol, intervalMin } of targets.values()) {
-      try {
-        const candlesDto = await getAnalysisCandles(symbol, intervalMin, 100);
-        const numericCandles = candlesDto.map((c) => ({
-          timestamp: c.start,
-          open: parseFloat(c.open),
-          high: parseFloat(c.high),
-          low: parseFloat(c.low),
-          close: parseFloat(c.close),
-          volume: parseFloat(c.volume),
-        }));
+    for (const { symbol, intervalMin, alerts } of targets.values()) {
+      const barMs = intervalMin * 60_000;
+      // Start of the newest bar that has closed.
+      const lastClosed = Math.floor(now / barMs) * barMs - barMs;
 
-        alertEngine.evaluateHistoricalCandles(symbol, intervalMin, numericCandles);
+      const fromByAlert = new Map<number, number>();
+      for (const a of alerts) {
+        /* A bar the previous run was in the middle of is checked again: its
+           close came after the app stopped watching. */
+        const fromRun = lastAlive !== null ? Math.floor(lastAlive / barMs) * barMs : -Infinity;
+        const fromCreated = Math.ceil((a.created_at - 60_000) / barMs) * barMs;
+        const from = checkedThrough[a.id] ?? Math.max(fromRun, fromCreated);
+        fromByAlert.set(a.id, from);
+        /* Saved before anything can fail: the previous run's end is readable
+           only in this run, so a failed first check must not lose it. */
+        checkedThrough[a.id] = from;
+      }
+      const earliest = Math.min(...fromByAlert.values());
+
+      try {
+        if (earliest <= lastClosed) {
+          // The window, the bars before it the indicators need, and the forming bar.
+          const wanted = Math.min((lastClosed - earliest) / barMs + 1 + WARMUP_BARS + 1, MAX_LIMIT);
+          let candlesDto = await getAnalysisCandles(symbol, intervalMin, wanted);
+          /* The cache is written by the stream while the app runs, so a stream
+             outage leaves holes the feed can still fill. Fill them once before
+             any is reported as unchecked. */
+          const hole = firstHole(candlesDto, earliest, barMs);
+          if (hole !== null) {
+            await syncRecentFromBinance(symbol, intervalMin, hole);
+            candlesDto = await getAnalysisCandles(symbol, intervalMin, wanted);
+          }
+          const closed = candlesDto
+            .filter((c) => c.start <= lastClosed)
+            .map((c) => ({
+              timestamp: c.start,
+              open: parseFloat(c.open),
+              high: parseFloat(c.high),
+              low: parseFloat(c.low),
+              close: parseFloat(c.close),
+              volume: parseFloat(c.volume),
+            }));
+
+          const fired = alertEngine.evaluateHistoricalCandles(symbol, intervalMin, closed, fromByAlert);
+
+          /* Checked up to the newest bar the feed returned. Bars after it are
+             not reported: the feed has not caught up (offline, slow sync) and
+             the next run checks them. Bars before the oldest one returned, or
+             missing between two, will not come back — those are reported. */
+          const newest = closed.length > 1 ? closed[closed.length - 1]!.timestamp : null;
+          for (const a of alerts) {
+            const from = fromByAlert.get(a.id)!;
+            if (newest === null || from > newest) continue;
+            const until = fired.get(a.id) ?? newest;
+            // The first bar has nothing before it to compare with, so it is not checked.
+            const holes = uncheckedSpans(closed.slice(1).map((c) => c.timestamp), from, until, barMs);
+            if (holes.length > 0) reportUnchecked(a, holes);
+            checkedThrough[a.id] = newest + barMs;
+          }
+        }
         checkedCount++;
       } catch (err) {
+        /* Nothing recorded as checked, so the next run covers this window too —
+           and reports it if it has grown past what the feed can serve. */
         log.error(`Failed missed alert check for ${symbol} ${intervalMin}m`, err);
       }
     }
+
+    const active = new Set(activeRules.map((a) => a.id));
+    for (const id of Object.keys(checkedThrough)) if (!active.has(Number(id))) delete checkedThrough[Number(id)];
+    writeCheckedThrough(checkedThrough);
 
     return checkedCount;
   }

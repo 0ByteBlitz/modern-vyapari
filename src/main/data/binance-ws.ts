@@ -5,6 +5,7 @@ import { createLogger } from "../logger";
 import { toFeedSymbol, fromFeedSymbol, hasFeed } from "../integrations/feed/symbols";
 import { emitTo } from "../events/outbound";
 import { ListenerRegistry } from "../events/listener-registry";
+import { streamUrl, streamHostFailed } from "./binance-hosts";
 import type { FeedStreamState } from "../../shared/ipc-types";
 
 const log = createLogger("binance-ws");
@@ -197,6 +198,10 @@ class BinanceWSManager {
   }
 
   public reconnect(): void {
+    /* The watchdog's silent-socket reconnect: the host accepted the connection
+       and then stopped delivering, so the next attempt goes to another host. */
+    const silentMs = this.msSinceLastMessage();
+    if (silentMs !== null && silentMs > STREAM_SILENT_MS) streamHostFailed(`silent for ${Math.round(silentMs / 1000)}s`);
     if (this.ws) {
       try { (this.ws as any).close(); } catch {}
       this.ws = null;
@@ -302,11 +307,14 @@ class BinanceWSManager {
     }
 
     // Connect to the base stream endpoint. We will manage subscriptions via messages.
-    const currentWs = new WebSocket("wss://stream.binance.com:9443/ws");
+    const url = streamUrl();
+    const currentWs = new WebSocket(url);
     this.ws = currentWs;
+    let opened = false;
 
     currentWs.onopen = () => {
-      log.info("Connected");
+      opened = true;
+      log.info(`Connected to ${url}`);
       if (this.ws === currentWs) this.lastMessageAt = Date.now();
       if (this.ws === currentWs) this.sendSubscriptionUpdate();
     };
@@ -343,6 +351,11 @@ class BinanceWSManager {
       log.info("Disconnected");
       if (this.ws === currentWs) {
         this.ws = null;
+        /* Never opened: that host is unreachable, so the retry goes to the
+           next one. A socket that worked and then closed (Binance drops every
+           connection at 24h) retries the same host first. The subscriptions
+           live here, not on the socket, and `onopen` resends them all. */
+        if (!opened) streamHostFailed("could not connect");
         this.scheduleReconnect();
       }
     };
