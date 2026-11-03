@@ -121,9 +121,18 @@ left is adapters, the choice, and removing the defaults.
    *connecting*, *down* or *idle*, with silence judged by the watchdog's own
    threshold. The REST round trip is still checked, every 30s, and can only
    make a live chip worse (*history down*).
-2. **Fallback to Binance's other hosts** — REST and stream retry the feed's
-   alternate hosts before declaring the feed down. Lives in the feed adapter once
-   S2-9's port exists; until then, in `data/` only, never at the call sites.
+2. **Fallback to Binance's other hosts** — *landed.* `data/binance-hosts.ts`
+   owns the ordered host lists (REST: `api`, `api-gcp`, `api1`–`api4`,
+   `data-api.binance.vision`; stream: `stream.binance.com` :9443 and :443,
+   `data-stream.binance.vision`), and no call site names a host. REST moves on
+   at a network error, a timeout or a 5xx and keeps the host that answered; a
+   4xx is the request's fault and is returned as is, and a 429/418 is a
+   per-IP rate limit, so it is never retried on another host. The stream moves
+   on when a socket never opens or the watchdog finds it silent, and resends
+   its subscriptions. Every switch is logged and audited
+   (`feed_host_switch`), and the badge's tooltip names both hosts in use.
+   Moves into the feed adapter once S2-9's port exists. Futures
+   (`fapi.binance.com`) has no documented alternate host and is unchanged.
 3. **Background running** — today closing the window quits (`main.ts`,
    *window-all-closed*), nothing notices the machine sleeping, and nothing starts
    the app after a reboot, so armed plans can look watched while nothing watches

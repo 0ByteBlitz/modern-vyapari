@@ -25,6 +25,7 @@ import * as credentials from "../security/credentials";
 import type { BasisStats } from "../../shared/ipc-types";
 import { createLogger } from "../logger";
 import { toFeedSymbol } from "../integrations/feed/symbols";
+import { binanceFetch } from "./binance-hosts";
 
 const log = createLogger("basis");
 
@@ -34,9 +35,6 @@ export type { BasisStats };
 /** How often to sample. Slow on purpose — spread is a distribution to build up
  *  over days, not a live readout, and Revolut X has rate limits. */
 const SAMPLE_INTERVAL_MS = 60_000;
-
-/** Binance public book ticker — no API key required. */
-const BINANCE_BOOK_URL = "https://api.binance.com/api/v3/ticker/bookTicker";
 
 export interface BasisSample {
   symbol: string;
@@ -73,7 +71,7 @@ async function fetchBinanceBook(symbol: string): Promise<{ bid: number; ask: num
 
   const feedSymbol = toFeedSymbol(`${base}-USD`);
   if (!feedSymbol) return null;
-  const res = await fetch(`${BINANCE_BOOK_URL}?symbol=${feedSymbol}`);
+  const res = await binanceFetch(`/api/v3/ticker/bookTicker?symbol=${feedSymbol}`);
   if (!res.ok) return null;
 
   const data = (await res.json()) as { bidPrice?: string; askPrice?: string };
