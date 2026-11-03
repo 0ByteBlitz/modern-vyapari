@@ -141,6 +141,16 @@ The existing `candles.source` column is the right primitive and is already
 present. The mistake to avoid is treating source as metadata; it is part of a
 candle's **identity**.
 
+**What enters the cache is checked first.** Every REST batch (refill,
+catch-up, backfill) passes `klineBatchProblem` before a row is written: bars
+on the interval grid, inside the requested range, in order, with finite
+positive prices, a high and low that contain the open and close, and a
+non-negative volume. One bad bar refuses the whole batch, which is logged as
+`analysis_feed_rejected` and shown in the activity record. A cached row is
+reused by every chart, indicator and plan until it is refetched, so a wrong
+one would poison all of them silently. Final REST values do replace partial
+bars the live stream wrote mid-bar; that correction is expected, not flagged.
+
 ---
 
 ## 4. Target shape

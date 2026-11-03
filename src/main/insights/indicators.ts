@@ -39,7 +39,7 @@ import {
   AwesomeOscillator,
   KeltnerChannels,
 } from "technicalindicators";
-import { getDb } from "../db/database";
+import { getDb, auditLog } from "../db/database";
 import type {
   CandleRow,
   CandleNumeric,
@@ -414,6 +414,48 @@ function takerBuyOf(k: BinanceKline): string | null {
   return raw;
 }
 
+/**
+ * Why a REST batch must not be cached, or null when it may.
+ *
+ * Everything written here is reused by every chart, indicator and plan until
+ * it is refetched, so a malformed or wrong response would poison all of them
+ * with nothing to notice. The whole batch is refused on any bad bar: a partial
+ * write would leave a hole that looks like data.
+ */
+export function klineBatchProblem(
+  klines: unknown,
+  intervalMin: number,
+  fromMs: number,
+  toMs: number
+): string | null {
+  if (!Array.isArray(klines)) return "the response was not a list of bars";
+  const barMs = intervalMin * 60_000;
+  const earliest = Math.floor(fromMs / barMs) * barMs;
+  let prev = -Infinity;
+  for (const k of klines) {
+    if (!Array.isArray(k) || k.length < 6) return "a bar was missing fields";
+    const start = k[0];
+    if (!Number.isSafeInteger(start)) return "a bar had no valid open time";
+    // Every supported interval up to 1d is aligned to the epoch in UTC.
+    if (barMs <= 86_400_000 && start % barMs !== 0) return `a bar opened off the ${intervalMin}m grid`;
+    if (start < earliest || start > toMs) return "a bar fell outside the requested range";
+    if (start <= prev) return "bars were out of order or repeated";
+    prev = start;
+    const num = (x: unknown) => (typeof x === "string" ? Number(x) : NaN);
+    const o = num(k[1]), h = num(k[2]), l = num(k[3]), c = num(k[4]), v = num(k[5]);
+    if (![o, h, l, c].every((x) => Number.isFinite(x) && x > 0)) return "a bar had a missing or non-positive price";
+    if (!Number.isFinite(v) || v < 0) return "a bar had a negative or missing volume";
+    if (h < Math.max(o, c, l) || l > Math.min(o, c)) return "a bar's high and low did not contain its open and close";
+  }
+  return null;
+}
+
+/** Refuse a batch where it is written, and say so where the owner looks. */
+function refuseBatch(symbol: string, intervalMin: number, problem: string): void {
+  log.error(`Refused Binance data for ${symbol} ${intervalMin}m: ${problem}. Nothing from this response was cached.`);
+  auditLog("analysis_feed_rejected", { symbol, intervalMin, problem });
+}
+
 /** Progress callback for a long forward fetch, so a repair can report where it
  *  is instead of appearing frozen. Return `false` to stop early. */
 export type KlineRangeProgress = (info: {
@@ -469,6 +511,11 @@ export async function fetchKlineRange(
       }
 
       const klines = (await res.json()) as BinanceKline[];
+      const problem = klineBatchProblem(klines, intervalMin, cursor, toMs);
+      if (problem) {
+        refuseBatch(symbol, intervalMin, problem);
+        break;
+      }
       if (klines.length === 0) break;
 
       for (const k of klines) {
@@ -563,6 +610,11 @@ export async function backfillFromBinance(
       }
 
       const klines = (await res.json()) as BinanceKline[];
+      const problem = klineBatchProblem(klines, intervalMin, cursor, endMs);
+      if (problem) {
+        refuseBatch(symbol, intervalMin, problem);
+        break;
+      }
 
       if (klines.length === 0) break;
 
