@@ -239,6 +239,7 @@ levels were worth at the moment it fired.*
 | **The paper engine has ever executed a position** | ✅ on seeded bars, 2026-08-05 — **not yet driven by the live stream** |
 | **The owner is told what happened, in plan language** | ✅ N-1 — trigger and close notifications carry the thesis and whether a position opened |
 | **A closed plan position is reviewed** | ✅ J-2, 2026-08-01 |
+| **A missed analysis-feed interval pauses plan decisions until the missing bars are back** | ✅ feed-gap gate, 2026-11-03 |
 
 **Found by walking this journey, 2026-08-01:** the owner armed a plan, went
 looking for what it was doing, and found nothing. `plan-monitor.ts` was imported
@@ -271,6 +272,19 @@ and no checklist item would have asked "is anything actually looking at this?"
 position that opened on the branch that was supposed to fire, carrying its stop,
 with a review in the journal explaining which condition triggered and whether
 the level had moved.
+
+**Feed interruption rule:** a gap larger than 1.5 bar intervals pauses that
+stream's plan decisions. The engine refills the missing bars from the analysis
+feed's REST history and rebuilds its buffer; decisions resume on the first
+closed bar after every bar since the gap is present. Waiting a bar would not do
+it — the hole stays in the buffer and every indicator is computed across it. A
+refill that fails or comes back partial leaves the plans paused, and each
+closed bar tries again. A buffer seeded from a cache that went stale while the
+app was shut is refilled the same way, but only announced if the refill fails:
+the downtime itself is already the `monitor_gap` entry. Open paper positions
+keep checking stop/target on every tick throughout, and cannot be protected
+while no ticks arrive — local paper protection, not venue-side; live execution
+remains unbuilt.
 
 ---
 

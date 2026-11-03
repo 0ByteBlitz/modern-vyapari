@@ -35,7 +35,7 @@ import { evaluatePlan } from "../plans/plan-monitor";
 import { getSessionById, Session } from "../sessions/service";
 import { getPaperBalance, setPaperBalance, canFund } from "./account";
 import { binanceWS } from "../data/binance-ws";
-import { computeFromCandles } from "../insights/indicators";
+import { computeFromCandles, syncRecentFromBinance } from "../insights/indicators";
 import type { CandleNumeric } from "../insights/indicator-types";
 import { makeIndicatorKey } from "../insights/indicator-types";
 import { barValues } from "../insights/bar-values";
@@ -62,6 +62,27 @@ import { emit } from "../events/outbound";
 const log = createLogger("paper");
 
 const BUFFER_SIZE = 200;
+
+/** Why a stream's plan decisions are paused, and whether the owner was told. */
+interface FeedPause {
+  from: number;
+  to: number;
+  cause: "stream" | "startup";
+  healed: boolean;
+  announced: boolean;
+}
+
+/** True when every bar from `fromTs` (or the buffer's oldest, if the gap is
+ *  older than the buffer) to the newest is present, one interval apart. */
+function contiguousFrom(buffer: CandleNumeric[], fromTs: number, barMs: number): boolean {
+  const start = Math.max(fromTs, buffer[0]?.timestamp ?? fromTs);
+  const tail = buffer.filter((b) => b.timestamp >= start);
+  if (tail[0]?.timestamp !== start) return false;
+  for (let i = 1; i < tail.length; i++) {
+    if (tail[i]!.timestamp - tail[i - 1]!.timestamp !== barMs) return false;
+  }
+  return true;
+}
 
 const INTERVAL_MAP: Record<string, number> = {
   "1m": 1,
@@ -176,6 +197,17 @@ export class PaperExchangeEngine {
    *  Deliberately NOT `lastEvaluatedBar`, which is keyed by symbol:interval and
    *  already consumed by the first strategy on that stream. */
   private lastPlanBar = new Map<number, number>();
+  /** Streams whose buffer has a hole, keyed by `symbol:interval`. Plan
+   *  decisions wait until the missing bars are back in the buffer: skipping one
+   *  bar does not fill a hole, and every indicator would still be computed
+   *  across it. Position protection stays tick driven throughout. */
+  private planFeedPaused = new Map<string, FeedPause>();
+  /** One refill in flight per stream. */
+  private planFeedHealing = new Map<string, Promise<void>>();
+  /** Streams that have delivered a live bar this run — tells a gap in the
+   *  stream apart from a buffer seeded from a cache that went stale while the
+   *  app was closed. */
+  private liveStreams = new Set<string>();
   /** Open positions owned by a plan branch, keyed by `plan_branches.id`.
    *
    *  A separate map rather than a wider key on `positions`: the two are opened
@@ -441,6 +473,29 @@ export class PaperExchangeEngine {
     };
 
     const last = buffer[buffer.length - 1];
+    const barMs = intervalMin * 60_000;
+    if (last && c.timestamp - last.timestamp > barMs * 1.5) {
+      const pause = this.planFeedPaused.get(key);
+      if (pause) {
+        pause.healed = false;
+      } else {
+        /* A buffer seeded from a cache that went stale while the app was shut
+           is refilled quietly — `monitor_gap` already reported the downtime —
+           and announced only if the refill fails. A gap mid-run is announced
+           at once. */
+        const next: FeedPause = {
+          from: last.timestamp,
+          to: c.timestamp,
+          cause: this.liveStreams.has(key) ? "stream" : "startup",
+          healed: false,
+          announced: false,
+        };
+        this.planFeedPaused.set(key, next);
+        if (next.cause === "stream") this.announcePause(symbol, intervalMin, next);
+      }
+      void this.healStream(symbol, intervalMin);
+    }
+    this.liveStreams.add(key);
     if (last && last.timestamp === c.timestamp) {
       buffer[buffer.length - 1] = c;
     } else {
@@ -489,7 +544,86 @@ export class PaperExchangeEngine {
 
     /* Plan *decisions* last, and only on a closed bar. A direct call rather
        than a second subscriber, for the ordering reason in `reloadStrategies`. */
-    if (candle.closed) this.evaluatePlansOnBar(symbol, intervalMin, buffer);
+    if (!candle.closed) return;
+    const pause = this.planFeedPaused.get(key);
+    if (pause && !pause.healed) {
+      void this.healStream(symbol, intervalMin);
+      return;
+    }
+    if (pause) {
+      this.planFeedPaused.delete(key);
+      if (pause.announced) {
+        auditLog("analysis_feed_recovered", { symbol, intervalMin, from: pause.from, at: c.timestamp });
+        emit("data:updated", { kind: "feed" });
+      }
+    }
+    this.evaluatePlansOnBar(symbol, intervalMin, this.candleBuffers.get(key) ?? buffer);
+  }
+
+  /**
+   * Refill a stream's hole from the analysis feed and rebuild its buffer.
+   *
+   * The pause lifts only when every bar from the last one before the gap to the
+   * newest is present. A failed or partial fetch leaves it paused and the next
+   * closed bar tries again — resuming on a buffer with a hole would put a
+   * trigger on indicators computed across bars that never arrived.
+   */
+  private healStream(symbol: string, intervalMin: number): Promise<void> {
+    const key = `${symbol}:${intervalMin}`;
+    const inFlight = this.planFeedHealing.get(key);
+    if (inFlight) return inFlight;
+    const pause = this.planFeedPaused.get(key);
+    if (!pause) return Promise.resolve();
+
+    const barMs = intervalMin * 60_000;
+    const newest = this.candleBuffers.get(key)?.at(-1)?.timestamp ?? pause.from;
+    /* Only what the buffer can hold: a cache days stale needs its last 200
+       bars back, not every bar since the app was closed. */
+    const fetchFrom = Math.max(pause.from, newest - BUFFER_SIZE * barMs);
+
+    const run = (async () => {
+      try {
+        await syncRecentFromBinance(symbol, intervalMin, fetchFrom);
+      } catch (err) {
+        log.error(`Refilling ${key} failed; plan decisions stay paused.`, err);
+      }
+      const buffer = this.candleBuffers.get(key);
+      if (!buffer) return;
+      /* The cache holds what REST just wrote; the buffer holds live bars the
+         cache may not have yet. Live wins on a shared timestamp. */
+      const merged = new Map<number, CandleNumeric>();
+      for (const b of this.seedBuffer(symbol, intervalMin)) merged.set(b.timestamp, b);
+      for (const b of buffer) merged.set(b.timestamp, b);
+      const rebuilt = [...merged.values()].sort((a, b) => a.timestamp - b.timestamp).slice(-BUFFER_SIZE);
+      buffer.splice(0, buffer.length, ...rebuilt);
+
+      if (contiguousFrom(buffer, pause.from, barMs)) {
+        pause.healed = true;
+      } else {
+        log.warn(`${key} still has missing bars; plan decisions stay paused.`);
+        if (!pause.announced) this.announcePause(symbol, intervalMin, pause);
+      }
+    })().finally(() => this.planFeedHealing.delete(key));
+    this.planFeedHealing.set(key, run);
+    return run;
+  }
+
+  private announcePause(symbol: string, intervalMin: number, pause: FeedPause) {
+    pause.announced = true;
+    auditLog("analysis_feed_interruption", {
+      symbol,
+      intervalMin,
+      from: pause.from,
+      to: pause.to,
+      missedBars: Math.round((pause.to - pause.from) / (intervalMin * 60_000)) - 1,
+      cause: pause.cause,
+    });
+    emit("data:updated", { kind: "feed" });
+  }
+
+  /** Settles once every refill in flight has finished. For tests. */
+  public __feedHealingForTests(): Promise<void> {
+    return Promise.all(this.planFeedHealing.values()).then(() => undefined);
   }
 
   /**
