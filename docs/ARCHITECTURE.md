@@ -277,7 +277,7 @@ precisely when real money starts depending on them.
 ```mermaid
 flowchart TB
   subgraph R["Renderer — sandboxed, no Node, CSP"]
-    UI["React surfaces · Plans · Research · Portfolio"]
+    UI["React surfaces · Plans · Charts · Portfolio"]
   end
   B1{{"TRUST BOUNDARY 1 — typed preload bridge<br/>no secret crosses · errors sanitised"}}
   subgraph APP["Main · Application"]
@@ -527,7 +527,7 @@ beside a Home page that said nothing was selected — the *armed vs. idle* kind 
 ambiguity, applied to *which conversation am I in*.
 
 **The rule: a session's chat exists only on that session's own surfaces**
-(Dashboard, Orders, Plans, Journal, Research, Alerts — `shared/surfaces.ts`, one
+(Dashboard, Orders, Plans, Journal, Charts, Alerts — `shared/surfaces.ts`, one
 definition for both bundles). Everywhere else the agent is the **general
 conversation**. The rail and the toolbar's session figures follow the same rule.
 

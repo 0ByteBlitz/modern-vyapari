@@ -42,7 +42,7 @@ function surfaceMeta(surface: Surface, session: Session | null, mode: AppMode): 
     case "journal":
       return { title: "Journal & memory", sub: `${pair} · reviews and lessons` };
     case "research":
-      return { title: "Research", sub: `${pair} · Binance analysis feed` };
+      return { title: "Charts", sub: `${pair} · Binance analysis feed` };
     case "alerts":
       return { title: "Active alerts", sub: `${pair} · streaming condition rules` };
     case "portfolio":

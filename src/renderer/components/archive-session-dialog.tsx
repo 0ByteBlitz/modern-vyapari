@@ -225,7 +225,7 @@ export function ArchiveSessionDialog({
                     <AlertTriangle size={13} />
                     <span>
                       No recent price for {unpriced.map((p) => p.symbol).join(", ")}, so {unpriced.length === 1 ? "that position" : "those positions"}{" "}
-                      can't be closed. Open Research for that pair to refresh its candles first.
+                      can't be closed. Open Charts for that pair to refresh its candles first.
                     </span>
                   </div>
                 )}

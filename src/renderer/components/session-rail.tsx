@@ -52,7 +52,7 @@ const SESSION_SURFACES: { id: SessionSurface; label: string; icon: typeof Gauge 
   { id: "orders", label: "Orders", icon: Receipt },
   { id: "plans", label: "Plans", icon: Target },
   { id: "journal", label: "Journal", icon: NotebookPen },
-  { id: "research", label: "Research", icon: CandlestickChart },
+  { id: "research", label: "Charts", icon: CandlestickChart },
   { id: "alerts", label: "Alerts", icon: Bell },
 ];
 
@@ -427,12 +427,8 @@ export function SessionRail({ activeSessionId, surface, onSelectSession, onNavig
                     onClick={() => onNavigate("journal", s)}
                     title="View in journal"
                   >
-                    <span style={{ fontSize: "var(--text-base)", fontWeight: 600, color: "var(--muted-foreground)" }}>
-                      {s.pair}
-                    </span>
-                    <span style={{ fontSize: "var(--text-2xs)" }}>
-                      archived · read-only history
-                    </span>
+                    <span className="rail-session-pair rail-archived-pair">{s.pair}</span>
+                    <span className="rail-archived-note">archived · read-only history</span>
                   </button>
 
                   <button

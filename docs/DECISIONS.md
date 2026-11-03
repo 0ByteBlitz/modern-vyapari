@@ -94,6 +94,8 @@ Source of truth: **the token block at the top of `src/renderer/index.css`**, (th
 
 ## Research surface (2026-07-28) — KLineChart
 
+*Shown as **Charts** since 2026-11-03 — it is the chart surface, and "Research" read like the Research browser. The surface id `research` and the tool names `screenshot_research` / `read_research_chart` are unchanged, so stored selections and per-tool settings survive.*
+
 Owner decision: Research is where the time goes, so it needs real charting, not a read-only candle view. **Dependency: `klinecharts` ^10.1.0** (Apache-2.0, zero runtime deps, ~59k gzip).
 
 **v10 pulls data; our data is pushed** (2026-11-01). v10 dropped `applyNewData`/`updateData` for a `DataLoader` the chart calls whenever the symbol, period or loader changes — and `setSymbol` (which now carries price precision) reloads. `lib/chart-feed.ts` keeps the latest window plus live ticks and serves it on every pull, so a precision change cannot rewind the chart to the last fetch. The chart's period must be the real interval: it drives axis labels and where an overlay lands past the last bar.
