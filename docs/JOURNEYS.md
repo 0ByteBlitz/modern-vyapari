@@ -77,7 +77,7 @@ explains them.
 
 **Owner decision, 2026-08-01: the agent drafts, the owner signs, code executes.**
 
-This is the existing hard rule (`CLAUDE.md`: *AI proposes, code executes*)
+This is the existing hard rule (`AGENTS.md`: *AI proposes, code executes*)
 restated as a product position rather than a safety constraint, and it settles
 what "agentic trading" means here:
 

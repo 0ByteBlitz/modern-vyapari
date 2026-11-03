@@ -125,7 +125,7 @@ left is adapters, the choice, and removing the defaults.
 
 **Maintainer-led, with safety review: Sprint 4** (S4-1…S4-6) — real order
 placement, venue-side TP/SL, reconciliation, the approvals queue. Discuss in an
-issue before writing code; the hard rules in `CLAUDE.md` are the acceptance bar.
+issue before writing code; the hard rules in `AGENTS.md` are the acceptance bar.
 
 ---
 

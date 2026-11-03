@@ -9,7 +9,7 @@ This document exists so the next changes are made in the right place. It is a
 *measurement* of the codebase, not an aspiration. Where it states a number, that
 number was counted on the date above.
 
-`CLAUDE.md` remains the operating rules and `docs/ROADMAP.md` the schedule. This
+`AGENTS.md` remains the operating rules and `docs/ROADMAP.md` the schedule. This
 sits between them: what the system currently is, and what shape the next work
 should take.
 

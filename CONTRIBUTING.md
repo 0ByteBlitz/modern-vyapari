@@ -5,7 +5,7 @@ is correctness over speed. A small, verified PR beats a large, plausible one.
 
 ## Before you start
 
-1. Read [`CLAUDE.md`](CLAUDE.md) — the hard rules apply to humans too.
+1. Read [`AGENTS.md`](AGENTS.md) — the hard rules apply to humans too.
 2. Skim [`docs/README.md`](docs/README.md) — the docs map and glossary ("owner",
    J0–J7, sprint IDs) — then [`docs/JOURNEYS.md`](docs/JOURNEYS.md). A good PR says which journey and step it
    serves. If it serves none, it should be infrastructure with a named dependant.
@@ -80,8 +80,8 @@ covers OpenAI, OpenRouter, Ollama, LM Studio and Gemini's compatible endpoint �
 
 ## Using AI coding agents
 
-Welcome — this repo is set up for them. `CLAUDE.md` and `.claude/skills/` load automatically
-in Claude Code. You remain responsible for every line: review AI-written code as carefully as
+Welcome — this repo is set up for them. `AGENTS.md` holds the rules for every agent;
+`CLAUDE.md` only imports it, so Claude Code loads the same file, along with `.claude/skills/`. You remain responsible for every line: review AI-written code as carefully as
 your own, and never let an agent run anything against a live exchange account.
 
 ## Code of conduct

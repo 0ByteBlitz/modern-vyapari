@@ -2,7 +2,7 @@
 
 The design record for Modern Vyapari. It is unusually thorough because the project
 was built with one rule above the others: **every number measured, every control
-real, every claim falsifiable** — and most of the rules in `CLAUDE.md` exist
+real, every claim falsifiable** — and most of the rules in `AGENTS.md` exist
 because something went wrong without them. These files explain *why*.
 
 Several were written as a single-user design diary before the project went public
@@ -24,9 +24,9 @@ passed. Each file opens with its current status.
 ## Reading order, by goal
 
 - **Using the app:** the main [`README`](../README.md) → `JOURNEYS.md`.
-- **First contribution:** [`CONTRIBUTING.md`](../CONTRIBUTING.md) → [`CLAUDE.md`](../CLAUDE.md) → the *Open* section of `ROADMAP.md` or an open entry in `FRICTION.md`.
+- **First contribution:** [`CONTRIBUTING.md`](../CONTRIBUTING.md) → [`AGENTS.md`](../AGENTS.md) → the *Open* section of `ROADMAP.md` or an open entry in `FRICTION.md`.
 - **Touching a venue, a feed or a background job:** `ARCHITECTURE.md` first.
-- **Touching the order path, risk engine, credentials or agent tools:** `CLAUDE.md`'s hard rules → the matching `DECISIONS.md` entries → `PLAN.md` §7 and §11.
+- **Touching the order path, risk engine, credentials or agent tools:** `AGENTS.md`'s hard rules → the matching `DECISIONS.md` entries → `PLAN.md` §7 and §11.
 
 ## Glossary
 
