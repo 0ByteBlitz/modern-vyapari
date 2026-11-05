@@ -8,7 +8,8 @@ import {
   type SetupStatus,
   type SessionSummary,
 } from "@/lib/api";
-import { formatUsd, formatPct } from "@/lib/format";
+import { formatUsd, formatPct, formatChange } from "@/lib/format";
+import { ArmedRing } from "@/components/plan-badges";
 import { describeActivity, ACTIVITY_TONE_COLOR } from "@/lib/activity";
 import { sessionState } from "@/lib/session-state";
 import { useAppMode, modeTitle } from "@/lib/mode";
@@ -229,7 +230,8 @@ export function HomePage({
             </div>
             <div className="stat-cell">
               <span className="label-micro">Open</span>
-              <span className="mono stat-cell-value" style={{ color: totals?.openCount ? "var(--caution)" : undefined }}>
+              {/* Amber is for live money only; a simulated open count is just a count. */}
+              <span className="mono stat-cell-value" style={{ color: totals?.openCount && mode === "live" ? "var(--caution)" : undefined }}>
                 {totals?.openCount ?? "—"}
               </span>
             </div>
@@ -288,10 +290,12 @@ export function HomePage({
             <button key={s.id} className="home-session-card" onClick={() => onOpenSession(s.id)}>
               <div className="home-session-top">
                 <span className="home-session-pair">{s.pair}</span>
+                {/* Armed wears the signature's indigo ring; idle is quiet. */}
                 <span
-                  className={`badge ${s.armedCount > 0 || s.openCount > 0 ? "badge-paper" : "badge-draft"}`}
+                  className={`plan-state ${s.armedCount > 0 ? "plan-state-planned" : ""}`}
                   style={{ marginLeft: "auto" }}
                 >
+                  {s.armedCount > 0 && <ArmedRing />}
                   {sessionState(s)}
                 </span>
               </div>
@@ -347,7 +351,7 @@ export function HomePage({
             >
               <span style={{ fontWeight: 600 }}>{m.symbol}</span>
               <span className={`mono ${m.change24h >= 0 ? "v-up" : "v-down"}`}>
-                {formatPct(m.change24h, 2, true)}
+                {formatChange(m.change24h)}
               </span>
             </button>
           ))}

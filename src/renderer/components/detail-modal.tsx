@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from "react";
+import { formatChange } from "@/lib/format";
 import { X } from "lucide-react";
 
 /**
@@ -97,8 +98,7 @@ export function LevelRow({
       <span className="mono detail-level-value">{value}</span>
       {gapPct !== null && gapPct !== undefined && (
         <span className={`mono detail-level-gap ${Math.abs(gapPct) < 1 ? "detail-level-near" : ""}`}>
-          {gapPct > 0 ? "+" : ""}
-          {gapPct.toFixed(1)}%
+          {formatChange(gapPct, 1)}
         </span>
       )}
       {source && (
