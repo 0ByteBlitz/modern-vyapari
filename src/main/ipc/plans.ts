@@ -35,6 +35,28 @@ ipcMain.handle("plans:update", (_e, id: number, input: Parameters<typeof planSer
 
 ipcMain.handle("plans:delete", (_e, id: number) => safe(() => planService.deletePlan(id), "plans:delete"));
 
+ipcMain.handle("plans:end", (_e, id: number) =>
+    safe(() => {
+      const result = planService.endArmedPlan(id);
+      if (!result.ok) return result;
+      const { paperEngine } = require("../paper/paper-exchange") as typeof import("../paper/paper-exchange");
+      paperEngine.reloadStrategies();
+      emit("data:updated", { kind: "plan" });
+      return result;
+    }, "plans:end")
+  );
+
+ipcMain.handle("plans:revise", (_e, id: number) =>
+    safe(() => {
+      const result = planService.reviseArmedPlan(id);
+      if (!result.ok) return result;
+      const { paperEngine } = require("../paper/paper-exchange") as typeof import("../paper/paper-exchange");
+      paperEngine.reloadStrategies();
+      emit("data:updated", { kind: "plan" });
+      return result;
+    }, "plans:revise")
+  );
+
   /* Returns the gate's errors/warnings AND the resolved level values, so the
      UI can show concrete numbers before committing rather than after. */
 ipcMain.handle("plans:arm", (_e, id: number) => safe(() => planService.armPlan(id), "plans:arm"));

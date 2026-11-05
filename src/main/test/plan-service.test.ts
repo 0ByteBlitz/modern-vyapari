@@ -24,6 +24,8 @@ import {
   updatePlan,
   deletePlan,
   transitionPlan,
+  endArmedPlan,
+  reviseArmedPlan,
   type PlanInput,
 } from "../plans/plan-service";
 import { levelResolver } from "../insights/level-resolver";
@@ -328,6 +330,57 @@ describe("an armed plan is a commitment", () => {
     assert.equal(res.ok, false);
     if (res.ok) return;
     assert.match(res.reason, /part of your record/i);
+  });
+
+  test("an armed plan can be ended without erasing its record", () => {
+    const s = createTestSession(PAIR);
+    const p = unwrap(createPlan(planInput(s.id)));
+    armPlan(p.rowId, T0 + 5 * DAY);
+
+    assert.deepEqual(endArmedPlan(p.rowId), { ok: true });
+    const ended = getPlan(p.rowId)!;
+    assert.equal(ended.state, "cancelled");
+    assert.equal(ended.outcomeReason, "Ended by owner.");
+    assert.equal(deletePlan(p.rowId).ok, false);
+  });
+
+  test("revising an armed plan ends the signed version and opens a clean draft", () => {
+    const s = createTestSession(PAIR);
+    const p = unwrap(createPlan(planInput(s.id, {
+      branches: [{
+        id: "breakout",
+        label: "breakout",
+        trigger: priceAbove(105),
+        entry: developingVwap(T0),
+        stop: stat(97),
+        targets: [stat(120)],
+        budgetSharePct: 100,
+      }],
+    })));
+    seedBars();
+    assert.equal(armPlan(p.rowId, T0 + 5 * DAY).ok, true);
+
+    const revised = reviseArmedPlan(p.rowId);
+    assert.ok(revised.ok, revised.ok ? "" : revised.reason);
+    if (!revised.ok) return;
+    assert.equal(revised.plan.state, "draft");
+    assert.equal(revised.plan.slug, "range-break-revision-1");
+    assert.equal(revised.plan.branches[0]!.entry.kind, "derived");
+    assert.equal("resolvedAtArm" in revised.plan.branches[0]!.entry, false);
+    assert.equal(getPlan(p.rowId)!.state, "cancelled");
+    assert.match(getPlan(p.rowId)!.outcomeReason ?? "", /range-break-revision-1/);
+  });
+
+  test("only an armed plan without a position can be ended or revised here", () => {
+    const s = createTestSession(PAIR);
+    const p = unwrap(createPlan(planInput(s.id)));
+    assert.equal(endArmedPlan(p.rowId).ok, false);
+    assert.equal(reviseArmedPlan(p.rowId).ok, false);
+
+    armPlan(p.rowId, T0 + 5 * DAY);
+    transitionPlan(p.rowId, "triggered");
+    assert.equal(endArmedPlan(p.rowId).ok, false);
+    assert.equal(reviseArmedPlan(p.rowId).ok, false);
   });
 
   test("expired and invalidated are recorded distinctly, with a reason", () => {

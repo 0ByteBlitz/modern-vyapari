@@ -589,12 +589,12 @@ export type StrategyState =
  * validated edge is exactly what plan §17 refuses. The state not existing is a
  * stronger guarantee than a check that could be forgotten.
  *
- * `expired` and `invalidated` are separate terminal states on purpose:
+ * Market outcomes are distinct terminal states:
  *   • `expired`     — the clock ran out; the thesis was never tested.
  *   • `invalidated` — the thesis was tested and proved wrong (or a developing
  *                     level drifted past its tolerance).
- * Collapsing them would destroy the calibration record's most useful
- * distinction — plans that never fired vs. plans that fired and were wrong.
+ *   • `cancelled`   — the owner ended it before a market outcome. It stays in
+ *                     history but never enters calibration.
  */
 export type PlanState =
   | "draft"
@@ -602,7 +602,8 @@ export type PlanState =
   | "triggered"
   | "closed"
   | "expired"
-  | "invalidated";
+  | "invalidated"
+  | "cancelled";
 
 /** The one label each plan state carries on screen. Every surface that shows a
  *  plan's state reads it from here, so one state never reads two ways. */
@@ -613,6 +614,7 @@ export const PLAN_STATE_LABEL: Record<PlanState, string> = {
   closed: "Closed",
   expired: "Expired",
   invalidated: "Invalidated",
+  cancelled: "Ended",
 };
 
 export interface StrategyRow {

@@ -57,7 +57,7 @@ export function AlertsPage({ activeSession }: { activeSession: Session | null })
       <div className="surface-head">
         <div>
           <h1 className="surface-title">Alert rules · {pair}</h1>
-          <p className="surface-sub">Checked against the Binance stream and the indicator engine.</p>
+          <p className="surface-sub">Alert rules run separately from armed plans. Removing one does not stop or change a plan.</p>
         </div>
         <div className="surface-actions">
           <button onClick={() => testAlertSound()} className="btn" title="Play the alert chime">

@@ -66,8 +66,9 @@ window was **watched throughout** — without that the model reports the trigger
 never came when nobody was looking.
 
 **Clutter is a tab, never a delete or a hidden flag.** Active (draft, planned,
-triggered) and Finished (closed, expired, invalidated). `triggered` is active: a
-plan holding a position is live, and its thesis can still be disproved.
+triggered) and Finished (closed, expired, invalidated, cancelled). `triggered` is
+active: a plan holding a position is live, and its thesis can still be disproved.
+`cancelled` records an owner-ended plan and is excluded from calibration.
 
 ## Simulated and live are app modes (2026-08-09)
 

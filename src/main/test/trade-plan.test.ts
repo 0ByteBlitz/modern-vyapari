@@ -238,7 +238,7 @@ describe("lifecycle", () => {
     assert.equal(canTransitionPlan("triggered", "closed"), true);
   });
 
-  test("expired and invalidated are distinct terminal states", () => {
+  test("expiry, invalidation and owner cancellation are distinct terminal states", () => {
     /* Collapsing them would destroy the calibration record's most useful
        distinction: plans that never fired vs. plans that fired and were wrong. */
     assert.equal(isPlanTerminal("expired"), true);
@@ -247,6 +247,10 @@ describe("lifecycle", () => {
     assert.equal(isPlanTerminal("planned"), false);
     assert.equal(canTransitionPlan("expired", "triggered"), false);
     assert.equal(canTransitionPlan("invalidated", "planned"), false);
+    assert.equal(isPlanTerminal("cancelled"), true);
+    assert.equal(canTransitionPlan("planned", "cancelled"), true);
+    assert.equal(canTransitionPlan("triggered", "cancelled"), false);
+    assert.equal(canTransitionPlan("cancelled", "planned"), false);
   });
 
   test("expiry is evaluated against a supplied clock, not the wall clock", () => {

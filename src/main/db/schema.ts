@@ -418,7 +418,7 @@ CREATE TABLE IF NOT EXISTS trade_plans (
   risk_json     TEXT NOT NULL,                     -- JSON PlanRiskBudget
   oco_exclusive INTEGER NOT NULL DEFAULT 1,        -- branches are OCO by default
   eval_interval TEXT NOT NULL DEFAULT '4h',
-  -- draft | planned | triggered | closed | expired | invalidated.
+  -- draft | planned | triggered | closed | expired | invalidated | cancelled.
   -- There is deliberately no live_auto: a plan's licence comes from
   -- falsifiability, never from a validated edge.
   state         TEXT NOT NULL DEFAULT 'draft',

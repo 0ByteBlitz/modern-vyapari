@@ -162,7 +162,7 @@ export const PLAN_TOOLS = [
       "List the scenario plans on this session with their state, thesis, expiry and branch count. " +
       "Call this BEFORE discussing, drafting or critiquing a plan — it is the only way to see what the " +
       "owner has already authored. States: draft (being written), planned (ARMED — the engine watches it " +
-      "every closed bar), triggered (a branch fired), closed/expired/invalidated (finished). " +
+      "every closed bar), triggered (a branch fired), and closed/expired/invalidated/cancelled (finished). " +
       "Read-only: you cannot create, edit or arm a plan.",
     input_schema: {
       type: "object" as const,

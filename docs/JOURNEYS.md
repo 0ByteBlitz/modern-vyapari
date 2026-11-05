@@ -190,6 +190,7 @@ gatekeeps is bureaucracy; a gate that teaches is the product.
 | Arm → gate runs, refusals are **visible and specific** | ✅ verified §2.4–2.5 |
 | Arm → every derived level resolves to a concrete number, shown before commit | ✅ `armPlan` returns them |
 | Arm → refuse rather than store a placeholder if a level won't resolve | ✅ |
+| After arming, end the plan or revise it into a new draft without rewriting the signed record | ✅ `plans:end` / `plans:revise` |
 | **The armed plan's levels appear on the chart** | ✅ 2026-08-01 (J-3) |
 
 **Two seams break it.**

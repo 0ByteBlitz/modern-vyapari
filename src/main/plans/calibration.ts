@@ -49,7 +49,7 @@ import type { PlanState } from "../../shared/ipc-types";
  */
 export const MIN_SAMPLE = 8;
 
-/** Plan states that have had their chance. `planned` has not. */
+/** Market outcomes only. Owner-cancelled plans are not evidence. */
 const RESOLVED: PlanState[] = ["triggered", "closed", "expired", "invalidated"];
 
 export interface TagCalibration {
