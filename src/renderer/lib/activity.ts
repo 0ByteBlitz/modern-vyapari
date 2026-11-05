@@ -260,7 +260,8 @@ export const ACTIVITY_TONE_COLOR: Record<ActivityTone, string> = {
   exit: "var(--accent)",
   decision: "var(--foreground)",
   refusal: "var(--caution)",
-  warning: "var(--down)",
+  /* Gaps, stale feeds, halts: things to notice. Amber, not loss-red. */
+  warning: "var(--caution)",
   chore: "var(--text-faint)",
   engine: "var(--muted-foreground)",
 };

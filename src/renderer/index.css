@@ -1,61 +1,81 @@
 @import "tailwindcss";
 
 /* ═══════════════════════════════════════════════════════════════════════
-   Design tokens — THE source of truth for the design system.
+   Design tokens — THE source of truth for the design system ("Signed").
 
-   Transcribed from the Claude Design handoff prototype, which has since been
-   removed from the working tree: every palette value, both font stacks and the
-   semantic rules below were verified present here first. The written brief that
-   drove it is `docs/DESIGN-BRIEF.md`; the prototype HTML remains in git history
-   at commit f6e86db if a pixel ever needs re-checking.
-
-   Trading-terminal direction: near-black blue-tinted surfaces, small type,
-   tight grids. Colour carries meaning and nothing else.
+   Ink, one indigo signature, numbers in mono. Inside the interface the only
+   expressive mark is the one the owner makes when they arm a plan; the logo
+   keeps its own colours and is never used as a UI colour. The approved
+   reference is the "Signed" Claude Design canvas (Identity board).
 
    SEMANTIC COLOUR RULES (do not violate — the whole palette depends on them):
-     • green  = up / profit / healthy       — never a button, never brand
-     • red    = down / loss / destructive
-     • orange = caution, degraded, live-mode — the "pay attention" colour
-     • cyan   = interactive / selected / brand accent
-     • violet = AI-authored content (reviews, lessons, proposals)
-   The logo's amber was NOT adopted as the UI accent: amber reads as
-   "warning" in a trading context, and one colour may not mean two things.
-   Cyan (from the logo's gradient start) is the accent instead; the logo's
-   amber survives as the caution/live colour.
+     • indigo = interactive / selected / your signature
+     • green  = up / profit / healthy — always with ▲ or +
+     • coral  = down / loss / destructive — always with ▼ or −
+     • amber  = live money, degraded, stale, monitor gaps — "pay attention"
+     • orchid = written by the agent (drafts, reviews, lessons)
+   Simulated is a LINE STYLE, not a colour: dashed outlines mean paper
+   everywhere (badges, positions, chart lines). Solid amber is only ever live
+   money. Green and coral differ in lightness as well as hue and never appear
+   without a sign, so up and down survive colour blindness.
+
+   Token NAMES predate this palette (e.g. --caution, --ai) and are kept so
+   components follow without edits; only the values changed.
    ═══════════════════════════════════════════════════════════════════════ */
+
+/* Geist and Geist Mono, vendored (SIL OFL 1.1, see assets/fonts/OFL.txt).
+   The CSP is default-src 'self', so fonts ship with the app rather than
+   loading from a font CDN. One variable file per family covers every weight. */
+@font-face {
+  font-family: "Geist";
+  src: url("./assets/fonts/Geist-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Mono";
+  src: url("./assets/fonts/GeistMono-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   /* ── Surfaces (darkest → lightest) ── */
-  --bg-void: #05070a;        /* outside the app window */
-  --background: #080B10;     /* app canvas */
-  --surface-1: #0A0D13;      /* sunken panels, table stripes */
-  --card: #0C1016;           /* panels, rail, titlebar */
-  --surface-3: #12171F;      /* raised chips, inputs */
-  --surface-4: #161d27;      /* selected row, hover */
+  --bg-void: #0B0C0F;        /* window chrome (titlebar) */
+  --background: #0E0F12;     /* ground: the app canvas */
+  --surface-1: #121418;      /* sunken: agent drawer, inset blocks */
+  --card: #16181D;           /* surface: panels, rail cards */
+  --surface-2: #1A1C21;      /* between surface and raised: quiet fills */
+  --surface-3: #1E2127;      /* raised: chips, inputs, selected rail item */
+  --surface-4: #24272E;      /* hover on raised, selected row */
 
   /* ── Borders ── */
-  --border: #202834;         /* standard hairline */
-  --border-strong: #2C3644;  /* emphasis, scrollbar thumb */
-  --border-subtle: #1c2431;  /* quiet dividers */
+  --border: #2A2E36;         /* standard hairline */
+  --border-strong: #3A3F48;  /* emphasis, control outlines, scrollbar thumb */
+  --border-subtle: #22252C;  /* quiet dividers inside panels */
 
   /* ── Text (brightest → dimmest) ── */
-  --foreground: #E8EDF4;     /* primary */
-  --text-secondary: #C7D2E0; /* numeric values in tables */
-  --muted-foreground: #9AA7B8; /* labels, secondary UI */
-  --text-dim: #79859a;       /* de-emphasised */
-  --text-faint: #667284;     /* column headers, timestamps */
-  --text-ghost: #4a5361;     /* disabled */
+  --foreground: #EDEEF0;     /* primary */
+  --text-secondary: #C3C7CF; /* numeric values in tables, body on surfaces */
+  --muted-foreground: #A3A8B3; /* labels, secondary UI */
+  --text-dim: #979CA7;       /* de-emphasised */
+  --text-faint: #8A909B;     /* column headers, timestamps, micro labels */
+  --text-ghost: #6E7480;     /* disabled */
 
   /* ── Semantic ── */
-  --up: #2FCC8B;             /* profit / healthy / active */
-  --up-bright: #45e0a0;
-  --down: #F2566A;           /* loss */
-  --down-deep: #B3243A;      /* destructive fill (kill switch) */
-  --caution: #FF8A3D;        /* degraded, stale, live-mode */
-  --caution-dim: #F5A524;    /* paper-lifecycle badge */
-  --accent: #22D3EE;         /* interactive / selected / brand */
-  --accent-bright: #67e8f9;
-  --ai: #8B5CF6;             /* AI-authored */
-  --ai-bright: #a78bfa;
+  --up: #4ADE9A;             /* up / profit / healthy */
+  --up-bright: #7BEBB6;
+  --down: #FF7A70;           /* down / loss / destructive */
+  --down-deep: #B93A31;      /* destructive fill (kill switch) */
+  --caution: #FFB547;        /* live money, degraded, stale, gaps */
+  --caution-dim: #FFB547;
+  --caution-ink: #1A1206;    /* text on a solid amber fill */
+  --accent: #A9B2FF;         /* indigo: interactive / selected / signature */
+  --accent-bright: #C9CEFF;
+  --ai: #E29CF5;             /* orchid: written by the agent */
+  --ai-bright: #EDBDF9;
   --close-hover: #E81123;    /* Windows titlebar close */
 
   /* ── shadcn compatibility (existing components read these) ── */
@@ -63,7 +83,7 @@
   --popover: var(--card);
   --popover-foreground: var(--foreground);
   --primary: var(--accent);
-  --primary-foreground: #080B10;
+  --primary-foreground: #0E0F12;
   --secondary: var(--surface-3);
   --secondary-foreground: var(--foreground);
   --muted: var(--surface-3);
@@ -76,15 +96,14 @@
   --ring: var(--accent);
 
   /* ── Type ──
-     Two families only: system sans for prose/labels, IBM Plex Mono for every
-     number. Monospace figures are non-negotiable — a price must not shift
-     horizontally as it ticks. */
-  --font-sans: "Segoe UI", system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+     Geist for everything that isn't a number; Geist Mono for every price,
+     quantity and time. Monospace figures are non-negotiable — a price must
+     not shift horizontally as it ticks. */
+  --font-sans: "Geist", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "Cascadia Mono", monospace;
   /* Devanagari for the Nepali tagline. Windows ships Nirmala UI; the rest are
      fallbacks for other platforms so the glyphs never box out. */
   --font-deva: "Nirmala UI", "Noto Sans Devanagari", "Mangal", var(--font-sans);
-
   /* ── Type scale (density: default) ──────────────────────────────────
      The original scale topped out at 12px for body text, which is below
      comfortable reading size for a surface you stare at for hours. This is
@@ -112,9 +131,9 @@
   --icon-lg: 20px;       /* authored 16–18: empty states */
 
   /* ── Geometry ── */
-  --radius: 6px;         /* panels */
-  --radius-sm: 4px;      /* controls, rows */
-  --radius-xs: 3px;      /* badges */
+  --radius: 12px;        /* panels */
+  --radius-sm: 8px;      /* controls, rows */
+  --radius-xs: 6px;      /* badges, chips */
   --radius-pill: 999px;
 
   /* ── Layout ── */
@@ -122,11 +141,11 @@
      Windows reserved 40px for its own buttons, so the two disagreed by 4px. */
   --titlebar-h: 40px;
   --statusbar-h: 26px;
-  --rail-w: 244px;
-  --chat-w: 380px;
+  --rail-w: 240px;
+  --chat-w: 360px;
 
   /* Uppercase micro-label tracking */
-  --tracking-label: 0.09em;
+  --tracking-label: 0.08em;
 
   /* ── Motion ──────────────────────────────────────────────────────────
      Four durations and two curves. Motion here says "this appeared" or
@@ -311,7 +330,7 @@ body {
 .vy-scroll::-webkit-scrollbar { width: 7px; height: 7px; }
 .vy-scroll::-webkit-scrollbar-track { background: transparent; }
 .vy-scroll::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
-.vy-scroll::-webkit-scrollbar-thumb:hover { background: #3d4959; }
+.vy-scroll::-webkit-scrollbar-thumb:hover { background: #4A505B; }
 
 /* Every number in the app. */
 .mono {
@@ -321,8 +340,9 @@ body {
 
 /* Uppercase micro-label: panel headers, column headers, badges. */
 .label-micro {
+  font-family: var(--font-mono);
   font-size: var(--text-micro);
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: var(--tracking-label);
   text-transform: uppercase;
   color: var(--text-faint);
@@ -343,12 +363,12 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--border);
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
 
-.panel-body { padding: 10px 12px; min-height: 0; overflow: auto; }
+.panel-body { padding: 12px 14px; min-height: 0; overflow: auto; }
 .panel-body-flush { padding: 0; min-height: 0; overflow: auto; }
 
 /* ── Data table ── */
@@ -356,8 +376,9 @@ body {
 
 .vy-table th {
   text-align: right;
+  font-family: var(--font-mono);
   font-size: var(--text-micro);
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-faint);
@@ -368,7 +389,7 @@ body {
 
 .vy-table td {
   padding: 6px;
-  border-bottom: 1px solid rgba(32, 40, 52, 0.7);
+  border-bottom: 1px solid rgba(42, 46, 54, 0.7);
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-size: var(--text-md);
@@ -380,32 +401,34 @@ body {
 .vy-table th:first-child,
 .vy-table td:first-child { text-align: left; }
 .vy-table td.t-text { font-family: var(--font-sans); text-align: left; }
-.vy-table tbody tr:hover td { background: rgba(22, 29, 39, 0.5); }
+.vy-table tbody tr:hover td { background: rgba(30, 33, 39, 0.5); }
 .vy-table tbody tr:last-child td { border-bottom: none; }
 
 /* A value that just changed — brief green wash, then back. */
-@keyframes tick { 0% { background: rgba(47, 204, 139, 0.22); } 100% { background: transparent; } }
+@keyframes tick { 0% { background: rgba(74, 222, 154, 0.22); } 100% { background: transparent; } }
 .tick { animation: tick 0.6s ease-out; }
 
 /* ── Lifecycle badges ── */
 .badge {
   display: inline-flex;
   align-items: center;
+  font-family: var(--font-mono);
   font-size: var(--text-micro);
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: 0.07em;
   text-transform: uppercase;
-  padding: 2px 6px;
+  padding: 2px 7px;
   border-radius: var(--radius-xs);
   white-space: nowrap;
   border: 1px solid transparent;
 }
 
 .badge-draft       { background: var(--surface-3); color: var(--text-dim); border-color: var(--border); }
-.badge-backtested  { background: rgba(34, 211, 238, 0.1); color: var(--accent); border-color: rgba(34, 211, 238, 0.3); }
-.badge-paper       { background: rgba(245, 165, 36, 0.12); color: var(--caution-dim); border-color: rgba(245, 165, 36, 0.35); }
-.badge-supervised  { background: rgba(47, 204, 139, 0.12); color: var(--up); border-color: rgba(47, 204, 139, 0.35); }
-.badge-auto        { background: rgba(139, 92, 246, 0.14); color: var(--ai-bright); border-color: rgba(139, 92, 246, 0.35); }
+.badge-backtested  { background: rgba(169, 178, 255, 0.1); color: var(--accent); border-color: rgba(169, 178, 255, 0.3); }
+/* Paper is simulated, and simulated is a line style: dashed, never amber. */
+.badge-paper       { background: transparent; color: var(--text-secondary); border: 1.5px dashed var(--text-secondary); }
+.badge-supervised  { background: rgba(74, 222, 154, 0.12); color: var(--up); border-color: rgba(74, 222, 154, 0.35); }
+.badge-auto        { background: rgba(226, 156, 245, 0.14); color: var(--ai-bright); border-color: rgba(226, 156, 245, 0.35); }
 .badge-retired     { background: transparent; color: var(--text-ghost); border-color: var(--border); }
 .badge-down        { background: transparent; color: var(--down); border-color: var(--down); }
 
@@ -421,30 +444,30 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 26px;
-  padding: 0 10px;
+  height: 30px;
+  padding: 0 12px;
   font-family: inherit;
-  font-size: var(--text-base);
-  font-weight: 600;
-  color: var(--muted-foreground);
-  background: var(--surface-3);
-  border: 1px solid var(--border);
+  font-size: var(--text-md);
+  font-weight: 500;
+  color: var(--foreground);
+  background: transparent;
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   cursor: pointer;
   white-space: nowrap;
   transition: background 0.12s, color 0.12s, border-color 0.12s;
 }
 
-.btn:hover:not(:disabled) { color: var(--foreground); border-color: var(--border-strong); }
+.btn:hover:not(:disabled) { color: var(--foreground); background: var(--surface-3); border-color: var(--border-strong); }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
-.btn-primary { background: var(--accent); border-color: var(--accent); color: #080B10; }
-.btn-primary:hover:not(:disabled) { background: var(--accent-bright); border-color: var(--accent-bright); color: #080B10; }
-.btn-ghost { background: transparent; border-color: transparent; }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: var(--primary-foreground); font-weight: 600; }
+.btn-primary:hover:not(:disabled) { background: var(--accent-bright); border-color: var(--accent-bright); color: var(--primary-foreground); }
+.btn-ghost { background: transparent; border-color: transparent; color: var(--muted-foreground); }
 .btn-ghost:hover:not(:disabled) { background: var(--surface-3); }
 /* Destructive is deliberately loud: it is only used for arming live trading
    and the kill switch, and both should feel different from everything else. */
 .btn-danger { background: var(--down-deep); border-color: var(--down); color: #fff; }
-.btn-danger:hover:not(:disabled) { background: #d12b45; color: #fff; }
+.btn-danger:hover:not(:disabled) { background: #CF4A40; color: #fff; }
 
 /* ── Empty state ── */
 .empty-state {
@@ -476,8 +499,8 @@ body {
   padding: 4px 16px;
   font-size: var(--text-sm);
   color: var(--caution);
-  background: rgba(255, 138, 61, 0.08);
-  border-bottom: 1px solid rgba(255, 138, 61, 0.3);
+  background: rgba(255, 181, 71, 0.08);
+  border-bottom: 1px solid rgba(255, 181, 71, 0.3);
 }
 
 .app-main {
@@ -491,7 +514,7 @@ body {
 /* ── Agent-acting overlay ───────────────────────────────────────────
    When the agent is using tools that navigate the UI, a pulsing purple
    border glow makes it obvious the agent is driving — like Claude's
-   browser-use hue. Uses --ai (#8B5CF6) per the design system rule
+   browser-use hue. Uses --ai (orchid) per the design system rule
    "violet = AI-authored content". */
 
 .app-main.agent-acting::before {
@@ -503,8 +526,8 @@ body {
   border: 2px solid var(--ai);
   border-radius: 2px;
   box-shadow:
-    inset 0 0 30px rgba(139, 92, 246, 0.08),
-    0 0 15px rgba(139, 92, 246, 0.15);
+    inset 0 0 30px rgba(226, 156, 245, 0.08),
+    0 0 15px rgba(226, 156, 245, 0.15);
   animation: agent-glow 2s ease-in-out infinite;
 }
 
@@ -518,8 +541,8 @@ body {
   align-items: center;
   gap: 6px;
   padding: 4px 14px;
-  background: rgba(139, 92, 246, 0.15);
-  border: 1px solid rgba(139, 92, 246, 0.4);
+  background: rgba(226, 156, 245, 0.15);
+  border: 1px solid rgba(226, 156, 245, 0.4);
   border-radius: 999px;
   font-size: var(--text-xs);
   color: var(--ai-bright);
@@ -537,8 +560,8 @@ body {
 }
 
 @keyframes agent-glow {
-  0%, 100% { border-color: rgba(139, 92, 246, 0.5); box-shadow: inset 0 0 20px rgba(139, 92, 246, 0.05), 0 0 10px rgba(139, 92, 246, 0.1); }
-  50% { border-color: rgba(139, 92, 246, 0.8); box-shadow: inset 0 0 40px rgba(139, 92, 246, 0.1), 0 0 20px rgba(139, 92, 246, 0.2); }
+  0%, 100% { border-color: rgba(226, 156, 245, 0.5); box-shadow: inset 0 0 20px rgba(226, 156, 245, 0.05), 0 0 10px rgba(226, 156, 245, 0.1); }
+  50% { border-color: rgba(226, 156, 245, 0.8); box-shadow: inset 0 0 40px rgba(226, 156, 245, 0.1), 0 0 20px rgba(226, 156, 245, 0.2); }
 }
 
 @keyframes agent-badge-in {
@@ -555,11 +578,13 @@ body {
    Mode banner · risk budget · alerts. Always visible: the risk budget
    must never be something you have to go and look for. */
 .app-toolbar {
-  height: 36px;
+  height: 44px;
   flex-shrink: 0;
   display: flex;
-  align-items: stretch;
-  background: var(--card);
+  align-items: center;
+  gap: 12px;
+  padding: 0 12px;
+  background: var(--background);
   border-bottom: 1px solid var(--border);
   user-select: none;
 }
@@ -567,91 +592,131 @@ body {
 /* The mode banner is the app's single most important piece of state: it
    must be impossible to confuse paper with live at a glance. */
 .mode-banner {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  min-height: 30px;
   padding: 0 12px;
-  border-right: 1px solid var(--border);
-  font-weight: 700;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
 }
 
-.mode-banner-paper { background: rgba(34, 211, 238, 0.08); color: var(--accent); }
-.mode-banner-live { background: rgba(255, 138, 61, 0.12); color: var(--caution); }
+.mode-banner-paper {
+  border: 1.5px dashed var(--text-secondary);
+  color: var(--foreground);
+}
+.mode-banner-live {
+  background: var(--caution);
+  border: 1.5px solid var(--caution);
+  color: var(--caution-ink);
+}
 
 .mode-banner-label {
-  font-size: var(--text-sm);
-  font-weight: 700;
-  letter-spacing: 0.1em;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
-.mode-banner-note { font-size: var(--text-sm); font-weight: 400; opacity: 0.8; }
+.mode-banner-note {
+  font-size: var(--text-md); font-weight: 400; opacity: 0.85;
+}
 
 .toolbar-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
+  min-height: 30px;
   padding: 0 12px;
   background: transparent;
-  border: none;
-  border-right: 1px solid var(--border);
-  color: var(--muted-foreground);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--foreground);
   font-family: inherit;
   font-size: var(--text-md);
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
 }
 
-.toolbar-btn:hover { color: var(--foreground); background: var(--surface-3); }
+.toolbar-btn:disabled { border-color: var(--border-subtle); color: var(--text-ghost); cursor: not-allowed; }
+.toolbar-btn:disabled:hover { background: transparent; }
+
+/* Square icon button (alerts). */
+.toolbar-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 36px;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.toolbar-icon-btn:hover,
+.toolbar-icon-btn.is-open { background: var(--surface-3); color: var(--foreground); }
+
+.toolbar-btn:hover {
+  background: var(--surface-3);
+}
 
 /* Typed-confirmation step before live trading is armed. */
 .arm-live {
   display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 0 12px;
-  border-right: 1px solid var(--border);
-  background: rgba(242, 86, 106, 0.06);
+  gap: 8px;
+  padding: 0 10px;
+  min-height: 32px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 181, 71, 0.4);
+  background: rgba(255, 181, 71, 0.06);
 }
 
 .arm-live-input {
-  height: 24px;
+  height: 26px;
   width: 104px;
   padding: 0 8px;
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   color: var(--foreground);
-  background: var(--surface-3);
+  background: var(--background);
   border: 1px dashed var(--border-strong);
   border-radius: var(--radius-xs);
   outline: none;
 }
 
-.arm-live-input:focus { border-color: var(--down); border-style: solid; }
+.arm-live-input:focus {
+  border-color: var(--caution); border-style: solid;
+}
 
 /* ── Risk chips ── */
 .risk-chips {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 0 14px;
-  border-left: 1px solid var(--border);
+  gap: 16px;
+  padding: 0 4px;
 }
 
-.risk-chip { display: flex; align-items: baseline; gap: 5px; }
+.risk-chip {
+  display: flex; align-items: baseline; gap: 6px;
+}
 
 /* ── Alerts popover ── */
 .alert-popover {
   position: absolute;
-  top: 36px;
+  top: calc(100% + 6px);
   right: 0;
   width: 340px;
   max-height: 420px;
   overflow-y: auto;
   background: var(--card);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.5);
   z-index: 60;
 }
 
@@ -661,8 +726,8 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--border);
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-subtle);
   background: var(--card);
 }
 
@@ -682,24 +747,28 @@ body {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 8px 10px;
-  border-bottom: 1px solid rgba(32, 40, 52, 0.6);
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 /* ── Context bar (34px): what this surface is + feed truth ── */
 .context-bar {
-  height: 34px;
+  min-height: 44px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 0 14px;
+  padding: 0 24px;
   border-bottom: 1px solid var(--border);
-  background: var(--surface-1);
+  background: var(--background);
 }
 
-.context-title { font-size: 12.5px; font-weight: 600; letter-spacing: -0.005em; }
-.context-sub { font-size: var(--text-sm); color: var(--text-faint); }
+.context-title {
+  font-size: var(--text-base); font-weight: 600; letter-spacing: -0.005em;
+}
+.context-sub {
+  font-size: var(--text-base); color: var(--muted-foreground);
+}
 
 /* Legible on purpose. This was --text-xs in --muted-foreground with no
    background, right-aligned in a 34px bar, and the first UI test run could not
@@ -707,15 +776,16 @@ body {
    status. Now a real chip: one step up in size, --text-dim, and a surface that
    separates it from the bar. Still small; it is ambient, not an alert. */
 .feed-pill {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 5px;
-  font-size: var(--text-sm);
-  color: var(--text-dim);
+  gap: 6px;
+  min-height: 26px;
+  padding: 0 10px;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
   font-family: var(--font-mono);
-  padding: 2px 7px;
-  border-radius: var(--radius-xs);
-  background: var(--surface-2);
+  border-radius: 7px;
+  background: transparent;
   border: 1px solid var(--border);
   white-space: nowrap;
 }
@@ -727,7 +797,12 @@ body {
   background: transparent;
 }
 
-.feed-dot { width: 6px; height: 6px; border-radius: var(--radius-pill); flex-shrink: 0; }
+/* The simulated venue is paper: dashed, like every simulated thing. */
+.feed-pill-sim { border-style: dashed; }
+
+.feed-dot {
+  width: 7px; height: 7px; border-radius: var(--radius-pill); flex-shrink: 0;
+}
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
 .feed-dot-live { animation: pulse 2.4s ease-in-out infinite; }
 
@@ -738,28 +813,32 @@ body {
 .rail {
   width: var(--rail-w);
   flex-shrink: 0;
-  background: var(--card);
+  background: var(--background);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   min-height: 0;
+  padding-top: 6px;
 }
 
 .rail-head {
-  padding: 10px 10px 6px;
+  padding: 14px 14px 6px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
-.rail-scroll { flex: 1; overflow-y: auto; padding: 0 6px; display: flex; flex-direction: column; gap: 2px; }
+.rail-scroll {
+  flex: 1; overflow-y: auto; padding: 0 10px; display: flex; flex-direction: column; gap: 2px;
+}
 
 .rail-session {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
-  padding: 6px 8px;
+  min-height: 34px;
+  padding: 0 10px;
   border: none;
   border-radius: var(--radius-sm);
   cursor: pointer;
@@ -769,14 +848,22 @@ body {
   text-align: left;
 }
 
-.rail-session:hover { background: rgba(22, 29, 39, 0.6); }
+.rail-session:hover {
+  background: var(--surface-3);
+}
 /* Open = you are on one of this session's surfaces. */
-.rail-session-open { background: var(--surface-4); }
+.rail-session-open {
+  background: transparent;
+}
 /* Selected but not in scope — you're on a global surface. Quiet marker so the
    rail doesn't imply you're inside a session when you aren't. */
 .rail-session-selected .rail-session-pair { color: var(--muted-foreground); }
-.rail-session-pair { font-size: 12.5px; font-weight: 600; letter-spacing: -0.005em; }
-.rail-session-pnl { margin-left: auto; font-family: var(--font-mono); font-size: var(--text-sm); }
+.rail-session-pair {
+  font-size: var(--text-base); font-weight: 500; letter-spacing: -0.005em;
+}
+.rail-session-pnl {
+  margin-left: auto; font-family: var(--font-mono); font-size: var(--text-xs);
+}
 
 .rail-dot { width: 7px; height: 7px; border-radius: var(--radius-pill); flex-shrink: 0; }
 /* Green = an active session, grey = paused. One strength everywhere: the
@@ -787,8 +874,8 @@ body {
 .rail-dot-paused { background: var(--text-ghost); }
 
 .rail-session-meta {
-  padding: 0 8px 4px 23px;
-  font-size: var(--text-2xs);
+  margin: 0 10px 6px 27px;
+  font-size: var(--text-micro);
   font-family: var(--font-mono);
   color: var(--text-faint);
 }
@@ -801,7 +888,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 1px;
-  margin: 2px 0 6px 8px;
+  margin: 0 6px 0 14px;
   padding-left: 8px;
   border-left: 1px solid var(--border);
 }
@@ -809,9 +896,10 @@ body {
 .rail-item {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 10px;
   width: 100%;
-  padding: 5px 8px;
+  min-height: 34px;
+  padding: 0 10px;
   border: none;
   border-radius: var(--radius-sm);
   cursor: pointer;
@@ -819,27 +907,64 @@ body {
   font-size: var(--text-base);
   text-align: left;
   background: transparent;
-  color: var(--muted-foreground);
+  color: var(--text-secondary);
 }
 
-.rail-item:hover { background: rgba(22, 29, 39, 0.7); color: var(--foreground); }
-.rail-item-active { background: rgba(34, 211, 238, 0.1); color: var(--accent); }
-.rail-item-icon { width: 15px; display: flex; justify-content: center; flex-shrink: 0; }
-.rail-item-badge { margin-left: auto; font-family: var(--font-mono); font-size: var(--text-micro); color: var(--text-faint); }
+.rail-item:hover {
+  background: var(--surface-3); color: var(--foreground);
+}
+.rail-item-active {
+  background: var(--surface-3); color: var(--foreground); font-weight: 600;
+}
+/* The open session: one card holding the pair, its meta line and its surfaces. */
+.rail-session-block-open {
+  background: var(--card);
+  border-radius: 10px;
+  padding: 0 0 6px;
+}
+.rail-session-block-open .rail-session-pair { font-weight: 600; }
+.rail-session-block-open .rail-session:hover { background: transparent; }
+
+.rail-icon { width: 16px; height: 16px; display: block; }
+.rail-item-active .rail-icon,
+.rail-global-active .rail-icon,
+.rail-home-active .rail-icon { color: var(--accent); }
+
+.rail-new-session {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.rail-new-session:hover { background: var(--surface-3); color: var(--foreground); }
+
+.rail-item-icon {
+  width: 16px; display: flex; justify-content: center; flex-shrink: 0;
+}
+.rail-item-badge {
+  margin-left: auto; font-family: var(--font-mono); font-size: var(--text-micro); color: var(--text-faint); font-weight: 400;
+}
 .rail-item-badge-new { color: var(--ai); }
 
 .rail-archive-toggle {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   width: 100%;
-  padding: 7px 8px;
+  min-height: 34px;
+  padding: 0 10px;
   margin-top: 2px;
   border: none;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-faint);
   font-family: inherit;
-  font-size: var(--text-sm);
+  font-size: var(--text-md);
   cursor: pointer;
 }
 
@@ -850,7 +975,7 @@ body {
   flex-direction: column;
   gap: 2px;
   width: 100%;
-  padding: 6px 8px;
+  padding: 6px 10px;
   border: none;
   border-radius: var(--radius-sm);
   cursor: pointer;
@@ -860,26 +985,30 @@ body {
   color: var(--text-faint);
 }
 
-.rail-archived:hover { background: rgba(22, 29, 39, 0.6); }
+.rail-archived:hover {
+  background: var(--surface-3);
+}
 /* Same size as a live row's pair, one step quieter — archived history should
    never out-shout a session that can still act. */
 .rail-archived-pair { color: var(--muted-foreground); }
 .rail-archived-note { font-size: var(--text-2xs); }
 
 .rail-footer {
-  border-top: 1px solid var(--border);
-  padding: 6px;
+  border-top: 1px solid var(--border-subtle);
+  margin: 0 10px;
+  padding: 8px 0 12px;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
 }
 
 .rail-global {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
-  padding: 6px 8px;
+  min-height: 34px;
+  padding: 0 10px;
   border: none;
   border-radius: var(--radius-sm);
   cursor: pointer;
@@ -887,32 +1016,40 @@ body {
   font-size: var(--text-base);
   text-align: left;
   background: transparent;
-  color: var(--muted-foreground);
+  color: var(--text-secondary);
 }
 
-.rail-global:hover { background: rgba(22, 29, 39, 0.7); color: var(--foreground); }
-.rail-global-active { background: rgba(34, 211, 238, 0.1); color: var(--accent); }
+.rail-global:hover {
+  background: var(--surface-3); color: var(--foreground);
+}
+.rail-global-active {
+  background: var(--surface-3); color: var(--foreground); font-weight: 600;
+}
 
 /* Home lives above the session list — the way back "up", not another page. */
 .rail-home {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin: 6px 6px 0;
-  padding: 6px 8px;
+  gap: 10px;
+  margin: 6px 10px 0;
+  min-height: 34px;
+  padding: 0 10px;
   border: none;
   border-radius: var(--radius-sm);
   cursor: pointer;
   font-family: inherit;
   font-size: var(--text-base);
-  font-weight: 600;
   text-align: left;
   background: transparent;
-  color: var(--muted-foreground);
+  color: var(--text-secondary);
 }
 
-.rail-home:hover { background: rgba(22, 29, 39, 0.7); color: var(--foreground); }
-.rail-home-active { background: rgba(34, 211, 238, 0.1); color: var(--accent); }
+.rail-home:hover {
+  background: var(--surface-3); color: var(--foreground);
+}
+.rail-home-active {
+  background: var(--surface-3); color: var(--foreground); font-weight: 600;
+}
 
 /* ── Main stage ── */
 .stage { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; background: var(--background); }
@@ -950,10 +1087,10 @@ body {
   gap: 6px;
   flex-shrink: 0;
   line-height: 1.5;
-  border-top: 1px solid rgba(32, 40, 52, 0.6);
+  border-top: 1px solid rgba(42, 46, 54, 0.6);
 }
 
-.dot-sep { width: 3px; height: 3px; border-radius: var(--radius-pill); background: #3d4756; flex-shrink: 0; }
+.dot-sep { width: 3px; height: 3px; border-radius: var(--radius-pill); background: var(--border-strong); flex-shrink: 0; }
 
 /* Stat strip: hairline-separated cells sharing one border (the 1px gap over a
    border-coloured background trick from the prototype). */
@@ -993,7 +1130,7 @@ body {
 
 .cockpit-row {
   padding: 8px 10px;
-  border-bottom: 1px solid rgba(32, 40, 52, 0.7);
+  border-bottom: 1px solid rgba(42, 46, 54, 0.7);
   display: flex;
   flex-direction: column;
   gap: 5px;
@@ -1019,7 +1156,7 @@ body {
 
 .cockpit-row-tight {
   padding: 6px 10px;
-  border-bottom: 1px solid rgba(32, 40, 52, 0.7);
+  border-bottom: 1px solid rgba(42, 46, 54, 0.7);
   display: flex;
   align-items: baseline;
   gap: 8px;
@@ -1031,8 +1168,8 @@ body {
 /* The approvals panel gets a caution-tinted frame: it is the only panel that
    asks the user to decide something. */
 .panel-approval {
-  border-color: rgba(255, 138, 61, 0.4);
-  background: linear-gradient(180deg, rgba(255, 138, 61, 0.07), rgba(255, 138, 61, 0) 60%), var(--card);
+  border-color: rgba(255, 181, 71, 0.4);
+  background: linear-gradient(180deg, rgba(255, 181, 71, 0.07), rgba(255, 181, 71, 0) 60%), var(--card);
 }
 
 .activity-row {
@@ -1040,7 +1177,7 @@ body {
   align-items: baseline;
   gap: 10px;
   padding: 5px 10px;
-  border-bottom: 1px solid rgba(32, 40, 52, 0.55);
+  border-bottom: 1px solid rgba(42, 46, 54, 0.55);
 }
 
 .activity-time { font-size: var(--text-xs); color: var(--text-faint); width: 62px; flex-shrink: 0; }
@@ -1058,7 +1195,7 @@ body {
 
 .review-row {
   padding: 8px 10px;
-  border-bottom: 1px solid rgba(32, 40, 52, 0.7);
+  border-bottom: 1px solid rgba(42, 46, 54, 0.7);
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -1168,7 +1305,7 @@ body {
   align-items: center;
   gap: 8px;
   padding: 7px 10px;
-  border-bottom: 1px solid rgba(32, 40, 52, 0.7);
+  border-bottom: 1px solid rgba(42, 46, 54, 0.7);
 }
 
 .journal-author {
@@ -1181,11 +1318,11 @@ body {
   text-transform: uppercase;
   padding: 2px 6px;
   border-radius: var(--radius-xs);
-  background: rgba(34, 211, 238, 0.1);
+  background: rgba(169, 178, 255, 0.1);
   color: var(--accent);
 }
 
-.journal-author-ai { background: rgba(139, 92, 246, 0.14); color: var(--ai-bright); }
+.journal-author-ai { background: rgba(226, 156, 245, 0.14); color: var(--ai-bright); }
 .journal-entry-title { font-size: var(--text-base); font-weight: 600; text-transform: capitalize; }
 .journal-entry-body { padding: 9px 10px; font-size: var(--text-base); color: var(--text-secondary); line-height: 1.6; white-space: pre-wrap; }
 .journal-entry-tags { padding: 0 10px 9px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
@@ -1219,7 +1356,7 @@ body {
   border-bottom: 1px solid var(--border);
 }
 
-.lesson-row { padding: 9px 10px; border-bottom: 1px solid rgba(32, 40, 52, 0.7); display: flex; gap: 8px; align-items: flex-start; }
+.lesson-row { padding: 9px 10px; border-bottom: 1px solid rgba(42, 46, 54, 0.7); display: flex; gap: 8px; align-items: flex-start; }
 .lesson-num { font-size: var(--text-xs); color: var(--text-faint); padding-top: 2px; flex-shrink: 0; }
 .lesson-body { min-width: 0; display: flex; flex-direction: column; gap: 4px; font-size: var(--text-base); color: var(--foreground); line-height: 1.55; }
 .lesson-meta { display: flex; align-items: center; gap: 8px; font-size: var(--text-2xs); color: var(--text-faint); }
@@ -1286,8 +1423,8 @@ body {
   overflow-wrap: anywhere;
 }
 
-.chat-bubble-user { background: rgba(34, 211, 238, 0.1); max-width: 85%; }
-.chat-bubble-agent { background: rgba(22, 29, 39, 0.7); border: 1px solid var(--border); }
+.chat-bubble-user { background: rgba(169, 178, 255, 0.1); max-width: 85%; }
+.chat-bubble-agent { background: var(--card); border: 1px solid var(--border); }
 
 /* A tool call is a fact about what the agent did — it gets its own row, in
    the AI colour, rather than being narrated inside the prose. */
@@ -1303,7 +1440,7 @@ body {
   color: var(--muted-foreground);
 }
 
-.chat-tool-error { border-color: rgba(242, 86, 106, 0.4); color: var(--down); }
+.chat-tool-error { border-color: rgba(255, 122, 112, 0.4); color: var(--down); }
 .chat-tool-msg { color: var(--text-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ── Markdown ── */
@@ -1391,7 +1528,7 @@ ol.md-list li { list-style: decimal; }
 }
 
 .research-tool:hover { background: var(--surface-3); color: var(--foreground); }
-.research-tool-active { background: rgba(34, 211, 238, 0.12); color: var(--accent); border-color: rgba(34, 211, 238, 0.35); }
+.research-tool-active { background: rgba(169, 178, 255, 0.12); color: var(--accent); border-color: rgba(169, 178, 255, 0.35); }
 .research-tool-open { background: var(--surface-4); color: var(--foreground); }
 .research-tool-glyph { font-size: 11px; font-weight: 700; font-family: var(--font-mono); }
 .research-tool-sep { width: 20px; height: 1px; background: var(--border); margin: 5px 0; }
@@ -1468,7 +1605,7 @@ ol.md-list li { list-style: decimal; }
 }
 
 .research-interval:hover { color: var(--foreground); background: var(--surface-3); }
-.research-interval-active { color: var(--accent); background: rgba(34, 211, 238, 0.1); border-color: rgba(34, 211, 238, 0.3); }
+.research-interval-active { color: var(--accent); background: rgba(169, 178, 255, 0.1); border-color: rgba(169, 178, 255, 0.3); }
 
 .research-menu {
   position: absolute;
@@ -1489,7 +1626,7 @@ ol.md-list li { list-style: decimal; }
 
 /* Indicator rows: toggle + parameter inputs. */
 .ind-row { border-radius: var(--radius-sm); }
-.ind-row-on { background: rgba(34, 211, 238, 0.06); }
+.ind-row-on { background: rgba(169, 178, 255, 0.06); }
 
 .ind-row-toggle {
   display: flex;
@@ -1584,7 +1721,7 @@ ol.md-list li { list-style: decimal; }
   text-transform: uppercase;
   color: var(--text-faint);
 }
-.settings-nav-item-active { background: rgba(34, 211, 238, 0.1); color: var(--accent); }
+.settings-nav-item-active { background: rgba(169, 178, 255, 0.1); color: var(--accent); }
 
 .settings-pane {
   padding: 14px;
@@ -1611,7 +1748,7 @@ ol.md-list li { list-style: decimal; }
   align-items: center;
   gap: 12px;
   padding: 9px 12px;
-  border-bottom: 1px solid rgba(32, 40, 52, 0.7);
+  border-bottom: 1px solid rgba(42, 46, 54, 0.7);
 }
 
 .limit-label { width: 260px; display: flex; flex-direction: column; gap: 2px; }
@@ -1676,7 +1813,7 @@ ol.md-list li { list-style: decimal; }
   width: var(--chat-w);
   flex-shrink: 0;
   border-left: 1px solid var(--border);
-  background: var(--card);
+  background: var(--surface-1);
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -1687,23 +1824,27 @@ ol.md-list li { list-style: decimal; }
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 9px 10px;
-  border-bottom: 1px solid var(--border);
+  min-height: 58px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
 
 .chat-drawer-close {
-  width: 22px;
-  height: 22px;
+  width: 34px;
+  height: 34px;
   display: grid;
   place-items: center;
   background: transparent;
-  border: none;
-  color: var(--text-faint);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--text-secondary);
   cursor: pointer;
 }
 
-.chat-drawer-close:hover { color: var(--foreground); }
+.chat-drawer-close:hover {
+  color: var(--foreground); background: var(--surface-3);
+}
 
 /* ── The global agent: mascot + floating window (agent-mascot.tsx) ──
    Anchored to .app-main's lower-right corner. Its only movement is sideways:
@@ -1718,8 +1859,8 @@ ol.md-list li { list-style: decimal; }
   --mascot-bottom: var(--mascot-gap);
 }
 .mascot-dock-drawer,
-.mascot-dock-rail { --mascot-size: 40px; --mascot-bottom: 4px; }
-.mascot-dock-drawer { --mascot-right: calc(var(--chat-w) - 20px); }
+.mascot-dock-rail { --mascot-size: 40px; --mascot-bottom: 6px; }
+.mascot-dock-drawer { --mascot-right: calc(var(--chat-w) - 22px); }
 .mascot-dock-rail { --mascot-right: calc(36px - 20px); }
 
 .mascot {
@@ -1747,7 +1888,7 @@ ol.md-list li { list-style: decimal; }
 }
 .mascot:hover { transform: translateY(-2px) scale(1.05); filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 6px rgba(167, 139, 250, 0.45)); }
 .mascot:active { transform: scale(0.97); }
-.mascot.is-open { filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 5px var(--ai-bright)); }
+.mascot.is-open { filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 5px #a78bfa); }
 .mascot .mascot-face { display: block; width: 100%; height: 100%; }
 
 /* Replying: a violet glow breathes around the blob's own outline. Reduced
@@ -1814,8 +1955,9 @@ ol.md-list li { list-style: decimal; }
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--border);
+  min-height: 58px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
 .mascot-window-title { font-size: var(--text-base); font-weight: 600; }
@@ -1826,12 +1968,12 @@ ol.md-list li { list-style: decimal; }
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 9px 10px;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface-1);
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-subtle);
 }
 .chat-session-picker-label {
+  font-family: var(--font-mono);
   font-size: var(--text-micro);
   letter-spacing: var(--tracking-label);
   text-transform: uppercase;
@@ -1842,17 +1984,20 @@ ol.md-list li { list-style: decimal; }
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 8px;
+  min-height: 26px;
+  padding: 0 10px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface-3);
+  border-radius: 7px;
+  background: transparent;
   color: var(--text-secondary);
   font-size: var(--text-xs);
   cursor: pointer;
   transition: border-color 120ms ease, color 120ms ease, background 120ms ease;
 }
 .chat-session-chip:hover { border-color: var(--accent); color: var(--foreground); }
-.chat-session-chip.is-last { border-color: rgba(34, 211, 238, 0.45); }
+.chat-session-chip.is-last {
+  border-color: var(--accent); color: var(--foreground);
+}
 .chat-session-chip-note {
   font-size: var(--text-micro);
   color: var(--accent);
@@ -1874,14 +2019,15 @@ ol.md-list li { list-style: decimal; }
 
 .chat-drawer-foot {
   flex-shrink: 0;
-  border-top: 1px solid var(--border);
-  padding: 8px 10px;
-  font-size: var(--text-2xs);
+  padding: 4px 16px 14px;
+  font-size: var(--text-xs);
   color: var(--text-faint);
-  line-height: 1.5;
+  line-height: 1.4;
 }
 /* Room for the global agent's mascot, which docks over this corner. */
-.chat-drawer > .chat-drawer-foot { padding-left: 28px; }
+.chat-drawer > .chat-drawer-foot {
+  padding-left: 64px;
+}
 
 /* Collapsed: a 36px vertical rail, so the agent is never more than one click
    away from any surface. */
@@ -1890,7 +2036,7 @@ ol.md-list li { list-style: decimal; }
   flex-shrink: 0;
   border: none;
   border-left: 1px solid var(--border);
-  background: var(--card);
+  background: var(--surface-1);
   color: var(--muted-foreground);
   cursor: pointer;
   display: flex;
@@ -1905,8 +2051,9 @@ ol.md-list li { list-style: decimal; }
 
 .chat-rail-label {
   writing-mode: vertical-rl;
+  font-family: var(--font-mono);
   font-size: var(--text-md);
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: 0.12em;
   color: var(--muted-foreground);
 }
@@ -2006,10 +2153,11 @@ ol.md-list li { list-style: decimal; }
   height: var(--titlebar-h);
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 0 12px;
+  gap: 12px;
+  padding: 0 0 0 14px;
   background-color: var(--bg-void);
-  -webkit-app-region: drag;          /* entire bar is draggable */
+  border-bottom: 1px solid var(--surface-3);
+  -webkit-app-region: drag;
   user-select: none;
   flex-shrink: 0;
 }
@@ -2017,7 +2165,7 @@ ol.md-list li { list-style: decimal; }
 .titlebar-brand {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 12px;
   min-width: 0;
   -webkit-app-region: drag;
 }
@@ -2026,10 +2174,9 @@ ol.md-list li { list-style: decimal; }
    the product's identity, and this bar is the only place it appears during
    normal use. */
 .titlebar-logo {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   flex-shrink: 0;
-  border-radius: 6px;
 }
 
 /* Name and tagline stack as one lockup, so the pair reads as a unit rather
@@ -2039,22 +2186,19 @@ ol.md-list li { list-style: decimal; }
   flex-direction: column;
   justify-content: center;
   min-width: 0;
-  line-height: 1.15;
+  line-height: 1.1;
 }
 
 .titlebar-version {
   font-size: var(--text-micro);
-  color: var(--text-ghost);
+  color: var(--text-faint);
   font-family: var(--font-mono);
-  align-self: flex-end;
-  padding-bottom: 3px;
 }
 
 .titlebar-title {
   font-size: var(--text-md);
   font-weight: 600;
   color: var(--foreground);
-  letter-spacing: -0.005em;
   white-space: nowrap;
 }
 
@@ -2062,10 +2206,9 @@ ol.md-list li { list-style: decimal; }
    would fall back to whatever the OS picks, which is rarely the nice one. */
 .titlebar-tagline {
   font-family: var(--font-deva);
-  font-size: var(--text-2xs);
+  font-size: 10px;
   color: var(--text-faint);
   white-space: nowrap;
-  letter-spacing: 0.01em;
 }
 
 /* The tagline is the first thing to go when the window narrows — the lockup
@@ -2091,14 +2234,14 @@ ol.md-list li { list-style: decimal; }
 .ai-spend-chip {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  height: 24px;
-  padding: 0 8px;
+  gap: 6px;
+  min-height: 26px;
+  padding: 0 10px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: 7px;
   background: transparent;
-  color: var(--muted-foreground);
-  font-family: inherit;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
   font-size: var(--text-xs);
   cursor: pointer;
   white-space: nowrap;
@@ -2112,14 +2255,14 @@ ol.md-list li { list-style: decimal; }
   right: 0;
   z-index: 80;
   width: 300px;
-  padding: 10px;
+  padding: 12px 14px;
   display: flex;
   flex-direction: column;
   gap: 8px;
   background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md, 8px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
 }
 .ai-spend-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .ai-spend-grid > div { display: flex; flex-direction: column; gap: 2px; }
@@ -2136,7 +2279,7 @@ ol.md-list li { list-style: decimal; }
   justify-content: center;
   padding: 2rem;
   /* Subtle violet bloom behind the mark, per the design's lock screen. */
-  background: radial-gradient(60% 50% at 50% 40%, rgba(139, 92, 246, 0.1), transparent 70%), var(--background);
+  background: radial-gradient(60% 50% at 50% 40%, rgba(226, 156, 245, 0.1), transparent 70%), var(--background);
   -webkit-app-region: drag; /* allow dragging from empty areas, no titlebar rendered yet */
 }
 
@@ -2222,7 +2365,7 @@ ol.md-list li { list-style: decimal; }
   font-family: inherit;
   font-size: var(--text-lg);
   font-weight: 600;
-  color: #080B10;
+  color: var(--primary-foreground);
   background: var(--accent);
   border: none;
   border-radius: var(--radius-sm);
@@ -2488,8 +2631,8 @@ ol.md-list li { list-style: decimal; }
   font-size: var(--text-xs);
   font-weight: 600;
   color: var(--caution);
-  background: rgba(255, 138, 61, 0.12);
-  border: 1px solid rgba(255, 138, 61, 0.35);
+  background: rgba(255, 181, 71, 0.12);
+  border: 1px solid rgba(255, 181, 71, 0.35);
   border-radius: var(--radius-xs);
   padding: 1px 6px;
   white-space: nowrap;
@@ -2781,7 +2924,7 @@ ol.md-list li { list-style: decimal; }
   padding: 9px 12px;
   font-size: var(--text-md);
   color: var(--text-secondary);
-  border-bottom: 1px solid rgba(32, 40, 52, 0.6);
+  border-bottom: 1px solid rgba(42, 46, 54, 0.6);
 }
 
 .home-attention-row:last-child { border-bottom: none; }
@@ -2794,7 +2937,7 @@ ol.md-list li { list-style: decimal; }
   padding: 6px 12px;
   font-size: var(--text-sm);
   color: var(--text-secondary);
-  border-bottom: 1px solid rgba(32, 40, 52, 0.45);
+  border-bottom: 1px solid rgba(42, 46, 54, 0.45);
 }
 
 .home-activity-row:last-child { border-bottom: none; }
@@ -2889,18 +3032,18 @@ ol.md-list li { list-style: decimal; }
 
 .rail-session-more {
   position: absolute;
-  top: 50%;
+  top: 17px;
   right: 4px;
   transform: translateY(-50%);
   display: grid;
   place-items: center;
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
   padding: 0;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: 6px;
   background: transparent;
-  color: var(--text-ghost);
+  color: var(--text-faint);
   cursor: pointer;
   opacity: 0;
   transition: opacity 90ms ease;
@@ -2915,18 +3058,18 @@ ol.md-list li { list-style: decimal; }
 
 .rail-menu {
   position: absolute;
-  top: calc(100% + 2px);
+  top: 34px;
   right: 4px;
   z-index: 40;
-  min-width: 168px;
-  padding: 3px;
+  min-width: 180px;
+  padding: 4px;
   display: flex;
   flex-direction: column;
   gap: 1px;
-  background: var(--surface-3);
+  background: var(--card);
   border: 1px solid var(--border-strong);
-  border-radius: var(--radius);
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.5);
+  border-radius: 10px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.5);
 }
 
 .rail-menu-item {
@@ -2946,8 +3089,12 @@ ol.md-list li { list-style: decimal; }
 }
 
 .rail-menu-item:hover { background: var(--surface-4); }
-.rail-menu-item-danger { color: var(--caution-dim); }
-.rail-menu-item-danger:hover { background: rgba(245, 165, 36, 0.12); }
+.rail-menu-item-danger {
+  color: var(--down);
+}
+.rail-menu-item-danger:hover {
+  background: rgba(255, 122, 112, 0.1);
+}
 .rail-menu-note { margin-left: auto; font-size: var(--text-micro); color: var(--text-ghost); }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -2961,7 +3108,7 @@ ol.md-list li { list-style: decimal; }
   display: grid;
   place-items: center;
   padding: 24px;
-  background: rgba(3, 5, 8, 0.72);
+  background: rgba(8, 9, 11, 0.72);
   backdrop-filter: blur(3px);
   animation: backdrop-in var(--dur-base) var(--ease-out) both;
 }
@@ -3107,9 +3254,9 @@ ol.md-list li { list-style: decimal; }
   align-items: flex-start;
   gap: 7px;
   padding: 8px 10px;
-  border: 1px solid rgba(242, 86, 106, 0.35);
+  border: 1px solid rgba(255, 122, 112, 0.35);
   border-radius: var(--radius-sm);
-  background: rgba(242, 86, 106, 0.08);
+  background: rgba(255, 122, 112, 0.08);
   color: var(--down);
   font-size: var(--text-sm);
   line-height: 1.5;
@@ -3130,11 +3277,11 @@ ol.md-list li { list-style: decimal; }
   height: 32px;
   flex-shrink: 0;
   border-radius: var(--radius-pill);
-  background: rgba(34, 211, 238, 0.1);
+  background: rgba(169, 178, 255, 0.1);
   color: var(--accent);
 }
 /* Quitting stops something: caution, not danger — nothing is lost. */
-.quit-icon-guarded { background: rgba(255, 138, 61, 0.12); color: var(--caution); }
+.quit-icon-guarded { background: rgba(255, 181, 71, 0.12); color: var(--caution); }
 .quit-heading {
   display: flex;
   align-items: center;
@@ -3181,11 +3328,11 @@ ol.md-list li { list-style: decimal; }
 .archive-step-label { flex: 1; min-width: 0; }
 .archive-step-detail { font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--text-ghost); }
 
-.archive-step-running { color: var(--foreground); background: rgba(34, 211, 238, 0.07); }
+.archive-step-running { color: var(--foreground); background: rgba(169, 178, 255, 0.07); }
 .archive-step-running .archive-step-icon { color: var(--accent); }
 .archive-step-done { color: var(--text-secondary); }
 .archive-step-done .archive-step-icon { color: var(--up); }
-.archive-step-failed { color: var(--down); background: rgba(242, 86, 106, 0.08); }
+.archive-step-failed { color: var(--down); background: rgba(255, 122, 112, 0.08); }
 
 .archive-done {
   display: flex;
@@ -3193,9 +3340,9 @@ ol.md-list li { list-style: decimal; }
   gap: 8px;
   margin-top: 4px;
   padding: 9px 10px;
-  border: 1px solid rgba(47, 204, 139, 0.3);
+  border: 1px solid rgba(74, 222, 154, 0.3);
   border-radius: var(--radius-sm);
-  background: rgba(47, 204, 139, 0.08);
+  background: rgba(74, 222, 154, 0.08);
   color: var(--up);
   font-size: var(--text-md);
   line-height: 1.5;
@@ -3253,7 +3400,7 @@ ol.md-list li { list-style: decimal; }
 
 .density-option-active {
   border-color: var(--accent);
-  background: rgba(34, 211, 238, 0.07);
+  background: rgba(169, 178, 255, 0.07);
   color: var(--foreground);
 }
 
@@ -3390,7 +3537,7 @@ ol.md-list li { list-style: decimal; }
 .level-refs-refusal {
   margin: 8px 0 0;
   padding: 6px;
-  border-left: 2px solid var(--caution, #f59e0b);
+  border-left: 2px solid var(--caution);
   color: var(--foreground);
   line-height: 1.45;
 }
@@ -3577,9 +3724,9 @@ ol.md-list li { list-style: decimal; }
    that gets the live/caution colour. Expired and invalidated stay visually
    distinct from each other because that distinction is the calibration
    record's most useful one. */
-.plans-state-planned { border-color: var(--caution, #f59e0b); color: var(--caution, #f59e0b); }
+.plans-state-planned { border-color: var(--caution); color: var(--caution); }
 .plans-state-triggered { border-color: var(--accent); color: var(--accent); }
-.plans-state-invalidated { border-color: var(--down, #f2566a); color: var(--down, #f2566a); }
+.plans-state-invalidated { border-color: var(--down); color: var(--down); }
 .plans-state-expired { color: var(--muted-foreground); font-style: italic; }
 
 .plans-thesis {
@@ -3602,21 +3749,21 @@ ol.md-list li { list-style: decimal; }
 }
 
 .plans-warn {
-  color: var(--caution, #f59e0b);
+  color: var(--caution);
 }
 
 .plans-problem,
 .plans-arm-fail {
   margin: 8px 0;
   padding: 8px;
-  border-left: 2px solid var(--down, #f2566a);
+  border-left: 2px solid var(--down);
   line-height: 1.5;
 }
 
 .plans-arm-ok {
   margin: 8px 0;
   padding: 8px;
-  border-left: 2px solid var(--up, #26a69a);
+  border-left: 2px solid var(--up);
   line-height: 1.5;
 }
 
@@ -3642,7 +3789,7 @@ ol.md-list li { list-style: decimal; }
 
 .plan-watch-plan {
   padding: 9px 10px 10px;
-  border-bottom: 1px solid rgba(32, 40, 52, 0.7);
+  border-bottom: 1px solid rgba(42, 46, 54, 0.7);
 }
 
 .plan-watch-plan-head {
@@ -3695,8 +3842,8 @@ ol.md-list li { list-style: decimal; }
 /* A branch that has fired is the one thing on this panel that changed the
    world. It gets the accent border, and nothing else does. */
 .plan-watch-branch-live {
-  border-color: rgba(34, 211, 238, 0.35);
-  background: rgba(34, 211, 238, 0.05);
+  border-color: rgba(169, 178, 255, 0.35);
+  background: rgba(169, 178, 255, 0.05);
 }
 
 .plan-watch-branch-head {
@@ -3886,12 +4033,12 @@ ol.md-list li { list-style: decimal; }
   font-size: var(--text-sm);
   line-height: 1.45;
   border-left: 2px solid var(--up);
-  background: rgba(47, 204, 139, 0.06);
+  background: rgba(74, 222, 154, 0.06);
   color: var(--text-dim);
 }
 .detail-watch-off {
   border-left-color: var(--caution);
-  background: rgba(245, 165, 36, 0.07);
+  background: rgba(255, 181, 71, 0.07);
   color: var(--caution-dim);
 }
 
@@ -3910,7 +4057,7 @@ ol.md-list li { list-style: decimal; }
   align-items: baseline;
   gap: 8px;
   padding: 4px 0;
-  border-bottom: 1px solid rgba(32, 40, 52, 0.55);
+  border-bottom: 1px solid rgba(42, 46, 54, 0.55);
 }
 .detail-level:last-child { border-bottom: none; }
 
@@ -3944,7 +4091,7 @@ ol.md-list li { list-style: decimal; }
   border-radius: var(--radius-sm);
   background: var(--surface-2);
 }
-.detail-branch-fired { border-color: rgba(47, 204, 139, 0.35); }
+.detail-branch-fired { border-color: rgba(74, 222, 154, 0.35); }
 .detail-branch-off { opacity: 0.55; }
 .detail-branch-head { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
 .detail-branch-label { font-size: var(--text-md); font-weight: 600; }
@@ -4278,26 +4425,25 @@ ol.md-list li { list-style: decimal; }
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-left: 10px;
-  padding: 2px 7px;
-  border-radius: var(--radius-sm);
-  font-size: var(--text-xs);
+  padding: 2px 8px;
+  border-radius: var(--radius-xs);
+  font-size: var(--text-micro);
   font-family: var(--font-mono);
   letter-spacing: 0.04em;
   -webkit-app-region: no-drag;
 }
 
 .mode-badge-sim {
-  color: var(--text-faint);
-  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  border: 1.5px dashed var(--text-faint);
 }
 
 .mode-badge-live {
-  color: #fff;
-  font-weight: 700;
+  color: var(--caution-ink);
+  font-weight: 600;
   text-transform: uppercase;
-  background: var(--down);
-  border: 1px solid var(--down);
+  background: var(--caution);
+  border: 1.5px solid var(--caution);
 }
 
 .mode-badge-pending {

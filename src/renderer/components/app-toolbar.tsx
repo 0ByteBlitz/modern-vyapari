@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react";
-import { Bell, FlaskConical, ShieldAlert } from "lucide-react";
+import { Bell } from "lucide-react";
 import type { AlertEvent, AppMode } from "@/lib/api";
 import { formatPrice } from "@/lib/format";
 
 /**
- * App toolbar (36px) — mode, risk budget, alerts.
+ * App toolbar (44px) — mode, risk budget, alerts.
  *
  * Design intent: the interface must not look identical when real money is at
  * stake. The mode banner is the loudest element on screen and changes colour
- * with the mode; switching to live requires typing a confirmation phrase, in
+ * with the mode — simulated is a dashed outline, live is solid amber, the one
+ * colour reserved for real money; switching to live requires typing a confirmation phrase, in
  * the toolbar itself rather than buried in settings.
  *
  * The session's own figures sit here while one of its surfaces is open, and
@@ -85,7 +86,6 @@ export function AppToolbar({
   return (
     <header className="app-toolbar">
       <div className={`mode-banner ${mode === "live" ? "mode-banner-live" : "mode-banner-paper"}`}>
-        {mode === "live" ? <ShieldAlert size={13} /> : <FlaskConical size={13} />}
         <span className="mode-banner-label">{mode === "live" ? "Live" : "Simulated"}</span>
         <span className="mode-banner-note">
           {mode === "live" ? "real funds at risk" : "no real orders"}
@@ -103,9 +103,8 @@ export function AppToolbar({
               ? "Arm live trading"
               : "Live trading isn't available yet"
           }
-          style={!onModeChange ? { opacity: 0.4, cursor: "not-allowed" } : undefined}
         >
-          <ShieldAlert size={13} /> Switch to live
+          Switch to live
         </button>
       )}
 
@@ -123,12 +122,12 @@ export function AppToolbar({
             autoFocus
             spellCheck={false}
           />
-          <button className="btn btn-danger" style={{ height: 24 }} disabled={!confirmed} onClick={goLive}>
+          <button className="btn btn-danger" style={{ height: 26 }} disabled={!confirmed} onClick={goLive}>
             Confirm
           </button>
           <button
             className="btn btn-ghost"
-            style={{ height: 24, color: "var(--text-faint)" }}
+            style={{ height: 26, color: "var(--text-faint)" }}
             onClick={() => {
               setArming(false);
               setTyped("");
@@ -141,7 +140,7 @@ export function AppToolbar({
 
       {mode === "live" && (
         <button className="toolbar-btn" onClick={() => onModeChange?.("simulated")}>
-          <FlaskConical size={13} /> Back to simulated
+          Back to simulated
         </button>
       )}
 
@@ -162,14 +161,11 @@ export function AppToolbar({
 
       <div style={{ position: "relative", display: "flex" }}>
         <button
-          className="toolbar-btn"
-          style={{
-            borderRight: "none",
-            borderLeft: "1px solid var(--border)",
-            background: alertsOpen ? "var(--surface-3)" : "transparent",
-          }}
+          className={`toolbar-icon-btn${alertsOpen ? " is-open" : ""}`}
           onClick={onToggleAlerts}
           title="Alerts"
+          aria-label={unreadAlerts > 0 ? `Alerts, ${unreadAlerts} unread` : "Alerts, none unread"}
+          aria-expanded={alertsOpen}
         >
           <Bell size={14} />
           {unreadAlerts > 0 && (
@@ -178,7 +174,7 @@ export function AppToolbar({
               style={{
                 fontSize: "var(--text-xs)",
                 fontWeight: 600,
-                color: "#080B10",
+                color: "var(--primary-foreground)",
                 background: "var(--accent)",
                 borderRadius: "var(--radius-pill)",
                 padding: "1px 6px",

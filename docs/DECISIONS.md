@@ -933,3 +933,29 @@ a simulated plan today — the signed maximum spend and the kill switch — is
 stated beside them, and the checks the engine does not make are listed as such.
 Engine behaviour is unchanged. Known debt, not fixed here: the gates do float
 arithmetic and `toFixed` on money (`risk-engine.ts`, gates 2 and 3).
+
+## "Signed" — the visual system replaced (2026-11-05)
+
+The cyan-on-blue-black palette (entry above, line "Design tokens") is
+superseded by the approved **"Signed"** redesign. The rules are in the top
+block of `src/renderer/index.css`; what changed and why:
+
+- **Indigo replaces cyan** as the interactive / selected colour, and is also
+  the owner's signature: the armed state is the only thing in the interface the
+  owner created by signing, and it carries the indigo ring.
+- **Simulated is a line style, not a colour.** Dashed outlines mean paper
+  everywhere (mode banner, badges, positions, chart lines). Solid amber is only
+  ever real money. The old palette tinted simulated cyan, which made "safe" and
+  "selected" the same colour.
+- **Amber now owns monitor gaps and staleness** as well as live mode; red is
+  kept for loss and destructive actions. A gap is something to notice, not a
+  loss.
+- **Orchid replaces violet** for agent-written content.
+- **Geist / Geist Mono replace Segoe UI / IBM Plex Mono.** They are vendored as
+  two variable woff2 files under `src/renderer/assets/fonts/` (SIL OFL 1.1),
+  because the CSP is `default-src 'self'` and a font CDN would need a hole in
+  it. Zero dependencies: the files came from the `geist` npm package once and
+  are checked in.
+
+Token names were kept (`--caution`, `--ai`, `--accent`…) so components follow
+the new values without edits; only values changed.

@@ -104,14 +104,14 @@ function createWindow(): void {
     minHeight: 600,
     title: "Modern Vyapari",
     icon: ICON_PATH,
-    backgroundColor: "#080B10", // --background, so the first frame is not a flash of another colour
+    backgroundColor: "#0E0F12", // --background, so the first frame is not a flash of another colour
     // NOTE: no `frame: false` — it disables titleBarOverlay on Windows entirely.
     // titleBarStyle "hidden" + overlay gives the custom titlebar WITH native
     // min/max/close buttons (and Windows snap layouts) on the right.
     titleBarStyle: "hidden",
     titleBarOverlay: {
-      color: "#05070a",       // --bg-void: the .titlebar background, so the native buttons sit on the same colour
-      symbolColor: "#9AA7B8", // --muted-foreground
+      color: "#0B0C0F",       // --bg-void: the .titlebar background, so the native buttons sit on the same colour
+      symbolColor: "#A3A8B3", // --muted-foreground
       height: 40,
     },
     webPreferences: {
