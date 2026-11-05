@@ -96,12 +96,6 @@ img { max-width: 100%; }
 .terminal-frame>img { width: 100%; display: block; }
 .terminal-caption { position: absolute; right: 0; bottom: 0; left: 0; height: 28px; padding: 0 11px; display: flex; align-items: center; justify-content: space-between; color: #a4a6af; background: #101115ed; border-top: 1px solid #ffffff12; font-size: 7px; }
 .terminal-caption i { display: inline-block; width: 5px; height: 5px; margin-right: 6px; border-radius: 50%; background: var(--green); }
-.float-card { position: absolute; right: -19px; bottom: -8px; display: flex; align-items: center; gap: 10px; padding: 10px 13px; border: 1px solid #3a3d45; border-radius: 5px; background: #1a1c22; box-shadow: 0 12px 35px #0009; }
-.float-icon { color: var(--indigo); font-size: 19px; }
-.float-card b, .float-card small { display: block; }
-.float-card b { font-size: 10px; }
-.float-card small { color: var(--muted); font-size: 9px; }
-
 .principle-strip {
   max-width: 1120px;
   margin: 0 auto;
@@ -185,7 +179,6 @@ footer>div { display: flex; gap: 20px; }
   .hero-lede { font-size: 14px; }
   .hero-actions { gap: 17px; }
   .hero-art { padding-bottom: 8px; }
-  .float-card { right: -4px; bottom: -10px; padding: 8px 10px; }
   .principle-strip { grid-template-columns: 1fr; padding: 7px 0; }
   .principle-strip>div { padding: 11px 9px; border-right: 0; border-bottom: 1px solid var(--line); }
   .principle-strip>div:last-child { border-bottom: 0; }
