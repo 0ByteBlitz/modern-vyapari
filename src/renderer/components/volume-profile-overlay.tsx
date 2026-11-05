@@ -206,7 +206,7 @@ export function VolumeProfileOverlay({
                   y={y + 3}
                   textAnchor="end"
                   fill={colour}
-                  style={{ fontFamily: "IBM Plex Mono, monospace", fontSize: 9 }}
+                  style={{ fontFamily: "Geist Mono, monospace", fontSize: 9 }}
                 >
                   {label}
                 </text>
@@ -218,7 +218,7 @@ export function VolumeProfileOverlay({
           x={right - histWidth}
           y={12}
           fill="var(--text-faint)"
-          style={{ fontFamily: "IBM Plex Mono, monospace", fontSize: 9 }}
+          style={{ fontFamily: "Geist Mono, monospace", fontSize: 9 }}
         >
           profile · candle-derived · {profile.binWidth}
           {profile.deltaKnown ? "" : " · split unknown"}

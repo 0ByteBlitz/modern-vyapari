@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { init, dispose, type Chart, type KLineData } from "klinecharts";
 import type { Candle } from "@/lib/api";
 import { priceDecimals } from "@/lib/format";
-import { CHART_THEME, registerChartTools } from "@/lib/chart-tools";
+import { CHART_THEME, INDICATOR_STYLES, registerChartTools } from "@/lib/chart-tools";
 import { attachFeed, type ChartFeed } from "@/lib/chart-feed";
 
 /**
@@ -113,34 +113,35 @@ export function CandlestickChart({
             downColor: CHART_THEME.down,
             upBorderColor: CHART_THEME.up,
             downBorderColor: CHART_THEME.down,
-            upWickColor: CHART_THEME.up,
-            downWickColor: CHART_THEME.down,
+            upWickColor: CHART_THEME.wick,
+            downWickColor: CHART_THEME.wick,
           },
           tooltip: {
             // The title would print the ticker, which here is only the series
             // key ("BTC-USD:60"); the card header already names the pair.
             title: { show: false },
-            legend: { family: "IBM Plex Mono, monospace", size: 11 },
+            legend: { family: "Geist Mono, monospace", size: 11 },
           },
         },
         xAxis: {
-          axisLine: { color: CHART_THEME.grid },
-          tickLine: { color: CHART_THEME.grid },
-          tickText: { color: CHART_THEME.faint, family: "IBM Plex Mono, monospace", size: 10 },
+          axisLine: { color: CHART_THEME.axis },
+          tickLine: { color: CHART_THEME.axis },
+          tickText: { color: CHART_THEME.faint, family: "Geist Mono, monospace", size: 10 },
         },
         yAxis: {
-          axisLine: { color: CHART_THEME.grid },
-          tickLine: { color: CHART_THEME.grid },
-          tickText: { color: CHART_THEME.faint, family: "IBM Plex Mono, monospace", size: 10 },
+          axisLine: { color: CHART_THEME.axis },
+          tickLine: { color: CHART_THEME.axis },
+          tickText: { color: CHART_THEME.faint, family: "Geist Mono, monospace", size: 10 },
         },
         crosshair: {
-          horizontal: { line: { color: CHART_THEME.dim }, text: { family: "IBM Plex Mono, monospace" } },
-          vertical: { line: { color: CHART_THEME.dim }, text: { family: "IBM Plex Mono, monospace" } },
+          horizontal: { line: { color: CHART_THEME.dim }, text: { family: "Geist Mono, monospace" } },
+          vertical: { line: { color: CHART_THEME.dim }, text: { family: "Geist Mono, monospace" } },
         },
         indicator: {
+          ...INDICATOR_STYLES,
           tooltip: {
-            title: { family: "IBM Plex Mono, monospace", size: 10 },
-            legend: { family: "IBM Plex Mono, monospace", size: 10 },
+            title: { family: "Geist Mono, monospace", size: 10 },
+            legend: { family: "Geist Mono, monospace", size: 10 },
           },
         },
       },
@@ -230,7 +231,7 @@ export function CandlestickChart({
           text: {
             color: m.color ?? (m.kind === "entry" ? CHART_THEME.up : CHART_THEME.down),
             size: 10,
-            family: "IBM Plex Mono, monospace",
+            family: "Geist Mono, monospace",
           },
         },
       } as any);
@@ -245,7 +246,7 @@ export function CandlestickChart({
         lock: true,
         styles: {
           line: { color: l.color, style: l.dashed === false ? "solid" : "dashed", size: 1 },
-          text: { color: l.color, size: 10, family: "IBM Plex Mono, monospace" },
+          text: { color: l.color, size: 10, family: "Geist Mono, monospace" },
         },
       } as any);
       if (typeof id === "string") overlayIds.current.push(id);

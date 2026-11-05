@@ -21,17 +21,19 @@ import {
 
 /* ── Colour tokens (kept in sync with index.css) ─────────────────────── */
 const C = {
-  up: "#2FCC8B",
-  down: "#F2566A",
-  accent: "#22D3EE",
-  caution: "#FF8A3D",
-  ai: "#8B5CF6",
-  aiBright: "#a78bfa",
-  text: "#E8EDF4",
-  dim: "#9AA7B8",
-  faint: "#667284",
-  grid: "#202834",
-  panel: "#0C1016",
+  up: "#4ADE9A",
+  down: "#FF7A70",
+  accent: "#A9B2FF",
+  caution: "#FFB547",
+  ai: "#E29CF5",
+  aiBright: "#EDBDF9",
+  text: "#EDEEF0",
+  dim: "#A3A8B3",
+  faint: "#8A909B",
+  grid: "#1A1C21",
+  axis: "#2A2E36",
+  wick: "#7C828E",
+  panel: "#16181D",
 };
 
 const typical = (k: KLineData) => (k.high + k.low + k.close) / 3;
@@ -167,7 +169,7 @@ const positionTool: OverlayTemplate = {
       {
         type: "rect",
         attrs: { x: left, y: Math.min(pEntry.y, pStop.y), width, height: Math.abs(pStop.y - pEntry.y) },
-        styles: { style: "stroke_fill", color: "rgba(242,86,106,0.12)", borderColor: C.down, borderSize: 1 },
+        styles: { style: "stroke_fill", color: "rgba(255,122,112,0.12)", borderColor: C.down, borderSize: 1 },
       },
       {
         type: "text",
@@ -177,7 +179,7 @@ const positionTool: OverlayTemplate = {
           text: `risk ${risk.toFixed(precision)} · ${((risk / entry) * 100).toFixed(2)}%`,
           baseline: "middle",
         },
-        styles: { color: C.down, size: 11, family: "IBM Plex Mono, monospace" },
+        styles: { color: C.down, size: 11, family: "Geist Mono, monospace" },
       },
       // entry line
       {
@@ -193,7 +195,7 @@ const positionTool: OverlayTemplate = {
           text: `${isLong ? "LONG" : "SHORT"} entry ${entry.toFixed(precision)}`,
           baseline: "bottom",
         },
-        styles: { color: C.accent, size: 11, family: "IBM Plex Mono, monospace" },
+        styles: { color: C.accent, size: 11, family: "Geist Mono, monospace" },
       },
     ];
 
@@ -202,7 +204,7 @@ const positionTool: OverlayTemplate = {
         {
           type: "rect",
           attrs: { x: left, y: Math.min(pEntry.y, pTarget.y), width, height: Math.abs(pTarget.y - pEntry.y) },
-          styles: { style: "stroke_fill", color: "rgba(47,204,139,0.12)", borderColor: C.up, borderSize: 1 },
+          styles: { style: "stroke_fill", color: "rgba(74,222,154,0.12)", borderColor: C.up, borderSize: 1 },
         },
         {
           type: "text",
@@ -212,7 +214,7 @@ const positionTool: OverlayTemplate = {
             text: `reward ${reward.toFixed(precision)} · R ${rr.toFixed(2)}`,
             baseline: "middle",
           },
-          styles: { color: C.up, size: 11, family: "IBM Plex Mono, monospace" },
+          styles: { color: C.up, size: 11, family: "Geist Mono, monospace" },
         },
         {
           type: "text",
@@ -225,7 +227,7 @@ const positionTool: OverlayTemplate = {
                 : "no paper balance loaded — size unavailable",
             baseline: "top",
           },
-          styles: { color: C.dim, size: 10.5, family: "IBM Plex Mono, monospace" },
+          styles: { color: C.dim, size: 10.5, family: "Geist Mono, monospace" },
         }
       );
     }
@@ -268,7 +270,7 @@ const measureTool: OverlayTemplate = {
         },
         styles: {
           style: "stroke_fill",
-          color: up ? "rgba(47,204,139,0.10)" : "rgba(242,86,106,0.10)",
+          color: up ? "rgba(74,222,154,0.10)" : "rgba(255,122,112,0.10)",
           borderColor: up ? C.up : C.down,
           borderSize: 1,
           borderStyle: "dashed",
@@ -283,7 +285,7 @@ const measureTool: OverlayTemplate = {
           align: "center",
           baseline: "bottom",
         },
-        styles: { color: up ? C.up : C.down, size: 11, family: "IBM Plex Mono, monospace" },
+        styles: { color: up ? C.up : C.down, size: 11, family: "Geist Mono, monospace" },
       },
     ];
   },
@@ -314,7 +316,7 @@ function waveOverlay(name: string, labels: string[]): OverlayTemplate {
         {
           type: "line",
           attrs: { coordinates },
-          styles: { color: C.ai, size: 1 },
+          styles: { color: C.dim, size: 1 },
         },
       ];
 
@@ -333,7 +335,7 @@ function waveOverlay(name: string, labels: string[]): OverlayTemplate {
             align: "center",
             baseline: goingUp ? "bottom" : "top",
           },
-          styles: { color: C.aiBright, size: 12, weight: "bold", family: "IBM Plex Mono, monospace" },
+          styles: { color: C.text, size: 12, weight: "bold", family: "Geist Mono, monospace" },
         });
       });
 
@@ -363,7 +365,7 @@ const rectOverlay: OverlayTemplate = {
           width: Math.abs(b.x - a.x),
           height: Math.abs(b.y - a.y),
         },
-        styles: { style: "stroke_fill", color: "rgba(34,211,238,0.08)", borderColor: C.accent, borderSize: 1 },
+        styles: { style: "stroke_fill", color: "rgba(169,178,255,0.08)", borderColor: C.accent, borderSize: 1 },
       },
     ];
   },
@@ -384,7 +386,7 @@ const circleOverlay: OverlayTemplate = {
       {
         type: "circle",
         attrs: { x: a.x, y: a.y, r },
-        styles: { style: "stroke_fill", color: "rgba(34,211,238,0.06)", borderColor: C.accent, borderSize: 1 },
+        styles: { style: "stroke_fill", color: "rgba(169,178,255,0.06)", borderColor: C.accent, borderSize: 1 },
       },
     ];
   },
@@ -402,7 +404,7 @@ const triangleOverlay: OverlayTemplate = {
       {
         type: "polygon",
         attrs: { coordinates },
-        styles: { style: "stroke_fill", color: "rgba(34,211,238,0.07)", borderColor: C.accent, borderSize: 1 },
+        styles: { style: "stroke_fill", color: "rgba(169,178,255,0.07)", borderColor: C.accent, borderSize: 1 },
       },
     ];
   },
@@ -444,12 +446,12 @@ const fibExtension: OverlayTemplate = {
         {
           type: "line",
           attrs: { coordinates: [{ x: pc.x, y }, { x: width, y }] },
-          styles: { color: lvl === 1 ? C.caution : C.dim, size: 1, style: "dashed" },
+          styles: { color: lvl === 1 ? C.text : C.dim, size: 1, style: "dashed" },
         },
         {
           type: "text",
           attrs: { x: pc.x + 4, y: y - 2, text: `${lvl} · ${price.toFixed(precision)}`, baseline: "bottom" },
-          styles: { color: lvl === 1 ? C.caution : C.faint, size: 10, family: "IBM Plex Mono, monospace" },
+          styles: { color: lvl === 1 ? C.text : C.faint, size: 10, family: "Geist Mono, monospace" },
         },
       ];
     });
@@ -501,7 +503,7 @@ const anyWaves: OverlayTemplate = {
   createPointFigures: ({ coordinates }) => {
     if (coordinates.length < 2) return [];
     const figures: any[] = [
-      { type: "line", attrs: { coordinates }, styles: { color: C.ai, size: 1 } },
+      { type: "line", attrs: { coordinates }, styles: { color: C.dim, size: 1 } },
     ];
     coordinates.forEach((c, i) => {
       if (i === 0) return;
@@ -510,7 +512,7 @@ const anyWaves: OverlayTemplate = {
       figures.push({
         type: "text",
         attrs: { x: c.x, y: up ? c.y - 6 : c.y + 6, text: String(i), align: "center", baseline: up ? "bottom" : "top" },
-        styles: { color: C.aiBright, size: 12, weight: "bold", family: "IBM Plex Mono, monospace" },
+        styles: { color: C.text, size: 12, weight: "bold", family: "Geist Mono, monospace" },
       });
     });
     return figures;
@@ -542,7 +544,7 @@ const gannBox: OverlayTemplate = {
     for (const r of GANN_RATIOS) {
       const y = y0 + (y1 - y0) * r;
       const x = x0 + (x1 - x0) * r;
-      const emphasis = r === 0.5 ? C.caution : C.dim;
+      const emphasis = r === 0.5 ? C.text : C.dim;
       figures.push(
         {
           type: "line",
@@ -586,7 +588,7 @@ const fibCircle: OverlayTemplate = {
       attrs: { x: a.x, y: a.y, r: base * lvl },
       styles: {
         style: "stroke",
-        borderColor: lvl === 1 ? C.caution : C.dim,
+        borderColor: lvl === 1 ? C.text : C.dim,
         borderSize: 1,
         borderStyle: "dashed",
       },
@@ -776,3 +778,30 @@ export const PANE_INDICATORS: IndicatorDef[] = [
 export const ALL_INDICATORS = [...OVERLAY_INDICATORS, ...PANE_INDICATORS];
 
 export const CHART_THEME = C;
+
+/** Indicator series in neutrals, so the only colours on a chart are the ones
+ *  that mean something (up, down, a level's role). The fourth line is dashed. */
+const line = (color: string, dashed = false) => ({
+  style: (dashed ? "dashed" : "solid") as "dashed" | "solid",
+  smooth: false,
+  size: 1.2,
+  color,
+  dashedValue: [4, 3],
+});
+export const INDICATOR_STYLES = {
+  lines: [line("#EDEEF0"), line("#A3A8B3"), line("#7FA7D9"), line("#6E7480", true), line("#C3C7CF")],
+  bars: [
+    {
+      style: "fill" as const,
+      borderSize: 1,
+      borderStyle: "solid" as const,
+      borderDashedValue: [2, 2],
+      upColor: "rgba(74,222,154,0.55)",
+      downColor: "rgba(255,122,112,0.55)",
+      noChangeColor: "#7C828E",
+    },
+  ],
+};
+
+/** The last-price line and its label in up/down colours. */
+export const LAST_PRICE_MARK = { upColor: C.up, downColor: C.down, noChangeColor: C.dim };

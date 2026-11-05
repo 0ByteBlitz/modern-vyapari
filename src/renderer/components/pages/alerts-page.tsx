@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { Bell, BellOff, CheckCircle2, AlertTriangle, Trash2, Plus, Zap, Volume2 } from "lucide-react";
-import { api, isError, type Session, type AlertRecord } from "@/lib/api";
+import { BellOff, Trash2, Volume2 } from "lucide-react";
+import { api, isError, type Session, type AlertRecord, type FeedHealth } from "@/lib/api";
 import { testAlertSound } from "@/lib/alert-sound";
 import { describeThreshold } from "@shared/levels";
 import { RefreshButton } from "@/components/refresh-button";
@@ -45,80 +45,55 @@ export function AlertsPage({ activeSession }: { activeSession: Session | null })
   const displayedAlerts =
     filter === "active" ? activeAlerts : filter === "triggered" ? triggeredAlerts : alerts;
 
+  const pair = activeSession ? activeSession.pair : "all sessions";
+  const tabs = [
+    { id: "all" as const, label: "All", n: alerts.length },
+    { id: "active" as const, label: "Active", n: activeAlerts.length },
+    { id: "triggered" as const, label: "Triggered", n: triggeredAlerts.length },
+  ];
+
   return (
-    <div className="vy-scroll" style={{ padding: 24, flex: 1, height: "100%", overflowY: "auto", display: "flex", flexDirection: "column", gap: 20 }}>
-      {/* Header & Stats */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+    <div className="vy-scroll surface-page">
+      <div className="surface-head">
         <div>
-          <h2 style={{ fontSize: "var(--text-xl)", fontWeight: 700, display: "flex", alignItems: "center", gap: 10 }}>
-            <Bell size={20} style={{ color: "var(--accent)" }} />
-            <span>Alert Rules & Triggers · {activeSession ? activeSession.pair : "All Sessions"}</span>
-          </h2>
-          <p style={{ fontSize: "var(--text-xs)", color: "var(--text-faint)", marginTop: 4 }}>
-            Real-time streaming alert rules monitored by Binance WebSocket & indicator engine.
-          </p>
+          <h1 className="surface-title">Alert rules · {pair}</h1>
+          <p className="surface-sub">Checked against the Binance stream and the indicator engine.</p>
         </div>
-        <div style={{ display: "flex", gap: 10 }}>
-          <button onClick={() => testAlertSound()} className="btn btn-secondary" title="Test alert audio chime">
-            <Volume2 size={14} style={{ color: "var(--accent)" }} />
-            <span>Test Sound</span>
+        <div className="surface-actions">
+          <button onClick={() => testAlertSound()} className="btn" title="Play the alert chime">
+            <Volume2 size={13} /> Test sound
           </button>
-          <RefreshButton onRefresh={loadAlerts} title="Refresh alerts" className="btn btn-secondary" size={14} />
+          <RefreshButton onRefresh={loadAlerts} title="Refresh alerts" className="btn" size={13} />
           {alerts.length > 0 && (
-            <button onClick={clearAll} className="btn" style={{ color: "var(--down)", borderColor: "rgba(242,86,106,0.3)" }}>
-              <Trash2 size={14} />
-              <span>Clear All</span>
+            <button onClick={clearAll} className="btn btn-destructive-outline">
+              <Trash2 size={13} /> Clear all
             </button>
           )}
         </div>
       </div>
 
-      {/* Summary Stat Cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
-        <div className="panel" style={{ padding: 16, display: "flex", alignItems: "center", gap: 14 }}>
-          <div style={{ width: 40, height: 40, borderRadius: "var(--radius-md)", background: "rgba(34,211,238,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Zap size={20} style={{ color: "var(--accent)" }} />
-          </div>
-          <div>
-            <div className="mono" style={{ fontSize: "var(--text-xl)", fontWeight: 700 }}>{activeAlerts.length}</div>
-            <div style={{ fontSize: "var(--text-xs)", color: "var(--text-faint)" }}>Active Condition Rules</div>
-          </div>
+      <div className="stat-cards">
+        <div className="panel stat-card">
+          <span className="mono stat-card-value">{activeAlerts.length}</span>
+          <span className="stat-card-label">Active rules</span>
         </div>
-
-        <div className="panel" style={{ padding: 16, display: "flex", alignItems: "center", gap: 14 }}>
-          <div style={{ width: 40, height: 40, borderRadius: "var(--radius-md)", background: "rgba(47,204,139,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <CheckCircle2 size={20} style={{ color: "var(--up)" }} />
-          </div>
-          <div>
-            <div className="mono" style={{ fontSize: "var(--text-xl)", fontWeight: 700 }}>{triggeredAlerts.length}</div>
-            <div style={{ fontSize: "var(--text-xs)", color: "var(--text-faint)" }}>Triggered Alerts</div>
-          </div>
+        <div className="panel stat-card">
+          <span className="mono stat-card-value">{triggeredAlerts.length}</span>
+          <span className="stat-card-label">Triggered</span>
         </div>
-
-        <div className="panel" style={{ padding: 16, display: "flex", alignItems: "center", gap: 14 }}>
-          <div style={{ width: 40, height: 40, borderRadius: "var(--radius-md)", background: "rgba(139,92,246,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Bell size={20} style={{ color: "var(--ai)" }} />
-          </div>
-          <div>
-            <div className="mono" style={{ fontSize: "var(--text-xl)", fontWeight: 700 }}>Binance WS</div>
-            <div style={{ fontSize: "var(--text-xs)", color: "var(--text-faint)" }}>Connected & Streaming</div>
-          </div>
-        </div>
+        <StreamCard />
       </div>
 
-      {/* Filter Tabs */}
-      <div style={{ display: "flex", gap: 8 }}>
-        {[
-          { id: "all", label: `All Alerts (${alerts.length})` },
-          { id: "active", label: `Active (${activeAlerts.length})` },
-          { id: "triggered", label: `Triggered (${triggeredAlerts.length})` },
-        ].map((t) => (
+      <div className="pill-tabs" role="tablist" aria-label="Alert filter">
+        {tabs.map((t) => (
           <button
             key={t.id}
-            className={`chip ${filter === t.id ? "chip-active" : ""}`}
-            onClick={() => setFilter(t.id as any)}
+            role="tab"
+            aria-selected={filter === t.id}
+            className={`pill-tab ${filter === t.id ? "pill-tab-on" : ""}`}
+            onClick={() => setFilter(t.id)}
           >
-            {t.label}
+            {t.label} <span className="mono pill-tab-n">{t.n}</span>
           </button>
         ))}
       </div>
@@ -149,7 +124,7 @@ export function AlertsPage({ activeSession }: { activeSession: Session | null })
                     alignItems: "center",
                     justifyContent: "space-between",
                     padding: "14px 18px",
-                    borderBottom: "1px solid var(--border)",
+                    borderBottom: "1px solid var(--border-subtle)",
                     fontSize: "var(--text-sm)",
                   }}
                 >
@@ -177,7 +152,7 @@ export function AlertsPage({ activeSession }: { activeSession: Session | null })
                     {/* An alert is watching or it is not. It was previously
                         styled with the strategy lifecycle's "backtested" badge,
                         which named a state alerts never had. */}
-                    <span className={`badge badge-${a.status === "active" ? "paper" : "draft"}`}>
+                    <span className={`badge badge-${a.status === "active" ? "watching" : "draft"}`}>
                       {a.status}
                     </span>
                     <button
@@ -195,6 +170,43 @@ export function AlertsPage({ activeSession }: { activeSession: Session | null })
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/** The Binance stream's real state — alerts are evaluated on it, so a card that
+ *  says "connected" must have asked. It used to be a fixed string. */
+const STREAM_TEXT: Record<FeedHealth["socket"]["state"], { tone: string; title: string; note: string }> = {
+  live: { tone: "var(--up)", title: "Binance stream", note: "Connected and streaming" },
+  connecting: { tone: "var(--caution)", title: "Binance stream", note: "Connecting" },
+  silent: { tone: "var(--caution)", title: "Binance stream", note: "Open but sending nothing — reconnecting" },
+  down: { tone: "var(--down)", title: "Binance stream", note: "Disconnected — retrying" },
+  idle: { tone: "var(--text-faint)", title: "Binance stream", note: "Nothing streaming" },
+};
+
+function StreamCard() {
+  const [state, setState] = useState<FeedHealth["socket"]["state"] | "unknown">("unknown");
+  useEffect(() => {
+    let live = true;
+    const read = () =>
+      void api.getFeedStream().then((r) => {
+        if (live) setState(isError(r) ? "unknown" : r.socket.state);
+      });
+    read();
+    const id = setInterval(read, 5_000);
+    return () => {
+      live = false;
+      clearInterval(id);
+    };
+  }, []);
+  const t = state === "unknown" ? { tone: "var(--text-faint)", title: "Binance stream", note: "State unavailable" } : STREAM_TEXT[state];
+  return (
+    <div className="panel stat-card">
+      <span className="stat-card-stream">
+        <span className="feed-dot" style={{ background: t.tone }} />
+        {t.title}
+      </span>
+      <span className="stat-card-label">{t.note}</span>
     </div>
   );
 }
