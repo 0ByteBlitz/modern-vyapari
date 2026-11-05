@@ -1,6 +1,7 @@
 import { Target, Clock, AlertTriangle } from "lucide-react";
 import { formatLevel } from "@shared/levels";
 import type { PriceLevel } from "@shared/levels";
+import { PLAN_STATE_LABEL } from "@shared/ipc-types";
 import type { StoredPlanView, PlanBranchView, LevelDraftView } from "@/lib/api";
 import { formatPrice } from "@/lib/format";
 
@@ -197,7 +198,7 @@ export function PlanWatchPanel({
                 <div className="plan-watch-plan-head">
                   <span className="plan-watch-slug">{p.slug}</span>
                   <span className={`badge badge-${p.state === "triggered" ? "supervised" : "paper"}`}>
-                    {p.state}
+                    {PLAN_STATE_LABEL[p.state]}
                   </span>
                   <span
                     className={`plan-watch-expiry ml-auto ${exp.urgent ? "plan-watch-expiry-urgent" : ""}`}

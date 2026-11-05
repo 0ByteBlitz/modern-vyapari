@@ -30,6 +30,7 @@ import {
   type StoredPlanView,
 } from "@/lib/api";
 import { describeThreshold } from "@shared/levels";
+import { PLAN_STATE_LABEL } from "@shared/ipc-types";
 
 interface Props {
   symbol: string;
@@ -157,7 +158,7 @@ export function LevelReferencesPanel({
             >
               <Target size={11} />
               <span className="level-refs-plan-name">{p.slug}</span>
-              <span className="level-refs-detail">{p.state}</span>
+              <span className="level-refs-detail">{PLAN_STATE_LABEL[p.state]}</span>
             </button>
             <button
               className={`level-refs-btn ${shown.has(p.rowId) ? "level-refs-btn-on" : ""}`}

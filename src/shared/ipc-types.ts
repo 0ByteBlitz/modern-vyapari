@@ -604,6 +604,17 @@ export type PlanState =
   | "expired"
   | "invalidated";
 
+/** The one label each plan state carries on screen. Every surface that shows a
+ *  plan's state reads it from here, so one state never reads two ways. */
+export const PLAN_STATE_LABEL: Record<PlanState, string> = {
+  draft: "Draft",
+  planned: "Armed",
+  triggered: "Triggered",
+  closed: "Closed",
+  expired: "Expired",
+  invalidated: "Invalidated",
+};
+
 export interface StrategyRow {
   id: number;
   session_id: number;

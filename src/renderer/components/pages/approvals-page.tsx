@@ -226,8 +226,13 @@ export function ApprovalsPage({ activeSession }: { activeSession?: Session | nul
             <span className="label-micro">Escalation</span>
           </div>
           <div className="panel-body" style={{ fontSize: "var(--text-md)", color: "var(--muted-foreground)", lineHeight: 1.6 }}>
-            In-app toasts work today. Out-of-app channels — the ones that matter
-            when the app isn't open — are not built yet.
+            {/* True to src/main/notify/: alert and paper-fill messages go through
+                the outbox to Telegram when it is configured. The app quits on
+                window close (main.ts), so nothing is watched or sent while it
+                is closed — the copy must not promise otherwise. */}
+            Alerts and fills always show in the app. Connect Telegram in
+            Settings to get them on your phone as well. The app watches only
+            while it is open, so keep it running to be told.
           </div>
         </section>
       </div>
