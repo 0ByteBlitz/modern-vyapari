@@ -1,6 +1,21 @@
 # Modern Vyapari — Roadmap
 
-## Status · 31 October 2026 — read this first
+## Status · 5 November 2026 — read this first
+
+**Current prototype:** an AI partner helps a user build and pressure-test a
+trading plan. The user reviews and arms it; deterministic code monitors the
+signed terms. This is a decision and follow-through tool, not a source of
+guaranteed edge or returns. The prototype should prove one end-to-end simulated
+journey before adding markets or broadening the product.
+Evidence-grounded critique is still being developed; the current plan gate checks
+required structure, not whether a thesis has an edge.
+
+**Scope guard:** portfolio investing, tokenized securities, derivatives beyond
+current research inputs, and cloud operation are not prototype commitments.
+Keep those questions in private research until the first journey is proven.
+The runtime promise is still open: today, plans are watched only while the app
+is running. Do not imply background or cloud continuity until it is designed
+and verified.
 
 **This file began as a five-week sprint plan to a personal launch on 30 August
 2026.** Development paused after 9 August with Sprint 4 (live execution) not
@@ -34,17 +49,31 @@ Anthropic SDK 1.x · `@types/node` 24 · CodeRabbit review rules · **AI provide
 
 ### Open — where contributions help most
 
-**Good first contributions**
+**Other contributions (not the prototype priority)**
 - **A-4 Read web-search support up front** — Anthropic's models API now reports `capabilities.server_tools`; replace the reject-and-retry in `ai/anthropic.ts`.
 - **Clearer Telegram errors** — surface Telegram's own short reason ("chat not found") without ever echoing the token.
 - **Lock-screen error detail** — a failed unlock points at Settings › Diagnostics, which is unreachable while locked.
 - **S2-4 Ichimoku offsets test** — pin all five lines against a known reference.
 - **L-1 packaging for macOS and Linux** — `package:linux` / `package:mac` build in CI; the installers have not been run on a real machine.
 
-**Current focus: UI and UX** — modern, consistent, calm. Every item names the
-journey step it serves; a screen that *looks* finished but states the wrong thing
-is still the first thing to fix. Theming and light mode stay deferred (§1): this
-work is what settles the surfaces they would theme.
+**Current focus: finish one end-to-end prototype journey, and make it calm to
+use.** The agent should reduce the work of understanding a plan, not add another
+stream of text. Keep the key terms and state easy to scan; put supporting detail
+behind a deliberate request. Remove decorative treatment when it competes with
+the plan or makes signing feel more certain than the evidence. Theming and light
+mode stay deferred (§1).
+
+- **Prototype journey:** research an idea → draft and challenge a plan → review
+  its terms and evidence → user arms it → deterministic monitor evaluates it in
+  simulated mode → user can see what happened and why. Close the remaining
+  seams in that sequence before broadening scope.
+- **Accuracy and recovery:** the plan's data, state and outcome must stay
+  explainable through stale feeds, gaps, app restarts and refusals. Measure feed
+  freshness and decision latency; never hide delay behind a live-looking state.
+  Background or cloud operation is research until its runtime contract is settled.
+- **Calm UI:** reduce repeated prose and competing status treatments in Plans
+  and Journal; use concise summaries and progressive disclosure. The assistant
+  is one partner with global or session context, not two competing characters.
 
 - **Landing now:** themed quit dialog that says what quitting stops (J3 — *armed
   plans can't trigger while the app is closed*), with a native fallback so the
@@ -88,16 +117,12 @@ work is what settles the surfaces they would theme.
 - **U-7 Loading and feedback** (J0, J3) — skeletons instead of *Loading…*, one
   toast system for alerts and confirmations, and an honest *stale* state on any
   number whose feed has stopped.
-- **U-8 The global agent as a mascot** (J0, J1) — *first version landing.* The
-  agent has two forms, never ambiguous which: the **session** agent is the drawer
-  on a session's own surfaces, bounded by that session; the **global** agent is
-  an original mascot (a happy face on a violet blob, its smile a rising chart line) in the lower-right
-  corner, opening a floating window for the general conversation. When a session
-  drawer is on screen the mascot slides left to straddle its edge, so it never
-  parks over a page's numbers; that is its only movement. It shows when it is
-  replying, and a dot marks a reply that finished while the window was closed.
-  Next: dragging it, and whether it should speak up unasked (JOURNEYS' partner
-  bar) — which waits on the calibration record having entries.
+- **U-8 The global agent and session chat** (J0, J1) — the mascot remains the
+  entry point to the general conversation; the session chat stays scoped to its
+  session. Keep that distinction visible and consistent. The mascot is a way to
+  reach the partner, not decoration: defer extra motion, dragging, and
+  unsolicited commentary. Prefer concise summaries with supporting detail on
+  request, and speak up only when evidence supports a useful action.
 
 **Harness compatibility: any LLM provider, or a local model** (J7) — Anthropic is
 the only adapter today and the default everywhere. The agent loop is already the

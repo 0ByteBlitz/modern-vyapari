@@ -4,8 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#0e0f12" />
-    <meta name="description" content="An AI trading partner for spot crypto. You write and sign the plan; deterministic code monitors it in simulated mode." />
-    <title>Modern Vyapari — decide at noon</title>
+    <meta name="description" content="An open-source AI partner for self-directed crypto traders. Research an idea, draft and review a plan, then see what the simulated monitor did." />
+    <title>Modern Vyapari — Trade only knowingly</title>
     <link rel="icon" href="../src/renderer/assets/logo.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="./styles.css" />
   </head>
@@ -26,14 +26,13 @@
     <main id="top">
       <section class="hero">
         <div class="hero-copy">
-          <div class="eyebrow"><span class="pulse"></span> OPEN SOURCE <i>·</i> WINDOWS <i>·</i> SIMULATED TRADING</div>
-          <h1>Decide at noon.<br /><em>Not at 3am.</em></h1>
-          <p class="hero-lede">An AI trading partner for spot crypto. You sign the plan once — code follows it exactly.</p>
+          <h1>Trade only<br /><em>knowingly.</em></h1>
+          <p class="hero-lede">An open-source AI partner for self-directed crypto traders. Research an idea, draft a plan, examine its assumptions and decide whether to arm it.</p>
           <div class="hero-actions">
             <a class="button" href="https://github.com/0ByteBlitz/modern-vyapari">Get it on GitHub <span aria-hidden="true">↗</span></a>
             <a class="text-link" href="#tour">Take the tour <span aria-hidden="true">↓</span></a>
           </div>
-          <p class="hero-note"><span class="note-dot"></span>Alpha · simulated only. The app cannot place real orders.</p>
+          <p class="hero-note"><span class="note-dot"></span>Alpha · simulated only. No real orders; plans are monitored only while the app runs.</p>
         </div>
         <figure class="hero-art">
           <div class="terminal-frame">
@@ -41,29 +40,28 @@
             <img src="../docs/images/research.png" alt="Charts workspace with a BTC-USD price chart, session list and agent panel" />
             <figcaption class="terminal-caption"><span><i></i> BTC-USD · 1H</span><span>BINANCE ANALYSIS FEED</span></figcaption>
           </div>
-          <div class="float-card"><span class="float-icon" aria-hidden="true">↗</span><span><b>Plan first.</b><small>Let the rules do the watching.</small></span></div>
         </figure>
       </section>
 
       <section class="principle-strip" aria-label="Who does what">
-        <div><span>01</span><b>AI drafts</b><small>Research and shape a thesis</small></div>
-        <div><span>02</span><b>You sign</b><small>Arming is your decision</small></div>
-        <div><span>03</span><b>Code executes</b><small>By the terms you signed</small></div>
+        <div><span>01</span><b>AI researches</b><small>Gather context and draft a plan</small></div>
+        <div><span>02</span><b>You review</b><small>Only you decide to arm it</small></div>
+        <div><span>03</span><b>Code monitors</b><small>Simulated terms while the app runs</small></div>
       </section>
 
       <section class="section tour-section" id="tour">
-        <div class="section-heading"><div class="eyebrow">A PLAN YOU CAN REVIEW</div><h2>See what the app<br />does while you’re away.</h2><p>One workspace for research, signed plans and a clear record of what happened.</p></div>
+        <div class="section-heading"><div class="eyebrow">THE PLAN WORKFLOW</div><h2>Turn an idea into a<br />reviewable plan.</h2><p>Understand the assumptions, invalidation, expiry and budget before arming.</p></div>
         <div class="tour-grid">
           <article class="tour-card tour-card-wide">
-            <div class="tour-copy"><span class="card-index">01 / HOME</span><h3>Know what changed.</h3><p>See simulated results, engine activity, armed plans and what happened while you were away.</p></div>
+            <div class="tour-copy"><span class="card-index">01 / HOME</span><h3>See plan status.</h3><p>Review armed plans, monitor activity, feed gaps and recorded outcomes.</p></div>
             <img src="../docs/images/home.png" alt="Home showing simulated performance, recent engine activity and trading sessions" loading="lazy" />
           </article>
           <article class="tour-card">
-            <div class="tour-copy"><span class="card-index">02 / CHARTS</span><h3>Research the setup.</h3><p>Read price structure and market context on the same analysis feed the monitor uses.</p></div>
+            <div class="tour-copy"><span class="card-index">02 / CHARTS</span><h3>Research the idea.</h3><p>Read price structure and market context on the same analysis feed the monitor uses.</p></div>
             <img src="../docs/images/research.png" alt="Charts workspace with BTC-USD candles, indicators and analysis tools" loading="lazy" />
           </article>
           <article class="tour-card">
-            <div class="tour-copy"><span class="card-index">03 / PLANS</span><h3>Sign every term.</h3><p>Write down assumptions, invalidation, expiry and budget before a plan can be armed.</p></div>
+            <div class="tour-copy"><span class="card-index">03 / PLANS</span><h3>Review the commitment.</h3><p>Check assumptions, thesis invalidation, expiry and budget before you arm. A complete plan is not a guarantee of profit.</p></div>
             <img src="../docs/images/plans.png" alt="Plans workspace showing plan terms and their current states" loading="lazy" />
           </article>
         </div>
@@ -71,9 +69,9 @@
 
       <section class="rules-section" id="rules">
         <div class="rules-copy">
-          <div class="eyebrow">THE LINE IS IN THE CODE</div>
-          <h2>The agent can’t trade.<br /><em>The tools don’t exist.</em></h2>
-          <p>The agent can research, create level references and draft plans. Only you can arm one. Order placement is not built, and no AI call sits in an execution path.</p>
+          <div class="eyebrow">YOU KEEP THE DECISION</div>
+          <h2>The assistant can draft.<br /><em>Only you can arm.</em></h2>
+          <p>The agent can research, create level references and draft plans. It has no tools to arm a plan or place an order. The current monitor runs in simulated mode; evidence-grounded plan critique is still being developed.</p>
           <a class="text-link" href="https://github.com/0ByteBlitz/modern-vyapari/blob/main/AGENTS.md">Read the safety rules <span aria-hidden="true">↗</span></a>
         </div>
         <div class="tool-card" aria-label="Agent tool boundaries">
@@ -84,22 +82,22 @@
           <div class="tool-row"><code>arm_plan</code><span class="blocked">NO TOOL</span></div>
           <div class="tool-row"><code>place_order</code><span class="blocked">NO TOOL</span></div>
           <div class="tool-row"><code>set_venue</code><span class="blocked">NO TOOL</span></div>
-          <p>AI proposes. You sign. Deterministic code executes.</p>
+          <p>AI helps with the plan. You decide. Code monitors simulated terms.</p>
         </div>
       </section>
 
       <section class="safety-section" aria-labelledby="status-title">
         <div class="safety-mark" aria-hidden="true">!</div>
-        <div><div class="eyebrow">CURRENT PROJECT STATUS</div><h2 id="status-title">Simulated mode only.</h2><p>Live order placement, exchange-side protective orders and startup reconciliation are not built. The app cannot place real orders. This is software for research and simulation, not financial advice.</p></div>
+        <div><div class="eyebrow">CURRENT PROJECT STATUS</div><h2 id="status-title">Alpha · simulated only.</h2><p>Live order placement, exchange-side protection and startup reconciliation are not built. Plans are monitored only while the app is running. This software is for research and simulation, not financial advice.</p></div>
         <a class="text-link" href="https://github.com/0ByteBlitz/modern-vyapari/blob/main/docs/ROADMAP.md">See what’s built <span aria-hidden="true">↗</span></a>
       </section>
 
       <section class="closing">
         <div class="closing-orb" aria-hidden="true"></div>
         <div class="eyebrow">जानेर मात्र, किनबेच</div>
-        <h2>Trade only knowingly.</h2>
-        <p>Explore the code, follow development, or help keep the project going.</p>
-        <div class="hero-actions"><a class="button" href="https://github.com/0ByteBlitz/modern-vyapari">Explore Modern Vyapari <span aria-hidden="true">↗</span></a><a class="coffee-link" href="https://buymeacoffee.com/0ByteBlitz" target="_blank" rel="noopener noreferrer">Support the project <span aria-hidden="true">↗</span></a></div>
+        <h2>Explore the prototype.</h2>
+        <p>Explore the prototype, read the roadmap, or help improve the project.</p>
+        <div class="hero-actions"><a class="button" href="https://github.com/0ByteBlitz/modern-vyapari">Explore the prototype <span aria-hidden="true">↗</span></a><a class="coffee-link" href="https://buymeacoffee.com/0ByteBlitz" target="_blank" rel="noopener noreferrer">Support the project <span aria-hidden="true">↗</span></a></div>
       </section>
     </main>
 
