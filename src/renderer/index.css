@@ -2313,8 +2313,8 @@ ol.md-list li { list-style: decimal; }
   align-items: center;
   justify-content: center;
   padding: 2rem;
-  /* Subtle violet bloom behind the mark, per the design's lock screen. */
-  background: radial-gradient(60% 50% at 50% 40%, rgba(226, 156, 245, 0.1), transparent 70%), var(--background);
+  /* Indigo belongs to interaction and signature, not agent-authored content. */
+  background: radial-gradient(56% 46% at 50% 38%, rgba(169, 178, 255, 0.1), transparent 72%), var(--background);
   -webkit-app-region: drag; /* allow dragging from empty areas, no titlebar rendered yet */
 }
 
@@ -2322,15 +2322,15 @@ ol.md-list li { list-style: decimal; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1rem;
-  max-width: 34rem;
+  gap: 12px;
+  max-width: 36rem;
   text-align: center;
   -webkit-app-region: no-drag;
 }
 
 /* ── "While you were away" ── */
 .lock-away {
-  margin-top: 40px;
+  margin-top: 24px;
   width: 520px;
   max-width: 100%;
   border: 1px solid var(--border);
@@ -2359,22 +2359,22 @@ ol.md-list li { list-style: decimal; }
 
 /* Sizes per the design's lock screen: 64px mark, 20px title, 13px subtitle. */
 .lock-screen-title {
-  font-size: var(--text-3xl);
+  font-size: 20px;
   font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--foreground);
-  margin: 20px 0 0;
+  margin: 8px 0 0;
 }
 
 .lock-screen-subtitle {
-  font-size: var(--text-lg);
+  font-size: var(--text-base);
   color: var(--text-faint);
-  margin: 8px 0 0;
+  margin: 0;
 }
 
 .lock-screen-status {
   min-height: 1.25rem;
-  margin-top: 20px;
+  margin-top: 8px;
 }
 
 .lock-screen-status-line {
@@ -2389,20 +2389,20 @@ ol.md-list li { list-style: decimal; }
   color: var(--down);
 }
 
-/* Cyan primary, dark text — the one strong call to action in the app. */
+/* Indigo primary — unlocking is the one action on this screen. */
 .lock-screen-btn {
-  margin-top: 12px;
+  margin-top: 4px;
   display: inline-flex;
   align-items: center;
   gap: 8px;
   height: 34px;
   padding: 0 16px;
   font-family: inherit;
-  font-size: var(--text-lg);
+  font-size: var(--text-md);
   font-weight: 600;
   color: var(--primary-foreground);
   background: var(--accent);
-  border: none;
+  border: 1px solid var(--accent);
   border-radius: var(--radius-sm);
   cursor: pointer;
 }
@@ -2695,37 +2695,84 @@ ol.md-list li { list-style: decimal; }
   min-height: 0;
 }
 
+.browser-page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--background);
+  flex-shrink: 0;
+}
+
+.browser-isolated-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 9px;
+  border: 1px solid rgba(74, 222, 154, 0.28);
+  border-radius: var(--radius-pill);
+  color: var(--up);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
 .browser-toolbar {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
+  gap: 10px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--border);
-  background-color: var(--card);
+  background: var(--surface-1);
   flex-shrink: 0;
 }
 
 .browser-nav-buttons {
   display: flex;
   align-items: center;
-  gap: 0.125rem;
+  gap: 2px;
   flex-shrink: 0;
 }
+
+.browser-nav-btn { width: 30px; min-width: 30px; justify-content: center; padding: 0; }
 
 .browser-address-bar {
   flex: 1;
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  background-color: var(--secondary);
-  border-radius: calc(var(--radius) - 2px);
-  padding: 0 0.5rem;
+  gap: 8px;
+  height: 32px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 0 10px;
 }
 
+.browser-address-bar:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(169, 178, 255, 0.12);
+}
+
+.browser-address-shield { flex-shrink: 0; color: var(--up); }
+.browser-address-input {
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  color: var(--foreground);
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
+}
+.browser-address-input::placeholder { color: var(--text-faint); }
+
 .browser-page-title {
-  font-size: 0.75rem;
-  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+  color: var(--text-faint);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

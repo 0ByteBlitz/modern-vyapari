@@ -57,7 +57,7 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
   return (
     <div className="lock-screen">
       <div className="lock-screen-content">
-        <img src={logoUrl} alt="Modern Vyapari" className="h-20 w-20" />
+        <img src={logoUrl} alt="Modern Vyapari" className="h-16 w-16" />
         {/* The one screen with room for the full lockup — Devanagari first,
             romanisation under it, since the app is used in both scripts. */}
         <div className="brand-lockup">
