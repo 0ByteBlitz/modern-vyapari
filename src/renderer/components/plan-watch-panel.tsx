@@ -1,7 +1,7 @@
-import { Target, Clock, AlertTriangle } from "lucide-react";
+import { Clock, AlertTriangle } from "lucide-react";
 import { formatLevel } from "@shared/levels";
 import type { PriceLevel } from "@shared/levels";
-import { PLAN_STATE_LABEL } from "@shared/ipc-types";
+import { PlanStateBadge, SignedBy } from "@/components/plan-badges";
 import type { StoredPlanView, PlanBranchView, LevelDraftView } from "@/lib/api";
 import { formatPrice } from "@/lib/format";
 
@@ -87,8 +87,9 @@ function Gap({ price, level }: { price: number | null; level: number | null }) {
   const near = Math.abs(g) < 1;
   return (
     <span className={`plan-watch-gap ${near ? "plan-watch-gap-near" : ""}`}>
-      {g > 0 ? "+" : ""}
-      {g.toFixed(1)}%
+      {/* Direction in a sign and an arrow, never colour alone. */}
+      {g > 0 ? "▲ +" : g < 0 ? "▼ −" : ""}
+      {Math.abs(g).toFixed(1)}% away
     </span>
   );
 }
@@ -139,7 +140,7 @@ function Branch({ branch, price }: { branch: PlanBranchView; price: number | nul
       <div className="plan-watch-branch-head">
         <span className="plan-watch-branch-label">{branch.label || branch.id}</span>
         {triggered && <span className="badge badge-paper">triggered</span>}
-        <span className="mono ml-auto plan-watch-share">{branch.budgetSharePct}%</span>
+        <span className="mono ml-auto plan-watch-share">{branch.budgetSharePct}% of budget</span>
       </div>
       <div className="plan-watch-levels">
         <LevelCell label="entry" level={branch.entry} price={price} />
@@ -169,7 +170,6 @@ export function PlanWatchPanel({
   return (
     <section className="panel plan-watch" style={{ flexShrink: 0 }}>
       <div className="panel-header">
-        <Target size={13} style={{ color: "var(--accent)" }} />
         <span className="label-micro">Armed plans</span>
         <span className="mono ml-auto" style={{ fontSize: "var(--text-xs)", color: "var(--text-faint)" }}>
           {price === null ? "no price" : `last ${formatPrice(String(price))}`}
@@ -197,9 +197,7 @@ export function PlanWatchPanel({
               >
                 <div className="plan-watch-plan-head">
                   <span className="plan-watch-slug">{p.slug}</span>
-                  <span className={`badge badge-${p.state === "triggered" ? "supervised" : "paper"}`}>
-                    {PLAN_STATE_LABEL[p.state]}
-                  </span>
+                  <PlanStateBadge state={p.state} />
                   <span
                     className={`plan-watch-expiry ml-auto ${exp.urgent ? "plan-watch-expiry-urgent" : ""}`}
                   >
@@ -210,6 +208,7 @@ export function PlanWatchPanel({
                 {p.branches.map((b) => (
                   <Branch key={b.rowId ?? b.id} branch={b} price={price} />
                 ))}
+                <SignedBy armedAt={p.armedAt} />
               </div>
             );
           })}

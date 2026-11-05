@@ -1,7 +1,7 @@
 import { formatLevel } from "@shared/levels";
 import type { PriceLevel } from "@shared/levels";
 import { describeThreshold } from "@shared/levels";
-import { PLAN_STATE_LABEL } from "@shared/ipc-types";
+import { PlanStateBadge, SignedBy } from "@/components/plan-badges";
 import { useEffect, useState } from "react";
 import { api, isError, type StoredPlanView, type PlanBranchView, type LevelDraftView, type PlanWatch } from "@/lib/api";
 import { formatPrice } from "@/lib/format";
@@ -207,7 +207,7 @@ export function PlanDetail({
     <DetailModal
       kind="Plan"
       title={plan.slug}
-      badge={<span className={`badge badge-${plan.state === "triggered" ? "supervised" : "paper"}`}>{PLAN_STATE_LABEL[plan.state]}</span>}
+      badge={<PlanStateBadge state={plan.state} />}
       onClose={onClose}
     >
       <p className="detail-thesis">{plan.thesis}</p>
@@ -232,7 +232,8 @@ export function PlanDetail({
       </div>
 
       {(plan.state === "planned" || plan.state === "triggered") && line && (
-        <p className={`detail-watch ${line.off ? "detail-watch-off" : ""}`}>{line.text}</p>
+        /* Dashed while simulated (paper's line style); solid amber when live. */
+        <p className={`detail-watch ${line.off ? "detail-watch-off" : mode === "live" ? "detail-watch-live" : ""}`}>{line.text}</p>
       )}
 
       <DetailSection title="Assumptions" note="what must be true">
@@ -265,6 +266,9 @@ export function PlanDetail({
           <p className="detail-empty">{plan.outcomeReason}</p>
         </DetailSection>
       )}
+
+      {/* Only a plan the owner armed carries the mark; a draft was never signed. */}
+      {plan.state !== "draft" && plan.armedAt !== null && <SignedBy armedAt={plan.armedAt} long />}
     </DetailModal>
   );
 }

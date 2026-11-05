@@ -19,7 +19,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Plus, Trash2, ShieldCheck, AlertTriangle, Activity, X, Pencil } from "lucide-react";
 import { formatLevel, type PriceLevel } from "@shared/levels";
-import { PLAN_STATE_LABEL } from "@shared/ipc-types";
+import { PlanStateBadge, SignedBy } from "@/components/plan-badges";
 import { PlanDetail, PlanWatchNote } from "@/components/plan-detail";
 import { CalibrationPanel } from "@/components/calibration-panel";
 import {
@@ -664,7 +664,7 @@ export function PlansPage({ session, focus }: Props) {
         >
           <div className="plans-card-head">
             <span className="plans-slug">{p.slug}</span>
-            <span className={`plans-state plans-state-${p.state}`}>{PLAN_STATE_LABEL[p.state]}</span>
+            <PlanStateBadge state={p.state} />
           </div>
           <p className="plans-thesis">{p.thesis}</p>
           <div className="plans-meta">
@@ -680,6 +680,7 @@ export function PlansPage({ session, focus }: Props) {
           </div>
           {p.outcomeReason && <p className="plans-outcome">{p.outcomeReason}</p>}
           <PlanWatchNote plan={p} />
+          {p.state !== "draft" && p.armedAt !== null && <SignedBy armedAt={p.armedAt} />}
 
           {p.state === "draft" && p.missingBeforeArming.length > 0 && (
             <div className="plans-arm-fail">

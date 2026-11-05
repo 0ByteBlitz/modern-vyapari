@@ -95,6 +95,15 @@ export function formatPct(v: number | null | undefined, decimals = 2, sign = fal
   return `${sign && v > 0 ? "+" : ""}${s}%`;
 }
 
+/** A change with its direction spelled out — "▲ +1.23%", "▼ −1.23%" — so up
+ *  and down never depend on colour alone. Uses a true minus sign. */
+export function formatChange(v: number | null | undefined, decimals = 2): string {
+  if (v === null || v === undefined || !Number.isFinite(v)) return "—";
+  const abs = Math.abs(v).toFixed(decimals);
+  if (Number(abs) === 0) return `${abs}%`;
+  return v > 0 ? `▲ +${abs}%` : `▼ −${abs}%`;
+}
+
 /** Large counts (volume, open interest): 1.2K / 3.4M / 5.6B. */
 export function formatCompact(v: string | number | null | undefined): string {
   const n = toNumber(v);

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Sparkles, Clock, ShieldCheck, AlertTriangle } from "lucide-react";
+import { Clock, ShieldCheck, AlertTriangle } from "lucide-react";
 import { PaperEquityChart } from "@/components/paper-equity-chart";
 import { PlanWatchPanel } from "@/components/plan-watch-panel";
 import { PlanDetail } from "@/components/plan-detail";
@@ -172,7 +172,8 @@ export function DashboardPage({ activeSession }: { activeSession: Session | null
         <section className="panel" style={{ flexShrink: 0 }}>
           <div className="panel-header">
             <span className="label-micro">Open positions</span>
-            <span className={`badge badge-${mode === "live" ? "down" : "paper"}`}>{mode}</span>
+            {/* Dashed = simulated, solid amber = real money. */}
+            <span className={`badge badge-${mode === "live" ? "live" : "paper"}`}>{mode}</span>
             <span className="mono ml-auto" style={{ fontSize: "var(--text-xs)", color: "var(--muted-foreground)" }}>
               {openPositions.length} open
             </span>
@@ -261,7 +262,7 @@ export function DashboardPage({ activeSession }: { activeSession: Session | null
           </div>
           <div className="panel-body-flush vy-scroll" style={{ flex: 1 }}>
             {shownActivity.map(({ ev, d }) => (
-              <div key={ev.id} className="activity-row">
+              <div key={ev.id} className={`activity-row${ev.action === "monitor_gap" ? " activity-row-gap" : ""}`}>
                 <span className="mono activity-time">{clockTime(ev.created_at)}</span>
                 <span className="activity-tag" style={{ color: ACTIVITY_TONE_COLOR[d.tone] }}>
                   {d.tag}
@@ -283,12 +284,11 @@ export function DashboardPage({ activeSession }: { activeSession: Session | null
 
       {/* ── col 3 · what was learned ──────────────────────────── */}
       <div className="cockpit-col">
-        <section className="panel" style={{ flex: 1 }}>
+        <section className="panel panel-ai" style={{ flex: 1 }}>
           <div className="panel-header">
-            <Sparkles size={13} style={{ color: "var(--ai)" }} />
-            <span className="label-micro">Latest reviews</span>
+            <span className="label-micro" style={{ color: "var(--ai)" }}>Latest reviews</span>
             <span className="ml-auto" style={{ fontSize: "var(--text-xs)", color: "var(--text-faint)" }}>
-              AI-authored
+              written by the agent
             </span>
           </div>
           <div className="panel-body-flush vy-scroll" style={{ flex: 1 }}>
