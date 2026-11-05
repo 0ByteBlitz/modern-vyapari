@@ -44,7 +44,7 @@ const OPEN_WHILE_LOCKED = new Set([
 
 export const IDLE_CHOICES = [5, 15, 30, 60] as const;
 
-const DEFAULTS: LockSettings = { lockAtLaunch: true, lockWithWindows: true, idleMinutes: 15 };
+const DEFAULTS: LockSettings = { lockAtLaunch: false, lockWithWindows: true, idleMinutes: 15 };
 const KEYS = {
   lockAtLaunch: "lock_at_launch",
   lockWithWindows: "lock_with_windows",
@@ -66,6 +66,10 @@ export function refusesWhileLocked(channel: string): boolean {
 
 export function isLocked(): boolean {
   return locked;
+}
+
+export function shouldStartLocked(helloAvailability: HelloAvailability, settings: LockSettings): boolean {
+  return helloAvailability === "available" && settings.lockAtLaunch;
 }
 
 function readRaw(key: string): string | undefined {
@@ -165,7 +169,7 @@ export async function unlockWithHello(reason: string): Promise<windowsHello.Hell
 export function startAppLock(): void {
   ready = (async () => {
     hello = await checkHello();
-    locked = hello === "available" && readLockSettings().lockAtLaunch;
+    locked = shouldStartLocked(hello, readLockSettings());
     log.info(`Windows Hello ${hello}; the app starts ${locked ? "locked" : "unlocked"}.`);
   })().catch((err) => {
     /* An unanswerable check leaves Hello unknown — open, with the notice, as
