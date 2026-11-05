@@ -35,6 +35,7 @@ export function OnboardingPage({ setup, setupError, onRefresh, onFinish }: Onboa
   const goTo = (next: number) => setStep(Math.max(0, Math.min(STEPS.length - 1, next)));
   const canFinish = !!setup?.setupComplete;
   const stepComplete = (index: number) => {
+    if (index > step) return false;
     if (index === 0) return index < step;
     if (index === 1) return !!setup?.ai.configured;
     if (index === 2) return !!setup && (!setup.venue.required || setup.venue.configured);
@@ -54,7 +55,7 @@ export function OnboardingPage({ setup, setupError, onRefresh, onFinish }: Onboa
         <span className="onboarding-topbar-label">Workspace setup</span>
       </header>
 
-      <section className="onboarding-shell" aria-labelledby="onboarding-title">
+      <section className={`onboarding-shell${step === 0 ? " onboarding-shell-welcome" : ""}`} aria-labelledby="onboarding-title">
         <div className="onboarding-heading">
           <span className="onboarding-eyebrow">A considered way to trade</span>
           <h1 id="onboarding-title">{step === 0 ? "Welcome to Modern Vyapari" : "Set up your workspace"}</h1>
@@ -79,7 +80,7 @@ export function OnboardingPage({ setup, setupError, onRefresh, onFinish }: Onboa
           ))}
         </nav>
 
-        <section className="onboarding-step-panel" aria-live="polite">
+        <section className={`onboarding-step-panel${step === 0 ? " onboarding-step-panel-welcome" : ""}`} aria-live="polite">
           <div className="onboarding-step-heading">
             <span className="onboarding-step-kicker">Step {String(step + 1).padStart(2, "0")} of {String(STEPS.length).padStart(2, "0")}</span>
             <h2>{STEPS[step]}</h2>
