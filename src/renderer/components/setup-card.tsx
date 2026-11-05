@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Check, Copy, KeyRound, ArrowRight, Wallet, Brain, ShieldCheck } from "lucide-react";
 import { api, isError, type SetupStatus, errorText } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
 interface SetupCardProps {
@@ -36,7 +36,7 @@ export function SetupCard({ setup, setupError, onRefresh, onFinish }: SetupCardP
       setApiKeyMsg({ text: errorText(res), ok: false });
       return;
     }
-    setApiKeyMsg({ text: "Saved ✓", ok: true });
+    setApiKeyMsg({ text: "Key saved.", ok: true });
     setApiKey("");
     await onRefresh();
   };
@@ -47,7 +47,7 @@ export function SetupCard({ setup, setupError, onRefresh, onFinish }: SetupCardP
       setAnthropicMsg({ text: errorText(res), ok: false });
       return;
     }
-    setAnthropicMsg({ text: "Saved ✓", ok: true });
+    setAnthropicMsg({ text: "Key saved.", ok: true });
     setAnthropicKey("");
     await onRefresh();
   };
@@ -80,12 +80,12 @@ export function SetupCard({ setup, setupError, onRefresh, onFinish }: SetupCardP
   if (!setup) return <div className="text-center p-8 text-muted-foreground animate-pulse">Loading secure vault...</div>;
 
   return (
-    <Card className="border-border shadow-lg bg-card/50 backdrop-blur-sm w-full max-w-2xl mx-auto overflow-hidden">
-      <div className="flex flex-col md:flex-row">
+    <Card className="onboarding-config-card">
+      <div className="onboarding-config-layout">
         
         {/* Sidebar Tabs */}
-        <div className="md:w-48 bg-secondary/30 border-b md:border-b-0 md:border-r border-border p-4 flex flex-col gap-2 shrink-0">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Configuration</h2>
+        <div className="onboarding-tabs" aria-label="Setup sections">
+          <h3 className="onboarding-tabs-label">Connections</h3>
           {TABS.map((tab) => {
             const Icon = tab.icon;
             const active = activeTab === tab.id;
@@ -93,20 +93,17 @@ export function SetupCard({ setup, setupError, onRefresh, onFinish }: SetupCardP
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center justify-between text-left px-3 py-2.5 rounded-md transition-colors text-sm font-medium ${
-                  active 
-                    ? "bg-primary/10 text-primary" 
-                    : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
-                }`}
+                className={`onboarding-tab${active ? " onboarding-tab-active" : ""}`}
+                aria-pressed={active}
               >
                 <div className="flex items-center gap-2">
-                  <Icon className="w-4 h-4" />
+                  <Icon className="w-4 h-4" aria-hidden="true" />
                   <span>{tab.label}</span>
                 </div>
                 {tab.isComplete ? (
-                  <ShieldCheck className="w-4 h-4 text-success" />
+                  <ShieldCheck className="w-4 h-4 onboarding-tab-check" aria-label="Connected" />
                 ) : tab.isOptional ? (
-                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Optional</span>
+                  <span className="onboarding-optional">Optional</span>
                 ) : null}
               </button>
             );
@@ -114,7 +111,7 @@ export function SetupCard({ setup, setupError, onRefresh, onFinish }: SetupCardP
         </div>
 
         {/* Content Area */}
-        <div className="flex-1 min-w-0 p-6">
+        <div className="onboarding-config-content">
           {setupError && (
             <div className="mb-4 p-3 bg-destructive/10 border border-destructive/20 rounded-md text-sm text-destructive">
               {setupError}
@@ -135,14 +132,14 @@ export function SetupCard({ setup, setupError, onRefresh, onFinish }: SetupCardP
                 <div>
                   <h3 className="text-xl font-bold text-foreground">{setup.venue.displayName} Connection</h3>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Configure signing keys for institutional execution.
+                    Create signing keys for requests to this venue.
                   </p>
                 </div>
               </div>
               {!setup.venue.required && (
                 <p className="text-sm text-muted-foreground p-3 rounded-md border border-border bg-secondary/30">
                   Optional while you trade in simulated mode — simulated trading needs no exchange account.
-                  Connect {setup.venue.displayName} to see your real balances, and before going live.
+                  Connect {setup.venue.displayName} to see your live balances.
                 </p>
               )}
 
@@ -157,7 +154,7 @@ export function SetupCard({ setup, setupError, onRefresh, onFinish }: SetupCardP
                         {setup.hasKeyPair && <span className="text-[10px] bg-success/20 text-success px-2 py-0.5 rounded-sm uppercase tracking-wider font-bold">Generated</span>}
                       </h3>
                       <p className="text-xs text-muted-foreground mt-1">
-                        High security asymmetric keys required for request signing.
+                        This key pair signs authenticated requests to the venue.
                       </p>
                     </div>
                     {!setup.hasKeyPair && (
@@ -214,7 +211,7 @@ export function SetupCard({ setup, setupError, onRefresh, onFinish }: SetupCardP
                       disabled={!apiKey.trim()} 
                       className="bg-warning hover:bg-warning/90 text-black font-bold px-6 h-10 border-0 shadow-lg shadow-warning/10"
                     >
-                      Verify
+                      Save key
                     </Button>
                   </div>
                   {apiKeyMsg && (
@@ -237,7 +234,7 @@ export function SetupCard({ setup, setupError, onRefresh, onFinish }: SetupCardP
                 <div>
                   <h3 className="text-xl font-bold text-foreground">{setup.ai.displayName}</h3>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Power your trading assistant with Claude models.
+                    Connect Anthropic to enable the AI assistant.
                   </p>
                 </div>
               </div>
@@ -250,7 +247,7 @@ export function SetupCard({ setup, setupError, onRefresh, onFinish }: SetupCardP
                     {setup.hasAnthropicApiKey && <span className="text-[10px] bg-success/20 text-success px-2 py-0.5 rounded-sm uppercase tracking-wider font-bold">Active</span>}
                   </h3>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Paste your Anthropic API key to enable the Claude AI agent.
+                    Save your Anthropic API key to enable the AI assistant.
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -263,7 +260,7 @@ export function SetupCard({ setup, setupError, onRefresh, onFinish }: SetupCardP
                     autoComplete="off"
                   />
                   <Button onClick={onSaveAnthropicKey} disabled={!anthropicKey.trim()} className="bg-warning hover:bg-warning/90 text-black font-bold px-6 h-10 border-0 shadow-lg shadow-warning/10">
-                    Verify
+                    Save key
                   </Button>
                 </div>
                 {anthropicMsg && (
