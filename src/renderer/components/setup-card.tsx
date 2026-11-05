@@ -10,13 +10,15 @@ interface SetupCardProps {
   setupError: string;
   onRefresh: () => Promise<void>;
   onFinish?: () => void;
+  tab?: Tab;
 }
 
 type Tab = "revolut" | "anthropic";
 
-export function SetupCard({ setup, setupError, onRefresh, onFinish }: SetupCardProps) {
+export function SetupCard({ setup, setupError, onRefresh, onFinish, tab }: SetupCardProps) {
   /* The AI provider is always required; the venue only to go live — so start there. */
-  const [activeTab, setActiveTab] = useState<Tab>("anthropic");
+  const [selectedTab, setSelectedTab] = useState<Tab>("anthropic");
+  const activeTab = tab ?? selectedTab;
   
   const [apiKey, setApiKey] = useState("");
   const [apiKeyMsg, setApiKeyMsg] = useState<{ text: string; ok: boolean } | null>(null);
@@ -84,7 +86,7 @@ export function SetupCard({ setup, setupError, onRefresh, onFinish }: SetupCardP
       <div className="onboarding-config-layout">
         
         {/* Sidebar Tabs */}
-        <div className="onboarding-tabs" aria-label="Setup sections">
+        {!tab && <div className="onboarding-tabs" aria-label="Setup sections">
           <h3 className="onboarding-tabs-label">Connections</h3>
           {TABS.map((tab) => {
             const Icon = tab.icon;
@@ -92,7 +94,7 @@ export function SetupCard({ setup, setupError, onRefresh, onFinish }: SetupCardP
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => setSelectedTab(tab.id)}
                 className={`onboarding-tab${active ? " onboarding-tab-active" : ""}`}
                 aria-pressed={active}
               >
@@ -108,7 +110,7 @@ export function SetupCard({ setup, setupError, onRefresh, onFinish }: SetupCardP
               </button>
             );
           })}
-        </div>
+        </div>}
 
         {/* Content Area */}
         <div className="onboarding-config-content">
@@ -209,7 +211,7 @@ export function SetupCard({ setup, setupError, onRefresh, onFinish }: SetupCardP
                     <Button 
                       onClick={onSaveApiKey} 
                       disabled={!apiKey.trim()} 
-                      className="bg-warning hover:bg-warning/90 text-black font-bold px-6 h-10 border-0 shadow-lg shadow-warning/10"
+                      className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium px-6 h-10 border-0 shadow-lg shadow-primary/10"
                     >
                       Save key
                     </Button>
@@ -234,7 +236,7 @@ export function SetupCard({ setup, setupError, onRefresh, onFinish }: SetupCardP
                 <div>
                   <h3 className="text-xl font-bold text-foreground">{setup.ai.displayName}</h3>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Connect Anthropic to enable the AI assistant.
+                    Connect {setup.ai.displayName} to enable the AI assistant.
                   </p>
                 </div>
               </div>
@@ -247,7 +249,7 @@ export function SetupCard({ setup, setupError, onRefresh, onFinish }: SetupCardP
                     {setup.hasAnthropicApiKey && <span className="text-[10px] bg-success/20 text-success px-2 py-0.5 rounded-sm uppercase tracking-wider font-bold">Active</span>}
                   </h3>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Save your Anthropic API key to enable the AI assistant.
+                    Save your {setup.ai.displayName} API key to enable the AI assistant.
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -259,7 +261,7 @@ export function SetupCard({ setup, setupError, onRefresh, onFinish }: SetupCardP
                     className="flex-1 bg-secondary/50 h-10 font-mono text-xs"
                     autoComplete="off"
                   />
-                  <Button onClick={onSaveAnthropicKey} disabled={!anthropicKey.trim()} className="bg-warning hover:bg-warning/90 text-black font-bold px-6 h-10 border-0 shadow-lg shadow-warning/10">
+                  <Button onClick={onSaveAnthropicKey} disabled={!anthropicKey.trim()} className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium px-6 h-10 border-0 shadow-lg shadow-primary/10">
                     Save key
                   </Button>
                 </div>

@@ -118,7 +118,7 @@ what needs them — without opening a session.
 
 | Step | Built? |
 |---|---|
-| Home opens first, not the last session | ✅ `home-page.tsx`; no session is selected at launch (2026-10-31) — the last one is offered as one click back |
+| Home opens first, not the last session | ✅ `home-page.tsx`; no session is selected at launch (2026-10-31) — the last one is offered as one click back. Fresh profiles complete guided setup first; launch lock defaults off until the owner saves a preference. |
 | Session cards say *armed*, *in position* or *idle* — never idle while a plan is armed or a position open | ✅ 2026-10-31 (it counted frozen strategies, so it read *idle*) |
 | Ask the agent anything without opening a session | ✅ the global agent, `agent-mascot.tsx` (2026-10-31) |
 | "Needs your attention", derived not stored, disappears when empty | ✅ |

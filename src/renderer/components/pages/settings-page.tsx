@@ -84,7 +84,7 @@ const NOT_CHECKED: { label: string; note: string }[] = [
  * only caller of `evaluateRisk`, and nothing calls it. Change that line in the
  * same PR that wires it.
  */
-function LimitsPane() {
+export function LimitsPane() {
   const [limits, setLimits] = useState<RiskLimitsView | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -183,7 +183,7 @@ function clock(ms: number): string {
  * Each option renders its own live specimen at its own scale, so the choice
  * is made by looking rather than by interpreting the word "compact".
  */
-function AppearancePane() {
+export function AppearancePane() {
   const [density, setDensityState] = useState<Density>(() => getDensity());
 
   const choose = (d: Density) => {

@@ -922,6 +922,18 @@ are never refused.
   cover) is hidden by main, not trusted to the renderer.
 - Settings live in `shared_settings`, not the mode database: the lock guards the
   person, and a different lock per mode would be one more ambiguous state.
+- **A fresh profile opens onboarding, not Windows Hello.** `lock_at_launch`
+  defaults off when no preference has been saved; an existing `0` or `1` is
+  read as-is. This keeps first-run setup reachable without changing an owner's
+  saved lock choice.
+
+**Onboarding starts with a welcome screen, then guides setup one step at a
+time.** The welcome explains that the agent drafts, the owner signs and code
+follows the signed terms while the app runs. Setup then moves through the AI
+provider, the selected venue or simulated mode, risk-limit facts, appearance,
+screen lock, notifications and a review. Progress may resume after a restart;
+credentials remain in their existing secure save flows. Risk limits stay
+read-only and the review says whether setup is actually ready.
 
 **The risk-limits page showed the plan's intent as if it were the engine's.**
 "Max daily loss 5%" sat beside an engine using `max_daily_loss ?? 500` — absolute
