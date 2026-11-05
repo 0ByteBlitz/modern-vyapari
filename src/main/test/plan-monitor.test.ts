@@ -232,7 +232,7 @@ describe("what is watched", () => {
   });
 
   test("drafts and terminal plans are not watched", () => {
-    for (const state of ["draft", "closed", "expired", "invalidated"] as const) {
+    for (const state of ["draft", "closed", "expired", "invalidated", "cancelled"] as const) {
       assert.equal(planIsWatchable({ state }), false, state);
     }
   });

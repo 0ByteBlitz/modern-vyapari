@@ -617,9 +617,9 @@ Goal: a thesis can be written down, armed, and mechanically monitored.
       all four falsifiability elements with no flag to skip it. `PlanState` is
       in `shared/ipc-types.ts` and **has no `live_auto` member** — the state not
       existing is a stronger guarantee than a check that can be forgotten.
-      `expired` and `invalidated` are separate terminal states because the
-      calibration record's most useful distinction is "never fired" vs. "fired
-      and was wrong". Branches are a child table, not JSON, since the monitor
+      `expired`, `invalidated` and `cancelled` are separate terminal states:
+      timeout, market invalidation and owner cancellation have different
+      calibration meaning. Branches are a child table, not JSON, since the monitor
       asks per-branch questions. 132 tests green.)*
 - [x] **S2-2 Promote drawing → plan reference.** Semantic references persisted
       (anchors/ratios/window/params); the chart renders *from* them. **This is

@@ -144,6 +144,16 @@ describe("the calibration record measures the planner, not the plan", () => {
     assert.equal(r.stillOpen, 1, "planned is reported as context");
     assert.equal(r.empty, true);
   });
+
+  test("an owner-cancelled plan is kept but is not market-outcome evidence", () => {
+    const s = createTestSession(PAIR);
+    seedPlan(s.id, { state: "cancelled", tags: ["reclaim"] });
+
+    const r = buildCalibration();
+    assert.equal(r.overall.resolved, 0);
+    assert.equal(r.tags.find((t) => t.tag === "reclaim")?.resolved ?? 0, 0);
+    assert.equal(r.empty, true);
+  });
 });
 
 describe("the record refuses to flatter", () => {

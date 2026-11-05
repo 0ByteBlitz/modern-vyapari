@@ -45,6 +45,7 @@ export const VALID_PLAN_STATES: readonly PlanState[] = [
   "closed",
   "expired",
   "invalidated",
+  "cancelled",
 ];
 
 /**
@@ -58,14 +59,18 @@ export const VALID_PLAN_STATES: readonly PlanState[] = [
  * `triggered → invalidated` is deliberately reachable: a thesis can be proven
  * wrong while the position it opened is still on, and that must be recordable
  * as what it is rather than as an ordinary close.
+ *
+ * `planned → cancelled` is the owner's explicit stop. It remains distinct from
+ * market resolution so calibration never counts a voluntary exit as a miss.
  */
 export const PLAN_TRANSITIONS: Record<PlanState, readonly PlanState[]> = {
   draft: ["planned"],
-  planned: ["triggered", "expired", "invalidated"],
+  planned: ["triggered", "expired", "invalidated", "cancelled"],
   triggered: ["closed", "invalidated"],
   closed: [],
   expired: [],
   invalidated: [],
+  cancelled: [],
 };
 
 export function canTransitionPlan(from: PlanState, to: PlanState): boolean {

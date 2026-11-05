@@ -182,7 +182,7 @@ export interface BacktestRow {
 
 /* ── Scenario plans ─────────────────────────────────────────────────── */
 
-export type PlanState = "draft" | "planned" | "triggered" | "closed" | "expired" | "invalidated";
+export type PlanState = "draft" | "planned" | "triggered" | "closed" | "expired" | "invalidated" | "cancelled";
 
 export interface PlanAssumptionView {
   text: string;
@@ -608,6 +608,8 @@ export interface RendererApi {
   createPlan(input: PlanInputView): Promise<Result<{ ok: true; plan: StoredPlanView } | { ok: false; reason: string }>>;
   updatePlan(id: number, input: PlanInputView): Promise<Result<{ ok: boolean; reason?: string }>>;
   deletePlan(id: number): Promise<Result<{ ok: boolean; reason?: string }>>;
+  endArmedPlan(id: number): Promise<Result<{ ok: boolean; reason?: string }>>;
+  reviseArmedPlan(id: number): Promise<Result<{ ok: true; plan: StoredPlanView } | { ok: false; reason: string }>>;
   /** Returns the gate's verdict AND what each derived level resolved to, so the
    *  concrete numbers can be shown before committing rather than after. */
   armPlan(id: number): Promise<Result<ArmResultView>>;

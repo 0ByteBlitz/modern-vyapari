@@ -528,6 +528,80 @@ export function deletePlan(rowId: number): { ok: true } | { ok: false; reason: s
   return { ok: true };
 }
 
+/** End a signed plan without deleting its calibration record. Only an armed
+ *  plan with no open position can be stopped from the Plans surface. */
+export function endArmedPlan(rowId: number): { ok: true } | { ok: false; reason: string } {
+  const plan = getPlan(rowId);
+  if (!plan) return { ok: false, reason: "That plan no longer exists." };
+  if (plan.state !== "planned") {
+    return { ok: false, reason: `A ${plan.state} plan can't be ended here.` };
+  }
+  return transitionPlan(rowId, "cancelled", "Ended by owner.");
+}
+
+export type RevisePlanResult =
+  | { ok: true; plan: StoredPlan }
+  | { ok: false; reason: string };
+
+/** Preserve the signed terms, end their monitoring, and open an editable draft
+ *  with the same thesis as a starting point. The new draft has no armed-level
+ *  baselines, so it must be signed and resolved again before it can run. */
+export function reviseArmedPlan(rowId: number): RevisePlanResult {
+  const plan = getPlan(rowId);
+  if (!plan) return { ok: false, reason: "That plan no longer exists." };
+  if (plan.state !== "planned") {
+    return { ok: false, reason: `A ${plan.state} plan can't be revised here.` };
+  }
+  const invalidation = plan.invalidationIntent;
+  if (!invalidation || typeof invalidation.value !== "number") {
+    return { ok: false, reason: "This plan's invalidation can't be shown in the editor. End it and write a new plan." };
+  }
+  if (plan.branches.some((b) => !b.triggerIntent || typeof b.triggerIntent.value !== "number")) {
+    return { ok: false, reason: "A branch condition can't be shown in the editor. End the plan and write a new one." };
+  }
+
+  const stripArmBaseline = (level: LevelDraft): LevelDraft => {
+    if (level.kind !== "derived") return structuredClone(level);
+    const { resolvedAtArm: _resolvedAtArm, ...draft } = level as DerivedLevel;
+    return structuredClone(draft) as LevelDraft;
+  };
+
+  let suffix = 1;
+  let slug = `${plan.slug}-revision-${suffix}`;
+  while (nameTaken(plan.sessionId, slug)) slug = `${plan.slug}-revision-${++suffix}`;
+
+  const created = createPlan({
+    sessionId: plan.sessionId,
+    slug,
+    pair: plan.pair,
+    thesis: plan.thesis,
+    assumptions: structuredClone(plan.assumptions),
+    invalidation: structuredClone(invalidation),
+    expiresAt: plan.expiresAt,
+    risk: structuredClone(plan.risk),
+    ocoExclusive: plan.ocoExclusive,
+    evalInterval: plan.evalInterval,
+    notes: plan.notes,
+    branches: plan.branches.map((branch) => ({
+      id: branch.id,
+      label: branch.label,
+      trigger: structuredClone(branch.triggerIntent!),
+      entry: stripArmBaseline(branch.entry),
+      stop: stripArmBaseline(branch.stop),
+      targets: branch.targets.map(stripArmBaseline),
+      budgetSharePct: branch.budgetSharePct,
+    })),
+  });
+  if (!created.ok) return created;
+
+  const ended = transitionPlan(rowId, "cancelled", `Replaced by draft ${slug}.`);
+  if (!ended.ok) {
+    deletePlan(created.plan.rowId);
+    return ended;
+  }
+  return created;
+}
+
 /* ── Arming ─────────────────────────────────────────────────────────── */
 
 export interface ArmResult {
@@ -706,7 +780,7 @@ export function transitionPlan(
   }
 
   const now = Date.now();
-  const terminal = to === "closed" || to === "expired" || to === "invalidated";
+  const terminal = to === "closed" || to === "expired" || to === "invalidated" || to === "cancelled";
 
   /* One transaction so the state change and the message it owes commit
      together. Without this the process can die between them and the owner is

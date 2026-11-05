@@ -108,6 +108,8 @@ export function PlansPage({ session, focus }: Props) {
   const [editingId, setEditingId] = useState<number | null>(null);
   /** The plan whose terms are on screen waiting for the owner to sign. */
   const [confirming, setConfirming] = useState<number | null>(null);
+  const [endingPlanId, setEndingPlanId] = useState<number | null>(null);
+  const [revisingPlanId, setRevisingPlanId] = useState<number | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [armResult, setArmResult] = useState<{ planId: number; res: ArmResultView } | null>(null);
   /* The structural check, run on demand rather than automatically: it replays
@@ -350,10 +352,38 @@ export function PlansPage({ session, focus }: Props) {
     await load();
   }
 
+  async function endArmed(planId: number) {
+    setProblem(null);
+    setEndingPlanId(null);
+    const res = await api.endArmedPlan(planId);
+    if (isError(res)) {
+      setProblem(errorText(res));
+      return;
+    }
+    if (!res.ok) setProblem(res.reason ?? "That plan could not be ended.");
+    await load();
+  }
+
+  async function reviseArmed(planId: number) {
+    setProblem(null);
+    setRevisingPlanId(null);
+    const res = await api.reviseArmedPlan(planId);
+    if (isError(res)) {
+      setProblem(errorText(res));
+      return;
+    }
+    if (!res.ok) {
+      setProblem(res.reason ?? "That plan could not be revised.");
+      return;
+    }
+    await load();
+    editDraft(res.plan);
+  }
+
   /* Draft and armed on one side, over on the other. `triggered` counts as
      active: a plan holding a position is very much still live, and a thesis can
      still be disproved while that position is green. */
-  const FINISHED = ["closed", "expired", "invalidated"];
+  const FINISHED = ["closed", "expired", "invalidated", "cancelled"];
   /* Open the plan the agent drafted, on its tab, once the list has it. A plan
      of another session is not in this list, so nothing opens. */
   const [focusedKey, setFocusedKey] = useState<number | null>(null);
@@ -709,6 +739,39 @@ export function PlansPage({ session, focus }: Props) {
               <button className="plans-ghost" onClick={() => void discard(p.rowId)}>
                 Discard
               </button>
+            </div>
+          )}
+
+          {p.state === "planned" && (
+            <div className="plans-actions" onClick={(e) => e.stopPropagation()}>
+              <button className="plans-ghost" onClick={() => setRevisingPlanId(p.rowId)}>
+                <Pencil size={13} /> Revise
+              </button>
+              <button className="plans-ghost" onClick={() => setEndingPlanId(p.rowId)}>
+                <X size={13} /> End plan
+              </button>
+            </div>
+          )}
+
+          {revisingPlanId === p.rowId && (
+            <div className="plans-arm-ok" onClick={(e) => e.stopPropagation()}>
+              <strong>Revise this signed plan?</strong>
+              <p>The current plan will stop being monitored and move to Finished. An editable draft with the same terms will open; it must be armed again to run.</p>
+              <div className="plans-actions">
+                <button className="plans-primary" onClick={() => void reviseArmed(p.rowId)}>Create draft</button>
+                <button className="plans-ghost" onClick={() => setRevisingPlanId(null)}>Keep armed</button>
+              </div>
+            </div>
+          )}
+
+          {endingPlanId === p.rowId && (
+            <div className="plans-arm-fail" onClick={(e) => e.stopPropagation()}>
+              <strong>End this plan?</strong>
+              <p>Monitoring will stop. The signed plan will stay in Finished as part of your record.</p>
+              <div className="plans-actions">
+                <button className="plans-primary" onClick={() => void endArmed(p.rowId)}>End plan</button>
+                <button className="plans-ghost" onClick={() => setEndingPlanId(null)}>Keep armed</button>
+              </div>
             </div>
           )}
 

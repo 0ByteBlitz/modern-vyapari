@@ -1063,7 +1063,7 @@ export function ResearchPage({ activeSession }: { activeSession: Session | null 
             <button
               className={`btn ${alerts.length > 0 ? "btn-active" : ""}`}
               onClick={() => setAlertsMenu((v) => !v)}
-              title="View active alerts for this session"
+              title="View independent alert rules for this session"
             >
               <Bell size={13} style={{ color: alerts.length > 0 ? "var(--accent)" : "inherit" }} />
               <span>Alerts</span>
@@ -1088,7 +1088,7 @@ export function ResearchPage({ activeSession }: { activeSession: Session | null 
                 <div style={{ position: "fixed", inset: 0, zIndex: 59 }} onClick={() => setAlertsMenu(false)} />
                 <div className="research-menu vy-scroll" style={{ width: 280, padding: 10 }}>
                   <div className="research-menu-head label-micro" style={{ marginBottom: 6 }}>
-                    Active Alerts ({alerts.length})
+                    Alert rules ({alerts.length})
                   </div>
                   {alerts.length === 0 ? (
                     <div style={{ fontSize: "var(--text-xs)", color: "var(--text-faint)", padding: "6px 0" }}>
@@ -1128,7 +1128,7 @@ export function ResearchPage({ activeSession }: { activeSession: Session | null 
                             cursor: "pointer",
                             padding: 4,
                           }}
-                          title="Delete alert"
+                          title="Remove this alert rule; armed plans keep running"
                         >
                           <Trash2 size={12} />
                         </button>

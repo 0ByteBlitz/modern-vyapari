@@ -3783,6 +3783,7 @@ ol.md-list li { list-style: decimal; }
 .plan-state-planned { border-color: var(--accent); color: var(--accent); font-weight: 600; }
 .plan-state-triggered { background: var(--accent); border-color: var(--accent); color: var(--primary-foreground); font-weight: 600; }
 .plan-state-invalidated { color: var(--down); }
+.plan-state-cancelled { color: var(--text-faint); }
 
 /* The owner's mark beside "Signed by you · <time>". Indigo: their signature. */
 .signed-by {
