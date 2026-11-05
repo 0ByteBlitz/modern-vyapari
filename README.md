@@ -4,7 +4,7 @@
 
 # Modern Vyapari
 
-**An AI trading partner that keeps the AI out of the order path.**
+**An AI partner for building, challenging, and following a trading plan.**
 
 *जानेर मात्र, किनबेच* — *jaanera matra, kinbech* — "trade only knowingly."
 
@@ -19,12 +19,13 @@
 
 ---
 
-Most AI trading projects ask *"can a model find the trade?"* Modern Vyapari starts from a
-different problem: **most traders lose not for lack of ideas but because they don't stick
-to their plan.** So the app's job is to take you out of the moment of temptation.
+The prototype focuses on self-directed crypto traders who want help turning an idea into a
+plan, examining its assumptions and weaknesses, and reviewing it before arming. **You make
+the decision. The agent researches and drafts; deterministic code monitors the terms you
+signed. Evidence-grounded plan critique is still being developed.**
 
-**You author a thesis. The agent helps you sharpen it and watches the market. Deterministic
-code executes exactly what you signed — and nothing else.**
+It does not promise an investment edge or profitable plans. Its job is to help you make a
+clear decision and see what happened to it.
 
 > ⚠️ **Alpha. Nothing in this app can place a real order yet.** Live execution is not built;
 > all positions today are simulated (paper). See [Status](#status) and the [Disclaimer](#disclaimer).
@@ -42,21 +43,20 @@ touches disk.
   <img src="docs/images/onboarding.png" width="820" alt="Onboarding: the AI provider comes first; the trading venue is marked optional in simulated mode" />
 </p>
 
-**2. Home, and the global agent.** The app opens on Home with no session selected: paper
+**2. Home, and the assistant.** The app opens on Home with no session selected: paper
 performance, *while you were away*, and your sessions, each badged *armed*, *in position* or
-*idle*. The mascot in the corner is the **global agent** — ask it anything that isn't about
-one pair, and it offers your sessions as one-click ways in.
+*idle*. The assistant is available for general questions and can take you into a session.
 
 <p align="center">
-  <img src="docs/images/home.png" width="820" alt="Home with three sessions, one armed, and the global agent's floating chat window open from the mascot in the lower-right corner" />
+  <img src="docs/images/home.png" width="820" alt="Home with three sessions, one armed, and the general assistant open" />
 </p>
 
-**3. A session, and its own agent.** Inside a session the agent drawer belongs to that pair —
-its plans, journal and memory. The global agent moves aside but stays one click away. Two
-agents, never ambiguous which: the drawer is bounded by its session, the mascot is global.
+**3. A session, with session context.** In a session, the assistant can work with that pair's
+plans, journal and memory. Its context is bounded to the session; the general conversation
+remains available elsewhere.
 
 <p align="center">
-  <img src="docs/images/session.png" width="820" alt="BTC-USD session dashboard: an armed plan with entry, stop and target, engine activity, the BTC-USD agent drawer, and the mascot docked at its edge" />
+  <img src="docs/images/session.png" width="820" alt="BTC-USD session dashboard with an armed plan, engine activity, and the assistant scoped to the session" />
 </p>
 
 **4. Plans.** A thesis you can be wrong about, written down before the market can talk you out
@@ -75,8 +75,9 @@ it has no tool that can place, size or price an order.
   <img src="docs/images/research.png" width="820" alt="Charts screen with a BTC-USD candlestick chart and the agent calling web_search, read_candles and fetch_url" />
 </p>
 
-**6. Quitting says what stops.** A plan can only execute while the app is running, so closing
-it tells you exactly what won't be watched.
+**6. The runtime limit is explicit.** Plans are watched only while the app is running. Closing
+the app tells you what will stop being monitored. Background or cloud operation is not yet
+part of the product promise.
 
 <p align="center">
   <img src="docs/images/quit-dialog.png" width="480" alt="Quit dialog: while the app is closed, 1 armed plan can't trigger. Cancel is the default." />
@@ -91,7 +92,7 @@ feed — including, in red, any window when nothing was watching.
 flowchart LR
     U([You]) -- write thesis --> P[Trading plan]
     A[AI agent] -. research, levels, drafts .-> P
-    U -- sign / arm --> P
+    U -- review and arm --> P
     P --> M[Plan monitor<br/>every closed bar]
     M -- trigger --> R[Risk engine<br/>pure code, 8 gates]
     R --> E[Execution engine<br/>pure code]
@@ -115,27 +116,12 @@ Plans are deliberately **not backtested** — a one-shot bet on a path has no me
 What replaces backtesting is falsifiability, plus a **calibration record** that scores you as a
 planner across many plans.
 
-### Agency: the agent drafts, you sign, code executes
+### Agency: the agent drafts and challenges; you review and arm
 
-This is structural, not a setting. The agent can research, read order flow, create level
-references and **draft** plans. It cannot arm a plan, place an order or choose the venue —
-**those tools do not exist**, and a test asserts they never appear. A tool that does not exist
-can't be reached by a jailbreak, a prompt injection from a web page, or a refactor that
-forgets a check.
-
-## How it compares
-
-| | Autonomous multi-agent frameworks | **Modern Vyapari** |
-|---|---|---|
-| Who decides a trade | LLM agents debate and decide | **You**, at signing time |
-| AI in the order path | Yes | **Never** — pure-code risk + execution |
-| Form | Python library / CLI for research | Desktop app for daily use |
-| Validation | Backtests | Falsifiable plans + a calibration record |
-| Prompt-injection blast radius | Can affect trade decisions | Capped by construction: no order tools |
-
-Projects like [TradingAgents](https://github.com/TauricResearch/TradingAgents) explore how far
-autonomous agents can go. Modern Vyapari explores the other end: how useful AI can be while
-being structurally unable to lose your money on its own.
+The agent can research, read order flow, create level references, challenge assumptions and
+**draft** plans. It cannot arm a plan, place an order or choose the venue — those tools do not
+exist. Before arming, the user reviews the plan's assumptions, invalidation, expiry, budget and
+execution terms. Arming does not make a plan correct or profitable.
 
 ## Features
 
@@ -147,9 +133,10 @@ being structurally unable to lose your money on its own.
 - **Plan monitor and paper execution** — each armed plan is evaluated every closed bar for
   expiry, invalidation, drift and triggers. A trigger opens a paper position with the branch's
   stop and target, managed intrabar, and the close is reviewed.
-- **Two agents** — a **global agent** (the mascot, on every screen) for anything not tied to one
-  pair, and a **session agent** (the drawer) bounded by its session's plans, journal and
-  memory. Switchable tool catalogue, cost tracking, post-trade reviews and conditional lessons.
+- **One AI partner with scoped context** — general conversation across the app and session
+  context for that pair's plans, journal and memory. It researches and drafts; evidence-based
+  critique is still evolving, and the user always arms. Tool catalogue, cost tracking,
+  post-trade reviews and conditional lessons.
 - **Any AI provider (in progress)** — the agent loop is the app's, behind a provider port.
   Anthropic is the first adapter; OpenAI, OpenRouter, Gemini and local models (Ollama,
   LM Studio) are next.
@@ -167,7 +154,7 @@ being structurally unable to lose your money on its own.
 | Area | State |
 |---|---|
 | Sessions, research charting, level references | ✅ Working |
-| Global agent (mascot) and session agents | ✅ Working |
+| Assistant in general and session contexts | ✅ Working |
 | Plan authoring, arming, monitoring, paper execution | ✅ Working (proven on seeded bars; live-stream verification wanted) |
 | AI providers beyond Anthropic | 🟡 Port built; OpenAI-compatible and local adapters next |
 | Calibration record | 🟡 Recording, few entries |

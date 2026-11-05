@@ -1,6 +1,6 @@
-# AI Crypto Trading Bot — Architecture & Build Plan
+# Modern Vyapari — Original Architecture & Build Plan
 
-Personal-use Electron app · Revolut X · Spot only · Approval-first autonomy · Claude Agent SDK
+Electron app · simulated-first trading plans · human review before arming · deterministic monitoring
 
 > **Public readers:** this was written as a single-user plan. "Owner" means the
 > person using the app; current status is the top of `docs/ROADMAP.md`.
@@ -22,9 +22,17 @@ Personal-use Electron app · Revolut X · Spot only · Approval-first autonomy �
 >   instead is falsifiability (§17).
 >
 > **The product is one object: the trading plan.** The owner authors a thesis;
-> the agent monitors it and acts on it. `docs/JOURNEYS.md` is where a change
+> the agent helps build and pressure-test it; the owner reviews and arms it;
+> deterministic code monitors the signed terms. `docs/JOURNEYS.md` is where a change
 > should find the journey and step it serves; `docs/ROADMAP.md` is the live
 > plan. Surfaces described here as "Workbench" no longer exist.
+
+> **Current prototype boundary (5 November 2026):** help one user move from
+> research to a reviewed, armed plan and understand what the simulated monitor
+> did. This product does not promise investment edge or returns. The agent may
+> draft and critique, but the human decides whether to arm; the runtime and any
+> background/cloud deployment remain open questions. Broader investing and
+> asset-class directions are research, not prototype scope.
 >
 > This file is **not being retrofitted wholesale** — sections are corrected as
 > they are touched. Where it disagrees with ROADMAP or JOURNEYS, those win.

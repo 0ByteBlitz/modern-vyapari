@@ -107,14 +107,23 @@ jobs:
           pattern: installer-*
           merge-multiple: true
 
-      # Create GitHub Pre-Release using GitHub CLI (official GitHub tool, no third-party action)
+      # Create GitHub Pre-Release using curated notes when present; otherwise use GitHub's generated notes.
       - name: Create Pre-Release
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" \
-            dist-artifacts/* \
-            --title "$GITHUB_REF_NAME" \
-            --prerelease \
-            --generate-notes
+          NOTES_FILE="docs/releases/${GITHUB_REF_NAME#v}.md"
+          if [[ -f "$NOTES_FILE" ]]; then
+            gh release create "$GITHUB_REF_NAME" \
+              dist-artifacts/* \
+              --title "$GITHUB_REF_NAME" \
+              --prerelease \
+              --notes-file "$NOTES_FILE"
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              dist-artifacts/* \
+              --title "$GITHUB_REF_NAME" \
+              --prerelease \
+              --generate-notes
+          fi
