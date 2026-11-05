@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Brain, Search, Sparkles, User } from "lucide-react";
+import { Search, Sparkles, User } from "lucide-react";
 import { api, isError, type Session, type JournalEntry, errorText } from "@/lib/api";
 
 /**
@@ -109,7 +109,7 @@ export function JournalPage({ activeSession }: { activeSession: Session | null }
           {FILTERS.map((f) => (
             <button
               key={f.id}
-              className={`chip ${filter === f.id ? "chip-active" : ""}`}
+              className={`pill-tab ${filter === f.id ? "pill-tab-on" : ""}`}
               onClick={() => setFilter(f.id)}
             >
               {f.label}
@@ -140,7 +140,7 @@ export function JournalPage({ activeSession }: { activeSession: Session | null }
           const isLong = body.length > 150 || body.includes("\n");
 
           return (
-            <article key={e.id} className="journal-entry" style={{ borderLeftColor: isAI ? "var(--ai)" : "var(--accent)" }}>
+            <article key={e.id} className={`journal-entry ${isAI ? "journal-entry-ai" : "journal-entry-you"}`}>
               <div className="journal-entry-head">
                 <span className={`journal-author ${isAI ? "journal-author-ai" : ""}`}>
                   {isAI ? <Sparkles size={10} /> : <User size={10} />}
@@ -221,15 +221,14 @@ export function JournalPage({ activeSession }: { activeSession: Session | null }
       {/* ── lessons in context ── */}
       <aside className="journal-side">
         <div className="panel-header">
-          <Brain size={14} style={{ color: "var(--ai)" }} />
-          <span style={{ fontSize: "var(--text-base)", fontWeight: 600 }}>Lessons in context</span>
+          <span style={{ fontSize: "var(--text-base)", fontWeight: 600, color: "var(--ai)" }}>Lessons in context</span>
           <span className="mono ml-auto" style={{ fontSize: "var(--text-2xs)", color: "var(--text-faint)" }}>
             {lessons.length} / 5
           </span>
         </div>
         <div className="journal-side-note">
-          This is injected verbatim into every conversation for {activeSession.pair}.
-          A wrong line here keeps shaping the bot's answers until it's removed.
+          Sent word for word into every {activeSession.pair} conversation. A wrong
+          line keeps shaping the agent's answers until it is removed.
         </div>
         <div className="vy-scroll" style={{ flex: 1, overflowY: "auto" }}>
           {lessons.map((l, i) => (

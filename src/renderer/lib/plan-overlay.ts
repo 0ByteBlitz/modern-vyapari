@@ -25,10 +25,10 @@ import type { StoredPlanView, LevelDraftView } from "@/lib/api";
 
 /** Role → colour. Matches the detail views, so a stop is the same red in both. */
 const ROLE_COLOR: Record<string, string> = {
-  entry: "#22d3ee",
-  stop: "#f2566a",
-  target: "#2fcc8b",
-  invalidation: "#f5a524",
+  entry: "#A9B2FF",
+  stop: "#FF7A70",
+  target: "#4ADE9A",
+  invalidation: "#FFB547",
 };
 
 export interface PlanOverlayHandle {
@@ -93,7 +93,7 @@ function line(
   label: string,
   atArm: boolean
 ): string | null {
-  const color = ROLE_COLOR[role] ?? "#8b95a5";
+  const color = ROLE_COLOR[role] ?? "#A3A8B3";
   const id = chart.createOverlay({
     name: "priceLine",
     points: [{ value: price }],
@@ -103,7 +103,7 @@ function line(
     lock: true,
     styles: {
       line: { color, style: role === "invalidation" ? "dashed" : "solid", size: 1 },
-      text: { color, size: 10, family: "IBM Plex Mono, monospace" },
+      text: { color, size: 10, family: "Geist Mono, monospace" },
     },
     extendData: `${label}${atArm ? " · at arm" : ""}`,
   } as any);

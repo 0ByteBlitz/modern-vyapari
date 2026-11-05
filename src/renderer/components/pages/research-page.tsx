@@ -29,7 +29,7 @@ import {
   OVERLAY_INDICATORS,
   PANE_INDICATORS,
   ALL_INDICATORS,
-  CHART_THEME,
+  CHART_THEME, INDICATOR_STYLES, LAST_PRICE_MARK,
   setCvdSeries,
   clearCvdSeries,
   type IndicatorDef,
@@ -327,7 +327,7 @@ export function ResearchPage({ activeSession }: { activeSession: Session | null 
       if (!Number.isFinite(targetPrice)) continue;
 
       const isTriggered = a.status === "triggered";
-      const color = isTriggered ? "#f2566a" : "#f59e0b";
+      const color = isTriggered ? CHART_THEME.text : CHART_THEME.dim;
 
       const id = chart.createOverlay({
         name: "priceLine",
@@ -335,7 +335,7 @@ export function ResearchPage({ activeSession }: { activeSession: Session | null 
         lock: true,
         styles: {
           line: { color, style: isTriggered ? "solid" : "dashed", size: 1 },
-          text: { color, size: 10, family: "IBM Plex Mono, monospace" },
+          text: { color, size: 10, family: "Geist Mono, monospace" },
         },
         extendData: `🔔 ${a.label} ($${targetPrice})`,
       } as any);
@@ -408,8 +408,8 @@ export function ResearchPage({ activeSession }: { activeSession: Session | null 
           points: [{ value: level.price }],
           lock: true,
           styles: {
-            line: { color: "#22d3ee", style: "solid", size: 1 },
-            text: { color: "#22d3ee", size: 10, family: "IBM Plex Mono, monospace" },
+            line: { color: CHART_THEME.accent, style: "solid", size: 1 },
+            text: { color: CHART_THEME.accent, size: 10, family: "Geist Mono, monospace" },
           },
           extendData: `${r.label}`,
         } as any);
@@ -481,27 +481,28 @@ export function ResearchPage({ activeSession }: { activeSession: Session | null 
             downColor: CHART_THEME.down,
             upBorderColor: CHART_THEME.up,
             downBorderColor: CHART_THEME.down,
-            upWickColor: CHART_THEME.up,
-            downWickColor: CHART_THEME.down,
+            upWickColor: CHART_THEME.wick,
+            downWickColor: CHART_THEME.wick,
           },
           priceMark: {
-            last: { text: { family: "IBM Plex Mono, monospace" } },
+            last: { ...LAST_PRICE_MARK, text: { family: "Geist Mono, monospace" } },
           },
           tooltip: {
-            title: { family: "IBM Plex Mono, monospace", size: 11 },
-            legend: { family: "IBM Plex Mono, monospace", size: 11 },
+            title: { family: "Geist Mono, monospace", size: 11 },
+            legend: { family: "Geist Mono, monospace", size: 11 },
           },
         },
-        xAxis: { axisLine: { color: CHART_THEME.grid }, tickLine: { color: CHART_THEME.grid }, tickText: { color: CHART_THEME.faint, family: "IBM Plex Mono, monospace" } },
-        yAxis: { axisLine: { color: CHART_THEME.grid }, tickLine: { color: CHART_THEME.grid }, tickText: { color: CHART_THEME.faint, family: "IBM Plex Mono, monospace" } },
+        xAxis: { axisLine: { color: CHART_THEME.axis }, tickLine: { color: CHART_THEME.axis }, tickText: { color: CHART_THEME.faint, family: "Geist Mono, monospace" } },
+        yAxis: { axisLine: { color: CHART_THEME.axis }, tickLine: { color: CHART_THEME.axis }, tickText: { color: CHART_THEME.faint, family: "Geist Mono, monospace" } },
         crosshair: {
-          horizontal: { line: { color: CHART_THEME.dim }, text: { family: "IBM Plex Mono, monospace" } },
-          vertical: { line: { color: CHART_THEME.dim }, text: { family: "IBM Plex Mono, monospace" } },
+          horizontal: { line: { color: CHART_THEME.dim }, text: { family: "Geist Mono, monospace" } },
+          vertical: { line: { color: CHART_THEME.dim }, text: { family: "Geist Mono, monospace" } },
         },
         indicator: {
+          ...INDICATOR_STYLES,
           tooltip: {
-            title: { family: "IBM Plex Mono, monospace", size: 11 },
-            legend: { family: "IBM Plex Mono, monospace", size: 11 },
+            title: { family: "Geist Mono, monospace", size: 11 },
+            legend: { family: "Geist Mono, monospace", size: 11 },
           },
         },
       },
@@ -1064,15 +1065,15 @@ export function ResearchPage({ activeSession }: { activeSession: Session | null 
               onClick={() => setAlertsMenu((v) => !v)}
               title="View active alerts for this session"
             >
-              <Bell size={13} style={{ color: alerts.length > 0 ? "var(--caution)" : "inherit" }} />
+              <Bell size={13} style={{ color: alerts.length > 0 ? "var(--accent)" : "inherit" }} />
               <span>Alerts</span>
               {alerts.length > 0 && (
                 <span
                   className="mono"
                   style={{
                     fontSize: "var(--text-2xs)",
-                    background: "rgba(245, 158, 11, 0.2)",
-                    color: "#f59e0b",
+                    background: "rgba(169, 178, 255, 0.16)",
+                    color: "var(--accent)",
                     padding: "1px 5px",
                     borderRadius: "999px",
                     fontWeight: 700,
@@ -1235,7 +1236,7 @@ export function ResearchPage({ activeSession }: { activeSession: Session | null 
               bottom: 16,
               right: 16,
               zIndex: 10,
-              background: "rgba(18, 24, 34, 0.85)",
+              background: "var(--card)",
               backdropFilter: "blur(4px)",
               border: "1px solid var(--border)",
               borderRadius: "var(--radius-md)",

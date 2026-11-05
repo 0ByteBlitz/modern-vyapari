@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, isError, type Session, type OrderRecord, type PaperStats } from "@/lib/api";
 import { formatPrice, formatQty, formatUsd, formatPct } from "@/lib/format";
+import { useAppMode } from "@/lib/mode";
 
 /**
  * Orders & fills — every order this session's strategies have placed.
@@ -19,7 +20,7 @@ function clock(ms: number): string {
   });
 }
 
-function StatCell({ label, value, tone }: { label: string; value: string; tone?: "up" | "down" | "neutral" }) {
+function StatCell({ label, value, tone, note }: { label: string; value: string; tone?: "up" | "down" | "neutral"; note?: string }) {
   const color = tone === "up" ? "var(--up)" : tone === "down" ? "var(--down)" : "var(--text-secondary)";
   return (
     <div className="stat-cell">
@@ -27,6 +28,7 @@ function StatCell({ label, value, tone }: { label: string; value: string; tone?:
       <span className="mono stat-cell-value" style={{ color }}>
         {value}
       </span>
+      {note && <span className="stat-cell-note">{note}</span>}
     </div>
   );
 }
@@ -34,6 +36,7 @@ function StatCell({ label, value, tone }: { label: string; value: string; tone?:
 export function OrdersPage({ activeSession }: { activeSession: Session | null }) {
   const [orders, setOrders] = useState<OrderRecord[]>([]);
   const [stats, setStats] = useState<PaperStats | null>(null);
+  const mode = useAppMode();
 
   const load = useCallback(async () => {
     if (!activeSession) return;
@@ -65,7 +68,7 @@ export function OrdersPage({ activeSession }: { activeSession: Session | null })
           value={stats ? formatUsd(stats.realizedPnl, { sign: true }) : "—"}
           tone={!stats ? "neutral" : stats.realizedPnl > 0 ? "up" : stats.realizedPnl < 0 ? "down" : "neutral"}
         />
-        <StatCell label="Trades" value={stats ? `${stats.closedCount} closed · ${stats.openCount} open` : "—"} />
+        <StatCell label="Closed trades" value={stats ? String(stats.closedCount) : "—"} note={stats ? `${stats.openCount} open` : undefined} />
         <StatCell
           label="Win rate"
           value={stats && stats.closedCount > 0 ? formatPct(stats.winRate, 0) : "—"}
@@ -76,8 +79,10 @@ export function OrdersPage({ activeSession }: { activeSession: Session | null })
       <section className="panel">
         <div className="panel-header">
           <span className="label-micro">Order history · {activeSession.pair}</span>
+          {/* Dashed = simulated, solid amber = real money. */}
+          <span className={`badge badge-${mode === "live" ? "live" : "paper"}`}>{mode}</span>
           <span className="ml-auto" style={{ fontSize: "var(--text-xs)", color: "var(--text-faint)" }}>
-            every order this session's strategies have placed
+            every order this session has placed
           </span>
         </div>
         {orders.length > 0 ? (
