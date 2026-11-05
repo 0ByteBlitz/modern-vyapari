@@ -120,17 +120,22 @@ export function ApprovalsPage({ activeSession }: { activeSession?: Session | nul
         <section className="panel">
           <div className="panel-header">
             <span className="panel-title">Risk engine · safety gates</span>
-            <span className="mono ml-auto" style={{ fontSize: "var(--text-xs)", color: "var(--up)" }}>8 / 8 implemented</span>
+            {/* Same truth as Settings › Risk limits: the gates exist and are
+                tested, but order-pipeline.ts is unreferenced, so no order —
+                simulated or live — passes through them. Green ticks and "these
+                guard simulated trades" claimed otherwise. */}
+            <span className="mono ml-auto" style={{ fontSize: "var(--text-xs)", color: "var(--caution)" }}>not on any order path yet</span>
           </div>
           <p style={{ margin: 0, padding: "12px 16px 4px", fontSize: "var(--text-md)", color: "var(--muted-foreground)", lineHeight: 1.5 }}>
-            Every gate runs on each order the pipeline receives. Live orders
-            don't exist yet, so today these guard simulated trades.
+            Eight gates, written and tested. No order passes through them yet:
+            simulated fills don't, and live trading isn't built. Today a plan is
+            limited by the budget you sign when you arm it, and by the kill switch.
           </p>
           <div className="gate-list">
             {ENFORCED_CHECKS.map(([label, note]) => (
               <div key={label} className="gate-row">
                 <span className="gate-label">
-                  <CheckCircle2 size={13} style={{ color: "var(--up)", flexShrink: 0 }} />
+                  <CheckCircle2 size={13} style={{ color: "var(--text-faint)", flexShrink: 0 }} />
                   {label}
                 </span>
                 <span className="mono gate-note">{note}</span>

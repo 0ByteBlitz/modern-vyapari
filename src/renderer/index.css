@@ -1710,7 +1710,7 @@ ol.md-list li { list-style: decimal; }
 
 .settings-layout {
   display: grid;
-  grid-template-columns: 200px minmax(0, 1fr);
+  grid-template-columns: 220px minmax(0, 1fr);
   height: 100%;
   min-height: 0;
   overflow: hidden;
@@ -1718,46 +1718,52 @@ ol.md-list li { list-style: decimal; }
 
 .settings-nav {
   border-right: 1px solid var(--border);
-  background: var(--card);
-  padding: 10px 8px;
+  background: var(--background);
+  padding: 8px 10px 24px;
   display: flex;
   flex-direction: column;
   gap: 1px;
-  overflow: hidden;
+  overflow-y: auto;
 }
 
 .settings-nav-item {
   text-align: left;
   font-family: inherit;
   font-size: var(--text-base);
-  padding: 7px 9px;
+  min-height: 34px;
+  padding: 0 10px;
   border: none;
   border-radius: var(--radius-sm);
   cursor: pointer;
   background: transparent;
-  color: var(--muted-foreground);
+  color: var(--text-secondary);
 }
 
 .settings-nav-item:hover { background: var(--surface-3); color: var(--foreground); }
 
 .settings-nav-group { display: flex; flex-direction: column; gap: 1px; }
-.settings-nav-group + .settings-nav-group { margin-top: 10px; }
+.settings-nav-group + .settings-nav-group {
+  margin-top: 4px;
+}
 .settings-nav-heading {
-  padding: 2px 9px 4px;
-  font-size: var(--text-2xs);
-  font-weight: 600;
+  margin: 14px 10px 4px;
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-faint);
 }
-.settings-nav-item-active { background: rgba(169, 178, 255, 0.1); color: var(--accent); }
+.settings-nav-item-active {
+  background: var(--surface-3); color: var(--foreground); font-weight: 600;
+}
 
 .settings-pane {
-  padding: 14px;
+  padding: 20px 24px 96px;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-width: 940px;
+  max-width: 920px;
   overflow-y: auto;
 }
 
@@ -1776,8 +1782,8 @@ ol.md-list li { list-style: decimal; }
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 9px 12px;
-  border-bottom: 1px solid rgba(42, 46, 54, 0.7);
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--surface-3);
 }
 
 .limit-label { width: 260px; display: flex; flex-direction: column; gap: 2px; }
@@ -1789,14 +1795,14 @@ ol.md-list li { list-style: decimal; }
 .settings-input {
   flex: 1;
   min-width: 0;
-  height: 28px;
-  padding: 0 9px;
+  min-height: 38px;
+  padding: 0 12px;
   font-family: var(--font-mono);
   font-size: var(--text-md);
   color: var(--foreground);
-  background: var(--surface-3);
+  background: var(--background);
   border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
+  border-radius: 10px;
   outline: none;
 }
 
@@ -3436,8 +3442,7 @@ ol.md-list li { list-style: decimal; }
 
 .density-option-active {
   border-color: var(--accent);
-  background: rgba(169, 178, 255, 0.07);
-  color: var(--foreground);
+  background: var(--surface-3);
 }
 
 .density-option-label { font-size: var(--text-base); font-weight: 600; }
@@ -4362,7 +4367,9 @@ ol.md-list li { list-style: decimal; }
    capability shown as present is how a position ends up unprotected. */
 
 .integ-pane { display: flex; flex-direction: column; gap: 12px; }
-.integ-body { padding: 10px 12px; }
+.integ-body {
+  padding: 12px 16px;
+}
 
 .integ-row {
   display: flex;
@@ -4371,32 +4378,42 @@ ol.md-list li { list-style: decimal; }
   gap: 12px;
 }
 
-.integ-name { font-size: var(--text-lg); font-weight: 600; }
-.integ-sub { font-size: var(--text-sm); color: var(--muted-foreground); margin-top: 2px; line-height: 1.45; }
+.integ-name {
+  font-size: var(--text-base); font-weight: 600;
+}
+.integ-sub {
+  font-size: var(--text-md); color: var(--muted-foreground); margin-top: 4px; line-height: 1.5;
+}
 
 .integ-caps {
   margin-top: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
+  display: grid;
+  gap: 6px;
 }
 
 .integ-cap {
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: var(--text-sm);
+  font-size: var(--text-md);
+  color: var(--text-secondary);
 }
 .integ-cap-off { color: var(--text-faint); }
-.integ-cap-note { font-size: var(--text-xs); color: var(--text-ghost); font-family: var(--font-mono); }
+.integ-cap-note {
+  margin-left: auto; font-size: var(--text-xs); color: var(--text-faint); font-family: var(--font-mono);
+}
 
 .integ-note {
   margin-top: 10px;
   display: flex;
   align-items: flex-start;
-  gap: 6px;
-  font-size: var(--text-sm);
-  color: var(--text-dim);
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 181, 71, 0.3);
+  background: rgba(255, 181, 71, 0.06);
+  font-size: var(--text-md);
+  color: var(--text-secondary);
   line-height: 1.5;
 }
 
@@ -4559,13 +4576,13 @@ ol.md-list li { list-style: decimal; }
   gap: 4px;
   align-items: flex-start;
   text-align: left;
-  padding: 10px 12px;
+  padding: 14px;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--card);
-  color: var(--muted-foreground);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text-secondary);
   cursor: pointer;
-  font-size: var(--text-sm);
+  font-size: var(--text-md);
 }
 
 .mode-option:hover:not(:disabled) {
@@ -4579,7 +4596,7 @@ ol.md-list li { list-style: decimal; }
 
 .mode-option-on {
   border-color: var(--accent);
-  box-shadow: inset 0 0 0 1px var(--accent);
+  background: var(--surface-3);
 }
 
 /* ── Agent spend ───────────────────────────────────────────────────────
