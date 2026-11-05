@@ -1,6 +1,7 @@
 import { formatLevel } from "@shared/levels";
 import type { PriceLevel } from "@shared/levels";
 import { describeThreshold } from "@shared/levels";
+import { PLAN_STATE_LABEL } from "@shared/ipc-types";
 import { useEffect, useState } from "react";
 import { api, isError, type StoredPlanView, type PlanBranchView, type LevelDraftView, type PlanWatch } from "@/lib/api";
 import { formatPrice } from "@/lib/format";
@@ -206,7 +207,7 @@ export function PlanDetail({
     <DetailModal
       kind="Plan"
       title={plan.slug}
-      badge={<span className={`badge badge-${plan.state === "triggered" ? "supervised" : "paper"}`}>{plan.state}</span>}
+      badge={<span className={`badge badge-${plan.state === "triggered" ? "supervised" : "paper"}`}>{PLAN_STATE_LABEL[plan.state]}</span>}
       onClose={onClose}
     >
       <p className="detail-thesis">{plan.thesis}</p>

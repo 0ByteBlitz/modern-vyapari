@@ -19,6 +19,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Plus, Trash2, ShieldCheck, AlertTriangle, Activity, X, Pencil } from "lucide-react";
 import { formatLevel, type PriceLevel } from "@shared/levels";
+import { PLAN_STATE_LABEL } from "@shared/ipc-types";
 import { PlanDetail, PlanWatchNote } from "@/components/plan-detail";
 import { CalibrationPanel } from "@/components/calibration-panel";
 import {
@@ -33,7 +34,6 @@ import {
   type ArmResultView,
   type PlanDryRun,
   type LevelReferenceView,
-  type PlanState,
 } from "@/lib/api";
 
 const DAY = 86_400_000;
@@ -99,15 +99,6 @@ function intentText(intent: ConditionIntentView | null | undefined): string {
   const v = typeof intent.value === "number" ? String(intent.value) : levelText(intent.value);
   return `price ${OP_TEXT[intent.operator]} ${v}`;
 }
-
-const STATE_LABEL: Record<PlanState, string> = {
-  draft: "Draft",
-  planned: "Armed",
-  triggered: "Triggered",
-  closed: "Closed",
-  expired: "Expired",
-  invalidated: "Invalidated",
-};
 
 export function PlansPage({ session, focus }: Props) {
   const [plans, setPlans] = useState<StoredPlanView[]>([]);
@@ -673,7 +664,7 @@ export function PlansPage({ session, focus }: Props) {
         >
           <div className="plans-card-head">
             <span className="plans-slug">{p.slug}</span>
-            <span className={`plans-state plans-state-${p.state}`}>{STATE_LABEL[p.state]}</span>
+            <span className={`plans-state plans-state-${p.state}`}>{PLAN_STATE_LABEL[p.state]}</span>
           </div>
           <p className="plans-thesis">{p.thesis}</p>
           <div className="plans-meta">
