@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Home, RotateCw, ShieldCheck } from "lucide-react";
 import { api, isError, type BrowserState } from "@/lib/api";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 
 /**
  * Embedded browser (Phase 1 surface 3). The actual page content is a native
@@ -66,45 +64,49 @@ export function BrowserPage() {
 
   return (
     <div className="browser-page">
+      <header className="browser-page-head">
+        <div>
+          <h1 className="surface-title">Research browser</h1>
+          <p className="surface-sub">Use web sources for research. Page content never triggers a plan.</p>
+        </div>
+        <span className="browser-isolated-label"><ShieldCheck size={14} /> Isolated</span>
+      </header>
       <div className="browser-toolbar">
         <div className="browser-nav-buttons">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
+          <button
+            className="btn btn-ghost browser-nav-btn"
             onClick={() => void api.browserGoBack()}
             disabled={!state?.canGoBack}
             title="Back"
+            aria-label="Back"
           >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
+            <ArrowLeft size={15} />
+          </button>
+          <button
+            className="btn btn-ghost browser-nav-btn"
             onClick={() => void api.browserGoForward()}
             disabled={!state?.canGoForward}
             title="Forward"
+            aria-label="Forward"
           >
-            <ArrowRight className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
+            <ArrowRight size={15} />
+          </button>
+          <button
+            className="btn btn-ghost browser-nav-btn"
             onClick={() => void api.browserReload()}
             title="Reload"
+            aria-label="Reload page"
           >
-            <RotateCw className={`h-4 w-4 ${state?.loading ? "animate-spin" : ""}`} />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => void api.browserGoHome()} title="Home">
-            <Home className="h-4 w-4" />
-          </Button>
+            <RotateCw size={15} className={state?.loading ? "animate-spin" : ""} />
+          </button>
+          <button className="btn btn-ghost browser-nav-btn" onClick={() => void api.browserGoHome()} title="Home" aria-label="Home">
+            <Home size={15} />
+          </button>
         </div>
 
-        <div className="browser-address-bar" title="Isolated session, permissions denied, trackers blocked">
-          <ShieldCheck className="h-3.5 w-3.5 text-success shrink-0" />
-          <Input
+        <div className="browser-address-bar">
+          <ShieldCheck size={14} className="browser-address-shield" aria-label="Isolated session; permissions denied and trackers blocked" />
+          <input
             value={addressInput}
             onChange={(e) => setAddressInput(e.target.value)}
             onFocus={() => {
@@ -120,7 +122,8 @@ export function BrowserPage() {
               }
             }}
             placeholder="Enter a URL…"
-            className="h-8 text-xs bg-transparent border-0 shadow-none focus-visible:ring-0 px-0"
+            className="browser-address-input"
+            aria-label="Research browser address"
           />
         </div>
 

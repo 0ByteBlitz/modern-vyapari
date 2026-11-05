@@ -63,7 +63,8 @@ export function PortfolioPage({ onOpenSession }: { onOpenSession: (s: { id: numb
 
   return (
     <div className="surface-scroll vy-scroll">
-      <div className="stat-strip">
+      {/* Simulated figures sit inside a dashed edge — paper's line style. */}
+      <div className={`stat-strip ${mode === "live" ? "" : "stat-strip-sim"}`}>
         <StatCell
           label="Realised PnL"
           value={formatUsd(totals.realizedPnl, { sign: true })}
@@ -111,7 +112,8 @@ export function PortfolioPage({ onOpenSession }: { onOpenSession: (s: { id: numb
       <section className="panel">
         <div className="panel-header">
           <span className="label-micro">Exchange account · real holdings</span>
-          <span className="ml-auto" style={{ fontSize: "var(--text-xs)", color: "var(--text-faint)" }}>
+          {/* Amber: real money, the one thing on this page that is not paper. */}
+          <span className="ml-auto" style={{ fontSize: "var(--text-xs)", color: "var(--caution)" }}>
             not simulated — this is your actual balance
           </span>
         </div>
@@ -152,8 +154,8 @@ export function PortfolioPage({ onOpenSession }: { onOpenSession: (s: { id: numb
                     {s.status}
                   </td>
                   <td>{s.planCount}</td>
-                  <td className={s.armedCount > 0 ? "v-caution" : "v-flat"}>{s.armedCount}</td>
-                  <td className={s.openCount > 0 ? "v-caution" : "v-flat"}>{s.openCount}</td>
+                  <td style={s.armedCount > 0 ? { color: "var(--accent)" } : undefined} className={s.armedCount > 0 ? "" : "v-flat"}>{s.armedCount}</td>
+                  <td className={s.openCount > 0 ? (mode === "live" ? "v-caution" : "") : "v-flat"}>{s.openCount}</td>
                   <td>{s.closedCount}</td>
                   <td>{formatPct(wr, 0)}</td>
                   <td style={{ color: "var(--text-faint)" }}>{formatUsd(s.fees)}</td>

@@ -3,7 +3,7 @@ import { CandlesCard } from "@/components/candles-card";
 import { DerivativesStrip } from "@/components/derivatives-strip";
 import { Input } from "@/components/ui/input";
 import { useTickers } from "@/lib/use-tickers";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, formatChange } from "@/lib/format";
 import { ArrowDownRight, ArrowUpRight, Search, Flame, Zap } from "lucide-react";
 
 // Below this 24h quote volume (USDT), a ticker is too illiquid to trust for
@@ -132,15 +132,15 @@ export function MarketPage({
                   <button
                     key={t.symbol}
                     onClick={() => setSymbol(t.symbol)}
-                    className={`w-full text-left px-4 py-2 flex items-center justify-between hover:bg-muted/50 transition-colors ${symbol === t.symbol ? "bg-primary/5 border-l-2 border-primary" : "border-l-2 border-transparent"}`}
+                    className={`w-full text-left px-4 py-2 flex items-center justify-between hover:bg-muted/50 transition-colors ${symbol === t.symbol ? "bg-surface-3 border-l-2 border-primary" : "border-l-2 border-transparent"}`}
                   >
                     <div className="min-w-0">
                       <div className={`font-bold text-sm flex items-center gap-1.5 ${symbol === t.symbol ? "text-primary" : "text-foreground"}`}>
                         {t.symbol}
                         {t.tradableOnVenue && (
                           <span
-                            title="Listed on the venue — the bot can execute this pair"
-                            className="inline-flex items-center gap-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-500/90 bg-amber-500/10 rounded px-1 py-px"
+                            title="Listed on the venue — plans on this pair can execute there"
+                            className="inline-flex items-center gap-0.5 text-[9px] font-semibold uppercase tracking-wide text-primary bg-primary/10 rounded px-1 py-px"
                           >
                             <Zap className="h-2.5 w-2.5" />
                             Tradable
@@ -154,9 +154,8 @@ export function MarketPage({
                       </div>
                       <div className="text-[10px] text-muted-foreground/60">Vol ${formatVolume(t.volume24h)}</div>
                     </div>
-                    <div className={`text-xs font-medium flex items-center gap-1 shrink-0 ${t.change24h >= 0 ? "text-green-500" : "text-destructive"}`}>
-                      {t.change24h >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-                      {Math.abs(t.change24h).toFixed(2)}%
+                    <div className={`mono text-xs font-medium shrink-0 ${t.change24h >= 0 ? "text-up" : "text-down"}`}>
+                      {formatChange(t.change24h)}
                     </div>
                   </button>
                 ))}
@@ -181,12 +180,12 @@ export function MarketPage({
           {topGainer && (
             <div className="flex flex-col gap-1 min-w-0 flex-1">
               <div className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground uppercase tracking-widest">
-                <ArrowUpRight className="h-3.5 w-3.5 text-green-500" />
+                <ArrowUpRight className="h-3.5 w-3.5 text-up" />
                 Top Gainer
               </div>
               <div className="flex items-baseline gap-2 cursor-pointer hover:opacity-80" onClick={() => setSymbol(topGainer.symbol)}>
                 <span className="text-lg font-bold truncate">{topGainer.symbol}</span>
-                <span className="text-sm font-medium text-green-500">+{topGainer.change24h.toFixed(2)}%</span>
+                <span className="mono text-sm font-medium text-up">{formatChange(topGainer.change24h)}</span>
               </div>
             </div>
           )}
@@ -194,12 +193,12 @@ export function MarketPage({
           {topLoser && (
             <div className="flex flex-col gap-1 min-w-0 flex-1">
               <div className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground uppercase tracking-widest">
-                <ArrowDownRight className="h-3.5 w-3.5 text-destructive" />
+                <ArrowDownRight className="h-3.5 w-3.5 text-down" />
                 Top Loser
               </div>
               <div className="flex items-baseline gap-2 cursor-pointer hover:opacity-80" onClick={() => setSymbol(topLoser.symbol)}>
                 <span className="text-lg font-bold truncate">{topLoser.symbol}</span>
-                <span className="text-sm font-medium text-destructive">{topLoser.change24h.toFixed(2)}%</span>
+                <span className="mono text-sm font-medium text-down">{formatChange(topLoser.change24h)}</span>
               </div>
             </div>
           )}
@@ -207,7 +206,7 @@ export function MarketPage({
           {trending && (
             <div className="flex flex-col gap-1 min-w-0 flex-1">
               <div className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground uppercase tracking-widest">
-                <Flame className="h-3.5 w-3.5 text-amber-500" />
+                <Flame className="h-3.5 w-3.5 text-muted-foreground" />
                 Trending
               </div>
               <div className="flex items-baseline gap-2 cursor-pointer hover:opacity-80" onClick={() => setSymbol(trending.symbol)}>

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { OctagonX, ShieldCheck, Gavel, Info, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
+import { OctagonX, ShieldCheck, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 import { api, isError, type OrderRecord, type Session } from "@/lib/api";
-import { Button } from "@/components/ui/button";
 
 const ENFORCED_CHECKS = [
   ["Explicit Stop-Loss Gate", "GATE_1_STOP_LOSS · Hard stop required on every entry intent"],
@@ -74,34 +73,28 @@ export function ApprovalsPage({ activeSession }: { activeSession?: Session | nul
   const proposedOrders = orders.filter((o) => o.status === "proposed");
 
   return (
-    <div className="approvals-layout" style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 16, height: "100%", padding: 16 }}>
+    <div className="approvals-layout" style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 16, height: "100%", padding: "16px 16px 0" }}>
       <div className="vy-scroll" style={{ display: "flex", flexDirection: "column", gap: 12, height: "100%", overflowY: "auto" }}>
-        <section className="panel panel-approval border rounded-lg p-4 bg-card">
-          <div className="panel-header flex items-center justify-between border-b pb-3 mb-3">
-            <div className="flex items-center gap-2">
-              <Gavel size={16} className="text-amber-500" />
-              <span className="font-semibold text-sm">Order Intents · Awaiting Approval</span>
-            </div>
-            <span className="mono text-xs px-2 py-0.5 rounded bg-amber-500/10 text-amber-500 font-bold">
+        <section className="panel">
+          <div className="panel-header">
+            <span className="panel-title">Order intents · awaiting approval</span>
+            <span className="mono ml-auto" style={{ fontSize: "var(--text-xs)", color: proposedOrders.length > 0 ? "var(--caution)" : "var(--text-faint)" }}>
               {proposedOrders.length}
             </span>
           </div>
 
           {proposedOrders.length === 0 ? (
-            <div className="empty-state flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
-              <ShieldCheck size={32} className="text-emerald-500 mb-2" />
-              <span className="text-base font-medium text-foreground">No Pending Intents</span>
-              <span className="text-xs text-muted-foreground max-w-sm mt-1">
-                Nothing is waiting on you.
-              </span>
+            <div className="empty-state" style={{ padding: "32px 16px" }}>
+              <ShieldCheck size={28} style={{ color: "var(--up)" }} />
+              <span style={{ fontWeight: 500, color: "var(--foreground)" }}>Nothing is waiting on you.</span>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-3" style={{ padding: 12 }}>
               {proposedOrders.map((o) => (
-                <div key={o.id} className="p-3 border rounded bg-background flex items-center justify-between">
+                <div key={o.id} className="approval-row">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className={`text-xs font-bold uppercase px-1.5 py-0.5 rounded ${o.side === "buy" ? "bg-emerald-500/10 text-emerald-500" : "bg-rose-500/10 text-rose-500"}`}>
+                      <span className={`mono text-xs font-medium uppercase ${o.side === "buy" ? "v-up" : "v-down"}`}>
                         {o.side}
                       </span>
                       <span className="font-mono text-sm font-semibold">{o.symbol}</span>
@@ -110,12 +103,13 @@ export function ApprovalsPage({ activeSession }: { activeSession?: Session | nul
                     <div className="text-xs text-muted-foreground font-mono">Client ID: {o.client_order_id.slice(0, 8)}...</div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button size="sm" variant="outline" className="text-xs text-rose-500 border-rose-500/30 hover:bg-rose-500/10" onClick={() => handleReject(o.id)}>
-                      <XCircle size={13} className="mr-1" /> Reject
-                    </Button>
-                    <Button size="sm" className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => handleApprove(o.id)}>
-                      <CheckCircle2 size={13} className="mr-1" /> Approve & Sign
-                    </Button>
+                    <button className="btn btn-destructive-outline" onClick={() => handleReject(o.id)}>
+                      <XCircle size={13} /> Reject
+                    </button>
+                    {/* Signing is the owner's mark: indigo. */}
+                    <button className="btn btn-primary" onClick={() => handleApprove(o.id)}>
+                      <CheckCircle2 size={13} /> Approve and sign
+                    </button>
                   </div>
                 </div>
               ))}
@@ -123,23 +117,28 @@ export function ApprovalsPage({ activeSession }: { activeSession?: Session | nul
           )}
         </section>
 
-        <section className="panel border rounded-lg p-4 bg-card">
-          <div className="panel-header flex items-center justify-between border-b pb-3 mb-3">
-            <span className="font-semibold text-sm">Risk Engine · Safety Gates</span>
-            <span className="text-xs text-emerald-500 font-mono">8 / 8 implemented</span>
+        <section className="panel">
+          <div className="panel-header">
+            <span className="panel-title">Risk engine · safety gates</span>
+            {/* Same truth as Settings › Risk limits: the gates exist and are
+                tested, but order-pipeline.ts is unreferenced, so no order —
+                simulated or live — passes through them. Green ticks and "these
+                guard simulated trades" claimed otherwise. */}
+            <span className="mono ml-auto" style={{ fontSize: "var(--text-xs)", color: "var(--caution)" }}>not on any order path yet</span>
           </div>
-          <p className="text-xs text-muted-foreground leading-relaxed mb-3">
-            Every gate runs on each order the pipeline receives. Live orders
-            don't exist yet, so today these guard simulated trades.
+          <p style={{ margin: 0, padding: "12px 16px 4px", fontSize: "var(--text-md)", color: "var(--muted-foreground)", lineHeight: 1.5 }}>
+            Eight gates, written and tested. No order passes through them yet:
+            simulated fills don't, and live trading isn't built. Today a plan is
+            limited by the budget you sign when you arm it, and by the kill switch.
           </p>
-          <div className="space-y-2">
+          <div className="gate-list">
             {ENFORCED_CHECKS.map(([label, note]) => (
-              <div key={label} className="flex items-center justify-between p-2 rounded bg-background/50 border text-xs">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />
-                  <span className="font-medium text-foreground">{label}</span>
-                </div>
-                <span className="text-muted-foreground font-mono text-[11px]">{note}</span>
+              <div key={label} className="gate-row">
+                <span className="gate-label">
+                  <CheckCircle2 size={13} style={{ color: "var(--text-faint)", flexShrink: 0 }} />
+                  {label}
+                </span>
+                <span className="mono gate-note">{note}</span>
               </div>
             ))}
           </div>
@@ -147,27 +146,24 @@ export function ApprovalsPage({ activeSession }: { activeSession?: Session | nul
       </div>
 
       <div className="vy-scroll" style={{ display: "flex", flexDirection: "column", gap: 12, height: "100%", overflowY: "auto" }}>
-        <section className={`panel border rounded-lg p-4 ${killActive ? "bg-rose-950/20 border-rose-500/50" : "bg-card border-border"}`}>
+        <section className={`panel kill-panel ${killActive ? "kill-panel-on" : ""}`}>
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <OctagonX size={18} className={killActive ? "text-rose-500 animate-pulse" : "text-muted-foreground"} />
-              <span className={`font-bold text-sm uppercase tracking-wide ${killActive ? "text-rose-500" : "text-foreground"}`}>
-                Emergency Kill Switch
-              </span>
+              <OctagonX size={18} style={{ color: killActive ? "var(--down)" : "var(--muted-foreground)" }} />
+              <span className="panel-title" style={{ color: killActive ? "var(--down)" : undefined }}>Emergency kill switch</span>
             </div>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Blocks every new entry while it is on.
+            {/* The state in words — on is never only a colour. */}
+            <p className="flex items-center gap-2" style={{ margin: 0 }}>
+              <span className="feed-dot" style={{ background: killActive ? "var(--down)" : "var(--up)" }} />
+              {killActive ? "On — no session can open a new position" : "Off — sessions can open new positions"}
             </p>
-            <p className="text-[11px] text-muted-foreground/80 leading-relaxed">
-              Open positions are still managed — stops and targets keep firing.
+            <p style={{ margin: 0, fontSize: "var(--text-md)", lineHeight: 1.5, color: "var(--muted-foreground)" }}>
+              Blocks every new entry while it is on. Open positions keep their stops and targets.
             </p>
-            {killActive && (
-              <div className="p-2 rounded bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-start gap-2">
+            {killActive && killReason && (
+              <div className="kill-reason">
                 <AlertTriangle size={14} className="shrink-0 mt-0.5" />
-                <div>
-                  <span className="font-bold">Kill Switch Active</span>
-                  <p className="text-[11px] text-rose-300/80 mt-0.5">{killReason}</p>
-                </div>
+                <span>{killReason}</span>
               </div>
             )}
             {confirming ? (
@@ -178,31 +174,29 @@ export function ApprovalsPage({ activeSession }: { activeSession?: Session | nul
                     : "Trip the kill switch? No session can open a new position until you re-arm it. Open positions keep their stops and targets."}
                 </p>
                 <div className="flex gap-2">
-                  <Button
+                  <button
                     autoFocus
                     disabled={loading}
                     onClick={handleToggleKillSwitch}
-                    className={`flex-1 font-bold text-xs h-9 ${
-                      killActive ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "bg-rose-600 hover:bg-rose-700 text-white"
-                    }`}
+                    className={`btn flex-1 justify-center ${killActive ? "" : "btn-danger"}`}
+                    style={{ height: 36 }}
                   >
                     {killActive ? "Re-arm" : "Trip kill switch"}
-                  </Button>
-                  <Button variant="ghost" className="flex-1 text-xs h-9" onClick={() => setConfirming(false)}>
+                  </button>
+                  <button className="btn btn-ghost flex-1 justify-center" style={{ height: 36 }} onClick={() => setConfirming(false)}>
                     Cancel
-                  </Button>
+                  </button>
                 </div>
               </div>
             ) : (
-              <Button
+              <button
                 disabled={loading}
                 onClick={() => setConfirming(true)}
-                className={`w-full font-bold text-xs h-10 tracking-wider ${
-                  killActive ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "bg-rose-600 hover:bg-rose-700 text-white"
-                }`}
+                className={`btn w-full justify-center ${killActive ? "" : "kill-trip"}`}
+                style={{ height: 44 }}
               >
-                {killActive ? "RE-ARM SYSTEM OPERATION" : "TRIP EMERGENCY KILL SWITCH"}
-              </Button>
+                {killActive ? "Re-arm new entries" : "Trip the kill switch"}
+              </button>
             )}
           </div>
         </section>
@@ -212,12 +206,12 @@ export function ApprovalsPage({ activeSession }: { activeSession?: Session | nul
             <span className="label-micro">Away policy</span>
           </div>
           <div className="panel-body" style={{ fontSize: "var(--text-md)", color: "var(--muted-foreground)", lineHeight: 1.6 }}>
-            What the bot may do while you're not watching — flatten on a stale
-            feed, hold and alert, or halt the session — is chosen here, per
-            strategy.
-            <div style={{ marginTop: 8, color: "var(--text-faint)", fontSize: "var(--text-xs)" }}>
-              Chosen now, while you are calm — never decided by an AI at 3am.
-            </div>
+            {/* No away-policy control exists anywhere in the app, so this panel
+                must not say one is chosen here (it used to, "per strategy").
+                It says what actually happens. */}
+            Armed plans run as signed while the app is open. While it is
+            closed nothing is watched; on the next launch plans resume and the
+            gap is recorded in engine activity.
           </div>
         </section>
 
