@@ -117,11 +117,12 @@ mode stay deferred (§1).
 - **U-7 Loading and feedback** (J0, J3) — skeletons instead of *Loading…*, one
   toast system for alerts and confirmations, and an honest *stale* state on any
   number whose feed has stopped.
-- **U-8 One agent, clear context** (J0, J1) — the global conversation and
-  session-scoped conversation already exist. Keep their scope visible and their
-  behavior consistent. Defer decorative motion, dragging, and unsolicited
-  commentary; the agent should speak up only when evidence and a useful action
-  justify it. Prefer concise summaries with supporting detail on request.
+- **U-8 The global agent and session chat** (J0, J1) — the mascot remains the
+  entry point to the general conversation; the session chat stays scoped to its
+  session. Keep that distinction visible and consistent. The mascot is a way to
+  reach the partner, not decoration: defer extra motion, dragging, and
+  unsolicited commentary. Prefer concise summaries with supporting detail on
+  request, and speak up only when evidence supports a useful action.
 
 **Harness compatibility: any LLM provider, or a local model** (J7) — Anthropic is
 the only adapter today and the default everywhere. The agent loop is already the
