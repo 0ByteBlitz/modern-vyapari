@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { api, isError, type FeedHealth, type FeedStreamState, type Result } from "@/lib/api";
 
 /**
- * Context bar (34px) — what surface you're on, and whether the data behind it
+ * Context bar (44px) — what surface you're on, and whether the data behind it
  * can be trusted.
  *
  * Feed health lives here rather than in settings because a stale feed silently
@@ -15,6 +15,8 @@ interface Feed {
   value: string;
   /** The tooltip: what the chip measured. */
   detail?: string;
+  /** Paper, not a connection: drawn dashed, the app's line style for simulated. */
+  simulated?: boolean;
 }
 
 const TONE_COLOR: Record<Feed["tone"], string> = {
@@ -135,7 +137,7 @@ export function ContextBar({ title, subtitle }: { title: string; subtitle?: stri
 
     const poll = async () => {
       if (simulatedVenue) {
-        setVenueChip({ name: "Venue", tone: "idle", value: "simulated" });
+        setVenueChip({ name: "Venue", tone: "idle", value: "simulated", simulated: true });
         return;
       }
       // Measured by an actual round trip, not assumed.
@@ -177,7 +179,7 @@ export function ContextBar({ title, subtitle }: { title: string; subtitle?: stri
            changing colour is not enough on its own. */
         <div
           key={f.name}
-          className={`feed-pill ${f.tone === "down" || f.tone === "caution" ? "feed-pill-bad" : ""}`}
+          className={`feed-pill ${f.tone === "down" || f.tone === "caution" ? "feed-pill-bad" : ""}${f.simulated ? " feed-pill-sim" : ""}`}
           style={f.tone === "down" || f.tone === "caution" ? { color: TONE_COLOR[f.tone] } : undefined}
           title={f.detail ? `${f.name} — ${f.detail}` : f.name}
         >

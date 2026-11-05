@@ -324,14 +324,14 @@ export function ChatPanel({ sessionId, emptyState }: ChatPanelProps) {
 
   return (
     /* Fills whatever container it's given. It used to set its own responsive
-       widths and left border, which now fight the 380px chat drawer that
-       wraps it — the drawer owns width and chrome. */
-    <div className="flex h-full min-h-0 w-full flex-col bg-card">
+       widths and left border, which now fight the 360px chat drawer that
+       wraps it — the drawer owns width, chrome and background. */
+    <div className="flex h-full min-h-0 w-full flex-col bg-transparent">
       {/* Header */}
       {/* No title here — the drawer header above already says "Agent". This
           row is just the model/effort controls. */}
-      <div className="flex flex-col gap-2 border-b border-border px-3 py-2">
-          <div className="flex items-center gap-2 text-xs">
+      <div className="flex flex-col gap-2 border-b border-[var(--border-subtle)] px-4 py-2.5">
+          <div className="flex items-center gap-1.5 text-xs">
             <select 
               value={model} 
               onChange={e => {
@@ -348,7 +348,7 @@ export function ChatPanel({ sessionId, emptyState }: ChatPanelProps) {
                   setNotice(`${name} takes over from your next message. This conversation carries over.`);
                 }
               }}
-              className="bg-secondary border border-border rounded px-2 py-1.5 focus:outline-none flex-1 font-medium truncate disabled:opacity-50"
+              className="bg-card border border-[var(--border-strong)] rounded-lg px-2 py-1.5 focus:outline-none flex-1 min-w-0 font-medium truncate disabled:opacity-50"
               /* Not changeable mid-turn: the request in flight already has its
                  model, so accepting a change here would leave the control
                  naming one model while another is answering — an ambiguous
@@ -376,7 +376,7 @@ export function ChatPanel({ sessionId, emptyState }: ChatPanelProps) {
                   setEffort(newEffort);
                   localStorage.setItem(`chat_effort_${prefKey}`, newEffort);
                 }}
-                className="bg-secondary border border-border rounded px-2 py-1.5 focus:outline-none w-24 font-medium"
+                className="bg-card border border-[var(--border-strong)] rounded-lg px-2 py-1.5 focus:outline-none w-24 shrink-0 font-medium"
               >
                 <option value="low">Low Effort</option>
                 <option value="medium">Med Effort</option>
@@ -388,7 +388,7 @@ export function ChatPanel({ sessionId, emptyState }: ChatPanelProps) {
               <button
                 onClick={() => setToolsOpen((v) => !v)}
                 title="Choose what the agent can do"
-                className="p-1.5 text-muted-foreground hover:text-accent border border-border rounded bg-secondary shrink-0 cursor-pointer"
+                className="p-1.5 text-muted-foreground hover:text-accent border border-border rounded-lg bg-transparent shrink-0 cursor-pointer"
               >
                 <Wrench size={13} />
               </button>
@@ -399,7 +399,7 @@ export function ChatPanel({ sessionId, emptyState }: ChatPanelProps) {
               onClick={() => void handleCompactChat()}
               disabled={isStreaming || isCompacting || messages.length <= 4}
               title="Summarise older messages (the journal keeps the full record)"
-              className="p-1.5 text-muted-foreground hover:text-ai border border-border rounded bg-secondary disabled:opacity-30 disabled:hover:text-muted-foreground shrink-0 cursor-pointer"
+              className="p-1.5 text-muted-foreground hover:text-ai border border-border rounded-lg bg-transparent disabled:opacity-30 disabled:hover:text-muted-foreground shrink-0 cursor-pointer"
             >
               {isCompacting ? <Loader2 size={13} className="animate-spin" /> : <BookmarkPlus size={13} />}
             </button>
@@ -408,7 +408,7 @@ export function ChatPanel({ sessionId, emptyState }: ChatPanelProps) {
               onClick={() => void handleClearChat()}
               disabled={isStreaming || messages.length === 0}
               title="Clear this chat (journal and memory are kept)"
-              className="p-1.5 text-muted-foreground hover:text-destructive border border-border rounded bg-secondary disabled:opacity-30 disabled:hover:text-muted-foreground shrink-0 cursor-pointer"
+              className="p-1.5 text-muted-foreground hover:text-destructive border border-border rounded-lg bg-transparent disabled:opacity-30 disabled:hover:text-muted-foreground shrink-0 cursor-pointer"
             >
               <Trash2 size={13} />
             </button>
@@ -464,7 +464,7 @@ export function ChatPanel({ sessionId, emptyState }: ChatPanelProps) {
       </div>
 
       {/* Input */}
-      <div className="p-3 border-t border-border flex flex-col gap-2">
+      <div className="px-4 py-3 border-t border-[var(--border-subtle)] flex flex-col gap-2">
         {attachedImage && (
           <div className="relative inline-block self-start">
             <img src={`data:${attachedImage.type};base64,${attachedImage.data}`} className="h-20 rounded-md border border-border object-cover" />
@@ -487,7 +487,7 @@ export function ChatPanel({ sessionId, emptyState }: ChatPanelProps) {
             onChange={(e) => setInput(e.target.value)}
             disabled={isStreaming}
             placeholder={isStreaming ? "Thinking…" : "Ask the agent, or paste an image…"}
-            className="w-full bg-secondary border border-border rounded-md pl-3 pr-10 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+            className="w-full min-h-[42px] bg-background border border-[var(--border-strong)] rounded-[10px] pl-3 pr-10 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
           />
           <button
             type="submit"

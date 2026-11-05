@@ -1,25 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import {
-  Archive,
-  Bell,
-  Target,
-  CandlestickChart,
-  ChevronDown,
-  ChevronUp,
-  Gauge,
-  Gavel,
-  Home,
-  Layers,
-  LineChart,
-  MoreHorizontal,
-  NotebookPen,
-  Pause,
-  Play,
-  Plus,
-  Receipt,
-  SlidersHorizontal,
-  X,
-} from "lucide-react";
+import { Archive, ChevronDown, ChevronUp, MoreHorizontal, Pause, Play, Plus, X } from "lucide-react";
+import { RailIcon, type RailIconName } from "@/components/rail-icons";
 import { api, isError, type Session, type PaperStats, type SessionSummary, errorText } from "@/lib/api";
 import { sessionState } from "@/lib/session-state";
 import { ArchiveSessionDialog } from "@/components/archive-session-dialog";
@@ -47,21 +28,22 @@ export function isSessionSurface(s: Surface): s is SessionSurface {
   return isSessionSurfaceId(s);
 }
 
-const SESSION_SURFACES: { id: SessionSurface; label: string; icon: typeof Gauge }[] = [
-  { id: "dashboard", label: "Dashboard", icon: Gauge },
-  { id: "orders", label: "Orders", icon: Receipt },
-  { id: "plans", label: "Plans", icon: Target },
-  { id: "journal", label: "Journal", icon: NotebookPen },
-  { id: "research", label: "Charts", icon: CandlestickChart },
-  { id: "alerts", label: "Alerts", icon: Bell },
+/* Each surface's icon is named after its id, so the set can't drift from the list. */
+const SESSION_SURFACES: { id: SessionSurface & RailIconName; label: string }[] = [
+  { id: "dashboard", label: "Dashboard" },
+  { id: "orders", label: "Orders" },
+  { id: "plans", label: "Plans" },
+  { id: "journal", label: "Journal" },
+  { id: "research", label: "Charts" },
+  { id: "alerts", label: "Alerts" },
 ];
 
-const GLOBAL_SURFACES: { id: GlobalSurface; label: string; icon: typeof Layers }[] = [
-  { id: "portfolio", label: "Portfolio", icon: Layers },
-  { id: "markets", label: "Markets", icon: LineChart },
-  { id: "browser", label: "Research browser", icon: CandlestickChart },
-  { id: "approvals", label: "Approvals & safety", icon: Gavel },
-  { id: "settings", label: "Settings", icon: SlidersHorizontal },
+const GLOBAL_SURFACES: { id: Exclude<GlobalSurface, "home"> & RailIconName; label: string }[] = [
+  { id: "portfolio", label: "Portfolio" },
+  { id: "markets", label: "Markets" },
+  { id: "browser", label: "Research browser" },
+  { id: "approvals", label: "Approvals & safety" },
+  { id: "settings", label: "Settings" },
 ];
 
 interface SessionRailProps {
@@ -231,7 +213,7 @@ export function SessionRail({ activeSessionId, surface, onSelectSession, onNavig
         onClick={() => onNavigate("home")}
       >
         <span className="rail-item-icon">
-          <Home size={13} />
+          <RailIcon name="home" />
         </span>
         <span>Home</span>
       </button>
@@ -244,10 +226,10 @@ export function SessionRail({ activeSessionId, surface, onSelectSession, onNavig
             {pausedCount > 0 && ` · ${pausedCount} paused`}
           </span>
           <button
-            className="btn-ghost"
-            style={{ border: "none", background: "transparent", color: "var(--text-faint)", cursor: "pointer", display: "grid", placeItems: "center" }}
+            className="rail-new-session"
             onClick={() => setCreating((v) => !v)}
             title={creating ? "Cancel" : "New session"}
+            aria-label={creating ? "Cancel" : "New session"}
           >
             {creating ? <X size={13} /> : <Plus size={13} />}
           </button>
@@ -302,7 +284,7 @@ export function SessionRail({ activeSessionId, surface, onSelectSession, onNavig
           const paused = session.status === "paused";
 
           return (
-            <div key={session.id} className="flex flex-col">
+            <div key={session.id} className={`flex flex-col${open ? " rail-session-block-open" : ""}`}>
               {/* The overflow button is a SIBLING of the session button, not a
                   child — a button inside a button is invalid markup and the
                   inner click target behaves inconsistently. */}
@@ -376,7 +358,7 @@ export function SessionRail({ activeSessionId, surface, onSelectSession, onNavig
                       : session.status}
                   </div>
                   <div className="rail-surfaces">
-                    {SESSION_SURFACES.map(({ id, label, icon: Icon }) => {
+                    {SESSION_SURFACES.map(({ id, label }) => {
                       const active = surface === id;
                       const badge =
                         id === "plans" && planCount !== null
@@ -391,7 +373,7 @@ export function SessionRail({ activeSessionId, surface, onSelectSession, onNavig
                           onClick={() => onNavigate(id, session)}
                         >
                           <span className="rail-item-icon">
-                            <Icon size={13} />
+                            <RailIcon name={id} />
                           </span>
                           <span>{label}</span>
                           {badge && <span className="rail-item-badge">{badge}</span>}
@@ -475,14 +457,14 @@ export function SessionRail({ activeSessionId, surface, onSelectSession, onNavig
       )}
 
       <div className="rail-footer">
-        {GLOBAL_SURFACES.map(({ id, label, icon: Icon }) => (
+        {GLOBAL_SURFACES.map(({ id, label }) => (
           <button
             key={id}
             className={`rail-global ${surface === id ? "rail-global-active" : ""}`}
             onClick={() => onNavigate(id)}
           >
             <span className="rail-item-icon">
-              <Icon size={13} />
+              <RailIcon name={id} />
             </span>
             <span>{label}</span>
           </button>

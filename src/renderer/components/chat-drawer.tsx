@@ -14,7 +14,7 @@ import { api, isError, type Session } from "@/lib/api";
  *    with its own floating window and its own conversation.
  * The header always names the session, so the two can't be confused.
  *
- * Collapsed it's a 36px rail; open it's a 380px column. The footer line is
+ * Collapsed it's a 36px rail; open it's a 360px column. The footer line is
  * load-bearing, not decoration: the agent's inability to place, size, or price
  * an order is the app's core safety property, and the place a user forms their
  * mental model of it is here.
@@ -40,12 +40,11 @@ export function ChatDrawer({
   return (
     <aside className="chat-drawer">
       <div className="chat-drawer-head">
-        <Sparkles size={14} style={{ color: "var(--ai)" }} />
         <span style={{ fontSize: "var(--text-base)", fontWeight: 600 }}>Agent</span>
         <span className="mono" style={{ fontSize: "var(--text-2xs)", color: "var(--text-faint)" }}>
           {session.pair}
         </span>
-        <button className="chat-drawer-close ml-auto" onClick={onToggle} title="Collapse">
+        <button className="chat-drawer-close ml-auto" onClick={onToggle} title="Collapse" aria-label="Collapse the agent">
           <PanelRightClose size={14} />
         </button>
       </div>
