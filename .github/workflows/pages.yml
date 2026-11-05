@@ -7,6 +7,7 @@ on:
       - site/**
       - docs/images/plans.png
       - docs/images/research.png
+      - docs/images/home.png
       - src/renderer/assets/logo.svg
       - .github/workflows/pages.yml
   workflow_dispatch:
@@ -39,7 +40,7 @@ jobs:
           cp site/index.html _site/index.html
           sed -i 's|\.\./docs/|./docs/|g; s|\.\./src/|./src/|g' _site/index.html
           cp site/styles.css _site/styles.css
-          cp docs/images/plans.png docs/images/research.png _site/docs/images/
+          cp docs/images/home.png docs/images/plans.png docs/images/research.png _site/docs/images/
           cp src/renderer/assets/logo.svg _site/src/renderer/assets/logo.svg
       - name: Upload website artifact
         uses: actions/upload-pages-artifact@v4
