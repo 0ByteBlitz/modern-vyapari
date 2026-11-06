@@ -1,3 +1,5 @@
+<!-- Title: type(scope): summary — lowercase, no trailing period, ≤72 characters. See CONTRIBUTING.md › PR titles. -->
+
 ## What and why
 
 <!-- What does this change, and which journey (J0–J7 in docs/JOURNEYS.md) and step does it serve? -->
