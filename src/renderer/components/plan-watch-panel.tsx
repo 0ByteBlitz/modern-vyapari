@@ -197,7 +197,7 @@ export function PlanWatchPanel({
               >
                 <div className="plan-watch-plan-head">
                   <span className="plan-watch-slug">{p.slug}</span>
-                  <PlanStateBadge state={p.state} />
+                  <PlanStateBadge state={p.state} branches={p.branches} />
                   <span
                     className={`plan-watch-expiry ml-auto ${exp.urgent ? "plan-watch-expiry-urgent" : ""}`}
                   >

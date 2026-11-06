@@ -24,6 +24,7 @@ import { compileIntent, intentOf, type ConditionIntent } from "./condition-inten
 import { createLogger } from "../logger";
 import { enqueueWithin, type NotificationDraft } from "../notify/outbox";
 import { announce } from "../notify/announce";
+import { getPaperBalance } from "../paper/account";
 import { levelResolver } from "../insights/level-resolver";
 import { extractRequiredLevels } from "../strategy/strategy-spec";
 import type { ConditionGroup, EvalInterval } from "../strategy/strategy-spec";
@@ -168,7 +169,18 @@ function hydrate(row: PlanRow, branches: BranchRow[]): StoredPlan {
  * are present pre-arm.
  */
 export function armingGate(plan: StoredPlan, now: number) {
-  return validatePlan({ ...plan, id: plan.slug, branches: plan.branches } as unknown as TradePlan, now);
+  const gate = validatePlan({ ...plan, id: plan.slug, branches: plan.branches } as unknown as TradePlan, now);
+  /* A budget the account cannot cover is not refused — cash moves as other
+     positions close — but it is said before signing. Sizing caps a branch at
+     the cash on hand, so a 50,000 budget on a 9,800 account spent the whole
+     account on one trigger and every later plan was refused for want of cash. */
+  const balance = getPaperBalance();
+  if (Number.isFinite(plan.risk?.maxQuote) && plan.risk.maxQuote > balance) {
+    gate.warnings.push(
+      `The budget is more than the paper account holds (${balance.toFixed(2)}). A trigger would spend all of it.`
+    );
+  }
+  return gate;
 }
 
 /**

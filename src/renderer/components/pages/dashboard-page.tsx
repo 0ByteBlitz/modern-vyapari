@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
+import { useLiveReload } from "@/lib/use-live-reload";
 import { Clock, ShieldCheck, AlertTriangle } from "lucide-react";
 import { PaperEquityChart } from "@/components/paper-equity-chart";
 import { PlanWatchPanel } from "@/components/plan-watch-panel";
@@ -107,11 +108,7 @@ export function DashboardPage({ activeSession }: { activeSession: Session | null
     }
   }, [activeSession?.id, activeSession?.pair]);
 
-  useEffect(() => {
-    void load();
-    const id = setInterval(() => void load(), 15_000);
-    return () => clearInterval(id);
-  }, [load]);
+  useLiveReload(load, 15_000);
 
   if (!activeSession) {
     return (

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
+import { useLiveReload } from "@/lib/use-live-reload";
 import { api, isError, type PortfolioSummary } from "@/lib/api";
 import { BalancesCard } from "@/components/balances-card";
 import { formatUsd, formatPct } from "@/lib/format";
@@ -44,11 +45,7 @@ export function PortfolioPage({ onOpenSession }: { onOpenSession: (s: { id: numb
     if (!isError(res)) setData(res);
   }, [includeArchived]);
 
-  useEffect(() => {
-    void load();
-    const id = setInterval(() => void load(), 30_000);
-    return () => clearInterval(id);
-  }, [load]);
+  useLiveReload(load, 30_000);
 
   if (!data) {
     return (

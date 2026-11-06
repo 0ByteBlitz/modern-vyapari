@@ -382,6 +382,13 @@ export class PaperExchangeEngine {
     /* The silence clock starts when the stream is wanted, not at the epoch. */
     this.lastTickAt.set(key, Date.now());
     const buffer = this.seedBuffer(symbol, intervalMin);
+    /* The newest cached bar is whatever the stream had written when it last
+       ticked — after a crash or a quit, a bar cut short, kept as if it were
+       final. Seen on the live stream: a 1m bar stopped at the crash with a
+       fifth of its volume. Drop it, so the first live tick measures any gap
+       from the last bar that can be trusted, the refill rewrites it from the
+       feed, and the replay checks open positions against the real one. */
+    if (buffer.length > 1) buffer.pop();
     this.candleBuffers.set(key, buffer);
     const barMs = intervalMin * 60_000;
     const hole = buffer.findIndex((b, i) => i > 0 && b.timestamp - buffer[i - 1]!.timestamp !== barMs);
@@ -672,6 +679,15 @@ export class PaperExchangeEngine {
         /* Reported now, when the bars are back; the next close is simply the
            next decision, as it would have been without a gap. */
         pause.healed = true;
+        /* The bars that were missing are bars an open position lived through.
+           A venue-side stop would have acted in them; replay them against the
+           position's stop and target, oldest first, so a stop crossed while the
+           app was closed or the feed was down is not quietly forgotten because
+           price came back before anyone looked. */
+        for (const b of buffer) {
+          if (b.timestamp <= pause.from) continue;
+          this.managePlanPositions(symbol, intervalMin, b, barMs);
+        }
         if (pause.announced) {
           auditLog("analysis_feed_recovered", { symbol, intervalMin, from: pause.from, at: Date.now() });
         }
@@ -849,7 +865,11 @@ export class PaperExchangeEngine {
     if (!session) return false;
 
     const { current, previous } = this.priceMaps(buffer);
-    const now = bar.timestamp;
+    /* The bar's CLOSE, not its timestamp. A candle is stamped with its open
+       time, and judging it by that put expiry a whole bar late: a 4h plan that
+       expired at 12:30 could still trigger on the bar that closed at 16:00,
+       which is the "stale conditional firing" that expiry exists to stop. */
+    const now = bar.timestamp + (INTERVAL_MAP[plan.evalInterval] || 240) * 60_000;
 
     const evaluation = evaluatePlan(plan, {
       now,
@@ -881,19 +901,42 @@ export class PaperExchangeEngine {
     if (outcome.kind === "none") return false;
 
     if (outcome.kind === "expired" || outcome.kind === "invalidated") {
+      /* Exit any position the plan still holds, first. A terminal plan drops
+         out of the watch list, and its position used to go with it: still open,
+         its stop and target checked by nothing, while the plan read "expired"
+         or "invalidated". A disproved thesis or a passed horizon is the plan's
+         own signed exit, so it fills like one — at the close, with slippage. */
+      let closedHere = 0;
+      for (const b of plan.branches) {
+        const pos = this.planPositions.get(b.rowId);
+        if (!pos) continue;
+        this.closePosition({ kind: "plan", label: `${plan.slug}/${b.id}` }, session, pos, bar.close, "exit_signal");
+        closedHere += 1;
+      }
+      /* A plan that already fired and then runs out of time is `closed`, not
+         `expired`: calibration reads `expired` as "never fired", and
+         `triggered → expired` is not a transition at all — it used to be
+         refused silently, so the plan stayed triggered and "expired" again on
+         every bar. Invalidation is reachable from both states. */
+      const to = outcome.kind === "expired" && plan.state === "triggered" ? "closed" : outcome.kind;
+      const exited = closedHere > 0 ? ` Simulated position exited at the close (${bar.close}, before slippage).` : "";
       /* The dedupe key is derived from the EVENT, not the clock: a plan can
          only reach a terminal state once, so a retry or a replay after restart
          can never send this twice. */
-      transitionPlan(plan.rowId, outcome.kind, outcome.reason, {
+      const moved = transitionPlan(plan.rowId, to, `${outcome.reason}${exited}`, {
         kind: `plan_${outcome.kind}`,
         title:
           outcome.kind === "invalidated"
             ? `${plan.pair} — thesis invalidated: ${plan.slug}`
             : `${plan.pair} — plan expired: ${plan.slug}`,
-        body: `${plan.thesis}\n\n${outcome.reason}`,
+        body: `${plan.thesis}\n\n${outcome.reason}${exited}`,
         dedupeKey: `plan:${plan.rowId}:${outcome.kind}`,
       });
-      log.info(`Plan ${plan.slug} ${outcome.kind}: ${outcome.reason}`);
+      if (!moved.ok) {
+        log.error(`Plan ${plan.slug}: could not record ${outcome.kind}: ${moved.reason}`);
+        return closedHere > 0;
+      }
+      log.info(`Plan ${plan.slug} ${outcome.kind}: ${outcome.reason}${exited}`);
       /* The plan is over and never traded, so no position review will ever run
          for it. Required lazily and fire-and-forget: the engine must not import
          the agent (it would put an AI module on the execution path's import
@@ -1040,7 +1083,14 @@ export class PaperExchangeEngine {
 
     // 3. Stop-Loss intrabar trigger
     if (pos.stopPrice !== null && candle.low <= pos.stopPrice) {
-      return { price: pos.stopPrice, reason: "stop_loss" };
+      /* A plan's bar that OPENED below its stop gapped through it (after a
+         restart, or across a feed hole), and the stop fills where the market
+         first traded — not at a price it never offered. Plan stops never move,
+         so the open is compared with the stop that stood at the open. A
+         strategy's stop can ratchet up inside the bar, past an open that was
+         never below it, so it keeps the backtester's fill at the level. */
+      const gapped = !spec && candle.open < pos.stopPrice;
+      return { price: gapped ? candle.open : pos.stopPrice, reason: "stop_loss" };
     }
 
     // 4. Take-Profit intrabar trigger
@@ -1712,7 +1762,7 @@ export class PaperExchangeEngine {
    * position and deciding whether to open one are different jobs on different
    * clocks.
    */
-  private managePlanPositions(symbol: string, intervalMin: number, candle: CandleNumeric) {
+  private managePlanPositions(symbol: string, intervalMin: number, candle: CandleNumeric, replayBarMs?: number) {
     if (this.planPositions.size === 0) return;
 
     for (const plan of this.watchedPlans) {
@@ -1725,6 +1775,9 @@ export class PaperExchangeEngine {
       for (const branch of plan.branches) {
         const pos = this.planPositions.get(branch.rowId);
         if (!pos) continue;
+        /* A replayed bar counts only if it closed after the position opened —
+           the bar whose close was the entry is not one it lived through. */
+        if (replayBarMs !== undefined && candle.timestamp + replayBarMs <= pos.openedAt) continue;
         /* No spec: a plan's stop is a price the owner approved, not a distance
            that ratchets. See `checkProtectiveLevels`. */
         const hit = this.checkProtectiveLevels(pos, candle);

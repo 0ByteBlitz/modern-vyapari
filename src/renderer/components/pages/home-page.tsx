@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useLiveReload } from "@/lib/use-live-reload";
 import { AlertTriangle, ArrowRight, CheckCircle2, FlaskConical, LineChart, Sparkles } from "lucide-react";
 import {
   api,
@@ -72,27 +73,36 @@ export function HomePage({
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
   const [movers, setMovers] = useState<{ symbol: string; change24h: number; volume24h: number }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [killSwitch, setKillSwitch] = useState<{ active: boolean; reason: string } | null>(null);
 
+  /* Engine state and market data load apart. They used to share one
+     Promise.all, so every plan event waited on the ticker fetch (300–500 ms,
+     a network call) before the armed count or the activity feed could move. */
   const load = useCallback(async () => {
-    const [p, a, t] = await Promise.all([
+    const [p, a, k] = await Promise.all([
       api.portfolioSummary(false),
       api.listActivity(12),
-      api.getTickerSnapshot(),
+      api.getKillSwitchStatus(),
     ]);
     if (!isError(p)) setPortfolio(p);
     if (!isError(a)) setActivity(a);
-    if (!isError(t)) {
-      const liquid = t.filter((x) => x.volume24h > 5_000_000);
-      setMovers([...liquid].sort((x, y) => Math.abs(y.change24h) - Math.abs(x.change24h)).slice(0, 6));
-    }
+    if (!isError(k)) setKillSwitch(k);
     setLoading(false);
   }, []);
 
+  useLiveReload(load, 60_000);
+
   useEffect(() => {
-    void load();
-    const id = setInterval(() => void load(), 60_000);
+    const loadMovers = async () => {
+      const t = await api.getTickerSnapshot();
+      if (isError(t)) return;
+      const liquid = t.filter((x) => x.volume24h > 5_000_000);
+      setMovers([...liquid].sort((x, y) => Math.abs(y.change24h) - Math.abs(x.change24h)).slice(0, 6));
+    };
+    void loadMovers();
+    const id = setInterval(() => void loadMovers(), 60_000);
     return () => clearInterval(id);
-  }, [load]);
+  }, []);
 
   const sessions = portfolio?.sessions ?? [];
   const totals = portfolio?.totals;
@@ -130,6 +140,26 @@ export function HomePage({
   }
   if (sessions.length === 0) {
     attention.push({ tone: "info", text: "No sessions yet. Create one to start tracking a pair." });
+  }
+
+  /* First, because it changes what every "armed" below means. With the kill
+     switch on, Home said "armed — the engine is watching it" and nothing else,
+     while every trigger was being refused. */
+  if (killSwitch?.active) {
+    attention.unshift({
+      tone: "caution",
+      text: "The kill switch is on. Armed plans will not open positions; stops and targets still run.",
+      action: { label: "Review", go: () => onNavigate("approvals") },
+    });
+  }
+  for (const s of sessions) {
+    if (s.status === "paused" && s.armedCount > 0) {
+      attention.push({
+        tone: "caution",
+        text: `${s.pair} is paused. Its ${s.armedCount} armed ${s.armedCount === 1 ? "plan" : "plans"} will not open positions.`,
+        action: { label: "Open", go: () => onOpenSession(s.id) },
+      });
+    }
   }
 
   const unclosed = sessions.filter((s) => s.openCount > 0);
@@ -292,10 +322,10 @@ export function HomePage({
                 <span className="home-session-pair">{s.pair}</span>
                 {/* Armed wears the signature's indigo ring; idle is quiet. */}
                 <span
-                  className={`plan-state ${s.armedCount > 0 ? "plan-state-planned" : ""}`}
+                  className={`plan-state ${s.armedCount > 0 && s.status !== "paused" ? "plan-state-planned" : ""}`}
                   style={{ marginLeft: "auto" }}
                 >
-                  {s.armedCount > 0 && <ArmedRing />}
+                  {s.armedCount > 0 && s.status !== "paused" && <ArmedRing />}
                   {sessionState(s)}
                 </span>
               </div>

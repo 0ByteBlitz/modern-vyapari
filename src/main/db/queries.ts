@@ -66,7 +66,7 @@ export function listJournal(
   if (query) {
     // journal_fts has no session_id, so join back to journal and filter there.
     const kindClause = kind ? "AND j.kind = ?" : "";
-    const params: (string | number)[] = [query, sessionId];
+    const params: (string | number)[] = [ftsQuery(query), sessionId];
     if (kind) params.push(kind);
     params.push(limit);
 
@@ -306,4 +306,19 @@ export function portfolioSummary(includeArchived = false): PortfolioSummary {
       sessions: out.length,
     },
   };
+}
+
+/**
+ * Free text as an FTS5 query: every word a quoted phrase, all of them required.
+ *
+ * Passed raw, FTS5 reads its own syntax in what people type — a plan name like
+ * `st-oco` became "column st, NOT oco" and failed with "no such column", which
+ * reached the Journal search and the agent's memory tool as a database error.
+ */
+export function ftsQuery(text: string): string {
+  return text
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => `"${w.replace(/"/g, '""')}"`)
+    .join(" ");
 }

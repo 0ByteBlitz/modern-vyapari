@@ -1,4 +1,5 @@
 import { getDb, auditLog } from "../db/database";
+import { ftsQuery } from "../db/queries";
 import { getSessionById } from "../sessions/service";
 import { computeIndicatorBatch, listIndicators } from "../insights/indicators";
 import { getAnalysisCandles } from "../data/analysis-candles";
@@ -611,7 +612,7 @@ function toolReadSessionMemory(sessionId: number, input: Record<string, unknown>
     // FTS5 search scoped to this session (journal_fts has no session_id column,
     // so join back to journal and filter there).
     const kindClause = kind ? "AND j.kind = ?" : "";
-    const params: (string | number)[] = [query, sessionId];
+    const params: (string | number)[] = [ftsQuery(query), sessionId];
     if (kind) params.push(kind);
     params.push(limit);
 
@@ -733,6 +734,14 @@ function toolListPlans(sessionId: number, input: Record<string, unknown>): unkno
     ? (input.states.filter((v) => typeof v === "string") as string[])
     : undefined;
   const plans = planService.listPlans(sessionId, states as never);
+  /* Which branches hold an open position right now. "Triggered" alone said
+     nothing about it, and the agent told the owner that plans whose entries the
+     kill switch had refused were "in a paper position, managed by the engine". */
+  const openBranches = new Set(
+    (getDb()
+      .prepare(`SELECT plan_branch_id FROM paper_positions WHERE status = 'open' AND session_id = ? AND plan_branch_id IS NOT NULL`)
+      .all(sessionId) as Array<{ plan_branch_id: number }>).map((r) => r.plan_branch_id)
+  );
   return {
     session_id: sessionId,
     count: plans.length,
@@ -740,7 +749,9 @@ function toolListPlans(sessionId: number, input: Record<string, unknown>): unkno
        distinction decides what the honest answer to "paper trade this" is. */
     watched_states_note:
       "'planned' means ARMED: the engine evaluates expiry, thesis invalidation and drift on every closed bar. " +
-      "A triggered branch opens a paper position with that branch's stop and target; there is no real-money order path.",
+      "When a branch triggers, the engine opens a paper position with that branch's stop and target, unless the " +
+      "entry is refused (kill switch, paused session, price already past the stop or target, no paper cash). " +
+      "So a 'triggered' plan may hold no position: read each branch's position field. There is no real-money order path.",
     plans: plans.map((p) => ({
       plan_id: p.rowId,
       name: p.slug,
@@ -756,7 +767,18 @@ function toolListPlans(sessionId: number, input: Record<string, unknown>): unkno
       risk_budget_quote: p.risk?.maxQuote ?? null,
       eval_interval: p.evalInterval,
       oco_exclusive: p.ocoExclusive,
-      branches: p.branches.length,
+      branches: p.branches.map((b) => ({
+        id: b.id,
+        status: b.status,
+        position:
+          b.status !== "triggered"
+            ? "none"
+            : b.positionId === null
+              ? "none — the entry was refused when it triggered"
+              : openBranches.has(b.rowId)
+                ? "open"
+                : "closed",
+      })),
       armed_at: p.armedAt,
       outcome_reason: p.outcomeReason,
     })),

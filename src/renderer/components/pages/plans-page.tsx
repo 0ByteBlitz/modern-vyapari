@@ -676,7 +676,7 @@ export function PlansPage({ session, focus }: Props) {
         >
           <div className="plans-card-head">
             <span className="plans-slug">{p.slug}</span>
-            <PlanStateBadge state={p.state} />
+            <PlanStateBadge state={p.state} branches={p.branches} />
           </div>
           <p className="plans-thesis">{p.thesis}</p>
           {/* The terms that execute, as they will execute — the same wording

@@ -207,7 +207,7 @@ export function PlanDetail({
     <DetailModal
       kind="Plan"
       title={plan.slug}
-      badge={<PlanStateBadge state={plan.state} />}
+      badge={<PlanStateBadge state={plan.state} branches={plan.branches} />}
       onClose={onClose}
     >
       <p className="detail-thesis">{plan.thesis}</p>
