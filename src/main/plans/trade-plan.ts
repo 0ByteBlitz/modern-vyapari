@@ -309,10 +309,12 @@ export function validatePlan(plan: TradePlan, now: number = Date.now()): PlanVal
     }
   }
 
-  /* OCO branches share one budget; non-exclusive ones each spend their own. */
-  if (plan.ocoExclusive && branches.length > 1 && budgetTotal > 100 + 1e-9) {
+  /* The budget is the cap for the whole plan, OCO or not. Non-exclusive
+     branches used to "each spend their own", so two at 60% could both fire and
+     spend 120% of a budget the plan displayed as its maximum. */
+  if (branches.length > 1 && budgetTotal > 100 + 1e-9) {
     errors.push(
-      `Branch budgets total ${budgetTotal}%. They share one budget, so keep the total at 100% or under.`
+      `Branch budgets total ${budgetTotal}%. They share the plan's budget, so keep the total at 100% or under.`
     );
   }
   if (!plan.ocoExclusive && branches.length > 1) {

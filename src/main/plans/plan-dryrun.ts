@@ -239,7 +239,8 @@ export function dryRunPlan(plan: StoredPlan, opts: DryRunOptions = {}): PlanDryR
   const { current, previous } = barValues(window);
   const finalLevels = levelsFor(finalBar.timestamp);
   const monitorSays = evaluatePlan(plan, {
-    now: finalBar.timestamp,
+    /* Its close, as the live monitor judges it — a candle is stamped at open. */
+    now: finalBar.timestamp + intervalMin * 60_000,
     evaluate: (g) => evaluateConditionGroup(g, current, previous, finalLevels),
     resolve: (lv: PriceLevel) => {
       const r = resolver.resolve(lv, { symbol: plan.pair, intervalMin, asOf: finalBar.timestamp });

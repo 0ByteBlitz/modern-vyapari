@@ -114,7 +114,9 @@ export function canFund(quoteAmount: number): { ok: true } | { ok: false; reason
   if (quoteAmount <= balance) return { ok: true };
   return {
     ok: false,
-    reason: `Needs ${quoteAmount.toFixed(2)} but the paper account holds ${balance.toFixed(2)}.`,
+    /* Sub-cent amounts keep their digits: "Needs 0.00 but holds 0.00" read as
+       a refusal with no reason when a tiny budget met an empty account. */
+    reason: `Needs ${quoteAmount < 1 ? quoteAmount.toPrecision(2) : quoteAmount.toFixed(2)} but the paper account holds ${balance.toFixed(2)}.`,
   };
 }
 

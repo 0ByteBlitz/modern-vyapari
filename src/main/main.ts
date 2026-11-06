@@ -4,6 +4,7 @@ import * as path from "path";
 import { registerIpcHandlers } from "./ipc";
 import { startAppLock } from "./security/app-lock";
 import { initDatabase, getDb, auditLog } from "./db/database";
+import { killSwitch } from "./risk/kill-switch";
 import { initSharedStore, adoptLegacyLessons, adoptLegacyUsage } from "./db/shared-store";
 import { readMode, resolveMode, lockMode, appMode, writeMode } from "./modes/app-mode";
 import { liveExecutionBuilt } from "./integrations/venue/registry";
@@ -244,6 +245,8 @@ app.whenReady().then(() => {
     auditLog("monitor_gap", { from: watchGap.from, to: watchGap.to, ms: watchGap.ms });
   }
 
+  /* Before the engine: a trip from before a crash must block the first bar. */
+  killSwitch.restore();
   paperEngine.start();
   heartbeat.startHeartbeat();
   // Catch up on trades that closed while the app was shut (or whose review
