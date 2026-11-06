@@ -1,0 +1,31 @@
+name: PR title
+
+# Checks the title against CONTRIBUTING.md › PR titles: `type(scope): summary`.
+# The title reaches the shell through an environment variable, never as
+# expression text, so a title cannot inject a command.
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions: {}
+
+jobs:
+  title:
+    name: type(scope) summary
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the title
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          pattern='^(feat|fix|docs|refactor|test|chore|ci|perf)(\([a-z0-9-]+\))?: [a-z0-9`].*[^.]$'
+          if ! printf '%s' "$TITLE" | grep -Eq "$pattern"; then
+            echo "::error::The title must be 'type(scope): summary' — a type from CONTRIBUTING.md, an optional lowercase scope, a summary starting lowercase with no trailing period. Got: $TITLE"
+            exit 1
+          fi
+          if [ "${#TITLE}" -gt 72 ]; then
+            echo "::error::The title is ${#TITLE} characters; keep it to 72. Got: $TITLE"
+            exit 1
+          fi
+          echo "Title OK: $TITLE"

@@ -38,8 +38,61 @@ against a funded exchange account.
 - **New IPC channel?** Add the preload method in the same change (`ipc-surface.test.ts`
   enforces this).
 - **New dependency?** Explain what zero-dependency alternative you rejected and why.
-- Use [Conventional Commits](https://www.conventionalcommits.org/) style subjects
-  (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`).
+- Follow the title, body and comment conventions below. They apply to everyone,
+  people and agents alike.
+
+### PR titles
+
+```
+type(scope): summary
+```
+
+- **type**, one of: `feat` (new behaviour), `fix` (wrong behaviour made right),
+  `docs`, `refactor` (no behaviour change), `test`, `chore` (deps, tooling),
+  `ci`, `perf`.
+- **scope**: optional. Name the area, lowercase: `plans`, `paper`, `agent`, `ai`,
+  `feed`, `alerts`, `risk`, `security`, `ui`, `onboarding`, `site`, `roadmap`.
+  Leave it out when a change spans areas evenly.
+- **summary**: lowercase, no trailing period, at most 72 characters for the whole
+  title. Say what is now true, not what you did: `fix(alerts): one buffer entry per bar`,
+  not `fix(alerts): fixed a bug in the buffer`.
+- **A series** ends with `N/M`: `feat(ui): signed redesign 2/5 — home, plans`.
+- Commit subjects follow the same format.
+
+CI checks the title format (`.github/workflows/pr-title.yml`), so a wrong title fails
+the PR until it is edited.
+
+### PR bodies
+
+Use the template (`.github/PULL_REQUEST_TEMPLATE.md`) every time, with its sections
+in order. Don't delete or reorder them.
+
+- **What and why** names the journey and step (`J3, the trigger opens a position`)
+  and links the issue, or says there is none.
+- **How I verified it** lists commands run and what was observed. Tick a box only
+  for something you actually did. An unticked box says why.
+- **Safety checklist**: every line is answered. Mark `N/A` with the reason, never
+  by leaving the box empty.
+- **Agent-authored PRs** end with the agent's attribution line.
+
+### PR comments
+
+A comment is one of these four kinds, and starts with its label in bold so the
+thread can be scanned:
+
+| Label | When | Contains |
+|---|---|---|
+| **Verified** | after testing beyond what the body says | what was run, what was observed, what was not checked |
+| **Changed** | after pushing in response to review | the commit, and one line per point addressed |
+| **Reply** | answering one review thread | what changed, or why nothing did, in one or two sentences |
+| **Superseded** | before closing in favour of another PR | the PR number and what it covers that this one did not |
+
+- One comment per event. Don't post a running commentary.
+- No restating the diff. Link the commit instead.
+- A comment written by an agent ends with the line
+  `_🤖 Posted by [Claude Code](https://claude.com/claude-code)_`, or that agent's
+  equivalent, so a reader knows no person checked it.
+- Bot status comments, such as a skipped automatic review, need no reply.
 
 ## Changes that get extra scrutiny
 

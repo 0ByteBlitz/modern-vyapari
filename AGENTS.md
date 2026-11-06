@@ -86,6 +86,9 @@ The full safety checklist for order-adjacent code is the
 - **Keep diffs scoped.** Do the asked-for work; raise unrelated ideas separately.
   Behaviour and the docs describing it change in the same PR.
 - **Deletion counts as an improvement**, and is usually the better one.
+- **PR titles, bodies and comments** follow `CONTRIBUTING.md` › Pull requests:
+  `type(scope): summary` titles (CI checks them), the template every time, and
+  comments labelled **Verified** / **Changed** / **Reply** / **Superseded**.
 
 ### The bug class to hunt
 
