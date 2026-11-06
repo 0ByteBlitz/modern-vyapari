@@ -26,27 +26,6 @@ export function ArmedRing() {
   );
 }
 
-/** The owner's mark — drawn only on armed terms, never decoration. */
-export function SignatureMark({ width = 70 }: { width?: number }) {
-  return (
-    <svg
-      className="signature-mark"
-      viewBox="0 0 190 48"
-      style={{ width, height: (width * 48) / 190 }}
-      aria-hidden="true"
-    >
-      <path
-        d="M4 34c10-18 18-26 22-16s-2 22 6 14 10-24 18-20 2 18 12 12 8-14 14-10-2 14 8 10 14-8 22-6 22 4 40 0"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={width < 100 ? 5 : 3}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
 export function formatSignedAt(ms: number): string {
   const d = new Date(ms);
   const day = d.toLocaleDateString([], { day: "numeric", month: "short" });
@@ -55,18 +34,16 @@ export function formatSignedAt(ms: number): string {
 }
 
 /**
- * "Signed by you · <time>" for a plan the owner armed. The time is the stored
- * arming timestamp; when there is none the line says only "Signed by you"
- * rather than inventing one.
+ * "Signed by you · <time>" for a plan the owner armed. Plain text: the record
+ * of the signature is the timestamp, and a drawn squiggle added nothing to it.
+ * When there is no stored time the line says only "Signed by you" rather than
+ * inventing one.
  */
 export function SignedBy({ armedAt, long = false }: { armedAt: number | null; long?: boolean }) {
   const when = armedAt !== null ? ` · ${formatSignedAt(armedAt)}` : "";
   return (
     <span className={`signed-by${long ? " signed-by-long" : ""}`}>
-      <SignatureMark width={long ? 120 : 70} />
-      <span>
-        {long ? `Signed by you at arming${when}. These terms execute without asking again.` : `Signed by you${when}`}
-      </span>
+      {long ? `Signed by you at arming${when}. These terms execute without asking again.` : `Signed by you${when}`}
     </span>
   );
 }

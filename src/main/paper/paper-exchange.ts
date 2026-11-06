@@ -32,6 +32,7 @@ import {
   type StoredPlan,
 } from "../plans/plan-service";
 import { evaluatePlan } from "../plans/plan-monitor";
+import { isMarketEntry } from "../plans/trade-plan";
 import { getSessionById, Session } from "../sessions/service";
 import { getPaperBalance, setPaperBalance, canFund } from "./account";
 import { binanceWS } from "../data/binance-ws";
@@ -914,7 +915,19 @@ export class PaperExchangeEngine {
        not be acted on is a different fact from one that never fired at all, and
        the calibration record has to be able to tell them apart. */
     const branch = plan.branches.find((b) => b.id === outcome.branchId);
-    const positionId = branch ? this.openPlanPosition(plan, branch, session, bar) : null;
+    /* A throw while opening must not swallow the trigger. It used to escape to
+       the per-plan catch, so the branch's firing was never recorded, the plan
+       kept reading "armed", and the same throw repeated on every bar. Now the
+       trigger is recorded with no position, and the failure is audited. */
+    let positionId: number | null = null;
+    if (branch) {
+      try {
+        positionId = this.openPlanPosition(plan, branch, session, bar);
+      } catch (e) {
+        log.error(`Plan ${plan.slug}/${branch.id}: opening the position failed`, e);
+        auditLog("plan_entry_failed", { planId: plan.rowId, slug: plan.slug, branch: branch.id, price: bar.close });
+      }
+    }
 
     recordBranchTrigger(plan.rowId, outcome.branchId, outcome.cancelledBranchIds, now, positionId, {
       kind: "plan_triggered",
@@ -1461,7 +1474,9 @@ export class PaperExchangeEngine {
   private resolveBranchGeometry(
     plan: StoredPlan,
     branch: StoredPlan["branches"][number],
-    asOf: number
+    asOf: number,
+    /** The trigger bar's close — the approved entry of a market-entry branch. */
+    marketPrice: number
   ): { entry: number; stop: number; target: number | null; extraTargets: number; snapshot: EntryLevelSnapshot[] } | null {
     const intervalMin = INTERVAL_MAP[plan.evalInterval] || 240;
     const ctx = { symbol: plan.pair, intervalMin, asOf };
@@ -1481,7 +1496,7 @@ export class PaperExchangeEngine {
       return r.price;
     };
 
-    const entry = value(branch.entry, "entry");
+    const entry = isMarketEntry(branch.entry) ? marketPrice : value(branch.entry, "entry");
     const stop = value(branch.stop, "stop");
     const targets = branch.targets.map((t) => value(t, "target")).filter((n): n is number => n !== null);
 
@@ -1555,7 +1570,7 @@ export class PaperExchangeEngine {
   ): number | null {
     if (!this.planEntryAllowed(plan, branch)) return null;
 
-    const geom = this.resolveBranchGeometry(plan, branch, bar.timestamp);
+    const geom = this.resolveBranchGeometry(plan, branch, bar.timestamp, bar.close);
     if (!geom) return null;
 
     /* Fill at the bar's close, with the same slippage every other fill uses.

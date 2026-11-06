@@ -14,6 +14,14 @@ import { buildCalibration } from "../plans/calibration";
 import { emit } from "../events/outbound";
 import { safe } from "./safe";
 
+/** Tell every surface showing plans — the rail's counts, Home, the Plans page —
+ *  that one changed. A write from this file that skips it leaves "0 armed" on
+ *  screen next to a plan that was just armed. */
+function announced<T extends { ok: boolean }>(result: T): T {
+  if (result.ok) emit("data:updated", { kind: "plan" });
+  return result;
+}
+
 export function registerPlans(): void {
   /* ── Scenario plans (S3-1 / S3-2) ─────────────────────────────
      The gate lives in main (`validatePlan`), never in the renderer: a UI that
@@ -26,14 +34,14 @@ ipcMain.handle("plans:list", (_e, sessionId: number, states?: string[]) =>
 ipcMain.handle("plans:get", (_e, id: number) => safe(() => planService.getPlan(id), "plans:get"));
 
 ipcMain.handle("plans:create", (_e, input: Parameters<typeof planService.createPlan>[0]) =>
-    safe(() => planService.createPlan(input), "plans:create")
+    safe(() => announced(planService.createPlan(input)), "plans:create")
   );
 
 ipcMain.handle("plans:update", (_e, id: number, input: Parameters<typeof planService.updatePlan>[1]) =>
-    safe(() => planService.updatePlan(id, input), "plans:update")
+    safe(() => announced(planService.updatePlan(id, input)), "plans:update")
   );
 
-ipcMain.handle("plans:delete", (_e, id: number) => safe(() => planService.deletePlan(id), "plans:delete"));
+ipcMain.handle("plans:delete", (_e, id: number) => safe(() => announced(planService.deletePlan(id)), "plans:delete"));
 
 ipcMain.handle("plans:end", (_e, id: number) =>
     safe(() => {
@@ -59,7 +67,7 @@ ipcMain.handle("plans:revise", (_e, id: number) =>
 
   /* Returns the gate's errors/warnings AND the resolved level values, so the
      UI can show concrete numbers before committing rather than after. */
-ipcMain.handle("plans:arm", (_e, id: number) => safe(() => planService.armPlan(id), "plans:arm"));
+ipcMain.handle("plans:arm", (_e, id: number) => safe(() => announced(planService.armPlan(id)), "plans:arm"));
 
   /* Structural, never statistical: does this plan fire at all, does it fire on
      every bar, is a branch unreachable. There is no PnL in the reply and the

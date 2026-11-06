@@ -19,6 +19,22 @@ if (!app.requestSingleInstanceLock()) {
   app.quit();
 }
 
+/* Security: an installed build refuses to start with a debugging switch.
+   `--remote-debugging-port` (or `-pipe`) lets any local program run code in
+   the renderer and call every bridge method — send agent turns, arm a plan —
+   with nothing on screen and nothing the owner approved. The fuses turn off
+   Node's own inspect flags (`enableNodeCliInspectArguments`); Chromium's
+   switch has no fuse, so it is refused here, before a window, the database or
+   the vault exists. An unpackaged dev run (`npm start`) keeps it, for testing. */
+const DEBUG_SWITCHES = ["remote-debugging-port", "remote-debugging-pipe", "inspect", "inspect-brk", "inspect-port"];
+if (app.isPackaged) {
+  const found = DEBUG_SWITCHES.filter((s) => app.commandLine.hasSwitch(s));
+  if (found.length > 0) {
+    process.stderr.write(`Modern Vyapari will not start with a debugging switch (--${found.join(", --")}).\n`);
+    app.exit(1);
+  }
+}
+
 // Security: global safety net beyond the main window's own will-navigate/
 // setWindowOpenHandler guards below — covers any webContents Electron creates
 // later (devtools, future webviews) so a single missed spot can't become a

@@ -452,7 +452,15 @@ export async function reviewClosedPosition(positionId: number): Promise<void> {
       .join("\n")
       .trim();
 
-    if (!text) return;
+    if (!text) {
+      /* Was silent: the call was billed, nothing was written, and the position
+         stayed unreviewed — retried, and billed, on every launch. */
+      log.warn(
+        `Trade review for position #${pos.id} came back empty (stop: ${res.stopReason ?? "unknown"}, ` +
+          `${res.usage.output_tokens ?? "?"} output tokens, model ${model}).`
+      );
+      return;
+    }
 
     /* Same rule as the prior-trades count above: a win made money. A flat
        close is neither, and calling it a win overstated the record. */
@@ -626,7 +634,13 @@ export async function reviewResolvedPlan(planId: number): Promise<void> {
     const text = res.textParts
       .join("\n")
       .trim();
-    if (!text) return;
+    if (!text) {
+      log.warn(
+        `Plan review for ${plan.slug} came back empty (stop: ${res.stopReason ?? "unknown"}, ` +
+          `${res.usage.output_tokens ?? "?"} output tokens, model ${model}).`
+      );
+      return;
+    }
 
     const db = getDb();
     db.exec("BEGIN TRANSACTION;");

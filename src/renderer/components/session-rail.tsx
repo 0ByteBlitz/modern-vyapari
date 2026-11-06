@@ -124,6 +124,18 @@ export function SessionRail({ activeSessionId, surface, onSelectSession, onNavig
 
   /* Per-session detail is fetched only for the OPEN session — the rail should
      not fire N queries per render just to decorate collapsed rows. */
+  /* Bumped when a plan or position changes anywhere — arming happens on the
+     Plans page, so neither the session nor the surface changes, and the counts
+     would keep saying "0 armed" beside an armed plan. */
+  const [planEpoch, setPlanEpoch] = useState(0);
+  useEffect(
+    () =>
+      api.onDataUpdated((d) => {
+        if (d.kind === "plan") setPlanEpoch((n) => n + 1);
+      }),
+    []
+  );
+
   useEffect(() => {
     if (activeSessionId === null) {
       setStats(null);
@@ -142,7 +154,7 @@ export function SessionRail({ activeSessionId, surface, onSelectSession, onNavig
       setPlanCount(isError(plans) ? null : plans.length);
       setArmedCount(isError(plans) ? null : plans.filter((p) => p.state === "planned").length);
     })();
-  }, [activeSessionId, surface]);
+  }, [activeSessionId, surface, planEpoch]);
 
   useEffect(() => {
     if (!creating || pairs.length) return;

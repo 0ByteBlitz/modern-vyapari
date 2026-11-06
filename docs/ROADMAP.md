@@ -37,6 +37,17 @@ who authors and signs plans. See [`docs/README.md`](README.md) for the glossary.
 | Platform | S2-7 typed event plumbing · S2-8 transactions, frontend glue, `ipc/` split · S2-9 venue layer · N-1 Telegram outbox · simulated/live app modes · conditional lessons |
 | Vendor neutrality | **AI provider port** (`src/main/ai/`, Anthropic adapter) · venue `isConfigured()` · **onboarding needs no exchange account in simulated mode** |
 
+### Prototype journey walked end to end (6 Nov)
+
+Research → agent draft and critique → review → arm → monitor → simulated position → close → review, driven in the running app on the live Binance stream. Seams found and closed on the walk:
+
+- **Market entry crashed on the first real trigger** and swallowed the trigger; an empty stop passed the gate. Gate checks level shape; the engine fills a market entry at the trigger bar's close; a failed open still records the trigger.
+- **Every agent review was empty** (thinking used the whole `max_tokens`), silently, re-billed each launch. One-shot completions get thinking headroom; an empty reply is logged with its stop reason.
+- **The agent could not set how often a plan is checked** — `draft_plan` / `update_draft` take `eval_interval`.
+- **A session's agent moved the screen while its session was not open**, landing on a blank Plans page. Navigation is scoped to the conversation on screen; main refuses a turn for a session that is not open.
+- **An installed build accepted `--remote-debugging-port`**, which exposes every bridge method to local programs. It now refuses to start with a debugging switch; dev runs keep it.
+- **Stale or unclear state on screen:** the rail read *0 armed* after arming (plan writes now broadcast); the arming screen said *enter not set* for a market entry; expiry showed a date with no time; the agent saw expiry as raw epoch; plan events vanished from the bell after 15 s; Alerts did not show what armed plans watch; *Binance live* read as an exchange connection (now *Prices · Binance* / *Orders*); the drawn signature mark is gone.
+
 ### Since going public (31 Oct)
 
 CI on Windows, Linux and macOS · Electron 43 → 45.2.1 (Chromium 156) · credential

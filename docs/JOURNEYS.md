@@ -17,7 +17,7 @@ below has its own step table; this is the summary.
 | J0 · Daily loop | ✅ Built — Home with no session selected, *while you were away*, plan distances, the global agent |
 | J1 · Hunch → thesis | ✅ Built — Charts, order flow, a global and a per-session agent with web search and fetch |
 | J2 · Thesis → plan | ✅ Built — falsifiability gate; the agent drafts, never arms |
-| J3 · Plan executes while away | 🟡 **Paper only** — monitor, execution and notifications built; proven on seeded bars, not yet driven by a live stream; the app must be running |
+| J3 · Plan executes while away | 🟡 **Paper only** — proven on the live stream 2026-11-06: armed → triggered → simulated position → stop → review in the journal; the app must be running |
 | J4 · Structure moved → critique | 🟡 Drift measured and acted on; the agent's critique and the reconfirm queue (J-4) are not built |
 | J5 · Was I right? | ✅ Calibration record built; few entries so far |
 | J6 · Paper → live, supervised | ❌ Not built (Sprint 4) — nothing can place a real order |
@@ -240,7 +240,9 @@ levels were worth at the moment it fired.*
 | One fill model shared with backtest and paper | ✅ `persistEntry`, owner-agnostic |
 | A plan-owned position has somewhere to live | ✅ schema v15 |
 | Position carries a stop and a target from the moment it opens | ✅ engine rule |
-| **The paper engine has ever executed a position** | ✅ on seeded bars, 2026-08-05 — **not yet driven by the live stream** |
+| **The paper engine has ever executed a position** | ✅ on seeded bars 2026-08-05; **on the live Binance stream 2026-11-06** — a 1m plan triggered, opened at the bar's close with its signed stop and target, stopped out two minutes later, and was reviewed |
+| **A market entry (no entry level) executes** | ✅ 2026-11-06 — it used to pass the gate as `{}` and throw on the first real trigger, every bar, without recording the trigger (`isMarketEntry`) |
+| **A closed plan position gets its review written** | ✅ 2026-11-06 — every review had come back empty: the model's thinking spent the whole 400–500-token cap, silently, and was retried and billed each launch |
 | **The owner is told what happened, in plan language** | ✅ N-1 — trigger and close notifications carry the thesis and whether a position opened |
 | **A closed plan position is reviewed** | ✅ J-2, 2026-08-01 |
 | **A missed analysis-feed interval pauses plan decisions until the missing bars are back** | ✅ feed-gap gate, 2026-11-03 |

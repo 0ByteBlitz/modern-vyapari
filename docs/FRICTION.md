@@ -17,6 +17,22 @@ visited monthly.
 
 ---
 
+## 2026-11-06 · Prototype journey, end to end on the live stream — J1, J2, J3, J5
+
+**Attempted:** research → draft → arm → monitor → position → close → review in the running app, simulated mode.
+
+**Fixed the same day:** see ROADMAP, *Prototype journey walked end to end*. The two that mattered most were invisible until the walk reached them: a market entry threw on its first live trigger without recording it, and every review came back empty because thinking consumed the token cap.
+
+**Open:**
+
+**1 · Windows notifications show "Electron", not the app — J3.** Seen in the unpackaged dev run; not yet checked on an installed build.
+
+**2 · The agent's tool calls read as raw markers in the chat — J1.** A tool call shows as a bare chip between paragraphs, with no sense of what it is doing or found. The owner asked for calmer, more legible tool progress.
+
+**3 · A triggered plan whose entry was refused stays *Triggered* in Active — J3.** No position exists and nothing more can happen until expiry, but the solid *Triggered* pill reads as "in a trade".
+
+---
+
 ## 2026-10-31 · Going public — first run by a second pair of eyes
 
 **Attempted:** publish the repo, then run the app end to end on a fresh clone and
