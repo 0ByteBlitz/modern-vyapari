@@ -14,6 +14,7 @@ import { createLogger } from "../logger";
 import { emitError } from "../events/outbound";
 import { isLocked } from "../security/app-lock";
 import { AppError } from "../../shared/errors";
+import { getSelectedSessionId } from "../sessions/service";
 import { buildUsageReport, setDailyLimitUsd } from "../agent/usage";
 import { reviewModelStatus, setReviewModel } from "../agent/review";
 import { safe } from "./safe";
@@ -98,6 +99,21 @@ ipcMain.on("chat:send", (e, sessionId: number | null, messages: any[], params?: 
     /* `on`, so `safe()` never sees it: the app lock is checked here instead. */
     if (isLocked()) {
       emitError(e.sender, "chat:error", new AppError("LOCKED"), { conversation: sessionId ? sessionId : "general" });
+      return;
+    }
+    /* A session's agent runs only for the session that is open. The chat
+       drawer is the one way a person starts a turn, and it exists only on the
+       open session's surfaces; a turn for any other session was started by
+       something that is not the owner at that screen, and would draft plans
+       they never saw being drafted. A reply that outlives a session switch is
+       unaffected — this checks the start of a turn, not its end. */
+    if (sessionId && sessionId !== getSelectedSessionId()) {
+      emitError(
+        e.sender,
+        "chat:error",
+        new AppError("UNSUPPORTED", "That session isn't open.", { hint: "Open it to talk to its agent." }),
+        { conversation: sessionId }
+      );
       return;
     }
     chat

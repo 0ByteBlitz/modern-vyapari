@@ -1,6 +1,17 @@
 import { useEffect, useState } from "react";
 import { Bell } from "lucide-react";
-import type { AlertEvent, AppMode } from "@/lib/api";
+import type { AppMode } from "@/lib/api";
+
+/** One line in the bell: a price alert that fired, or a plan event (triggered,
+ *  invalidated, expired). Plans announce through the same toast, and a toast
+ *  is gone after 15 seconds — without this the bell forgot them. */
+export interface BellEntry {
+  key: string;
+  kind: "alert" | "plan" | "engine";
+  title: string;
+  detail: string;
+  at: number;
+}
 import { formatPrice } from "@/lib/format";
 
 /**
@@ -41,7 +52,7 @@ interface AppToolbarProps {
   unreadAlerts: number;
   alertsOpen: boolean;
   onToggleAlerts: () => void;
-  alertHistory: AlertEvent[];
+  alertHistory: BellEntry[];
   onClearAlerts: () => void;
 }
 
@@ -201,27 +212,27 @@ export function AppToolbar({
                   </button>
                 )}
               </div>
-              {alertHistory.map((a, i) => (
-                <div key={`${a.alertId}-${a.triggeredAt}-${i}`} className="alert-popover-row">
+              {alertHistory.map((a) => (
+                <div key={a.key} className="alert-popover-row">
                   <div className="flex items-baseline gap-1.5">
-                    <span className="label-micro" style={{ color: "var(--caution)" }}>alert</span>
+                    <span className="label-micro" style={{ color: "var(--caution)" }}>{a.kind}</span>
                     <span className="mono ml-auto" style={{ fontSize: "var(--text-2xs)", color: "var(--text-faint)" }}>
-                      {alertTime(a.triggeredAt)}
+                      {alertTime(a.at)}
                     </span>
                   </div>
                   <span style={{ fontSize: "var(--text-md)", color: "var(--text-secondary)", lineHeight: 1.45 }}>
-                    {a.label}
+                    {a.title}
                   </span>
-                  <span className="mono" style={{ fontSize: "var(--text-2xs)", color: "var(--text-faint)" }}>
-                    {a.symbol}
-                    {a.currentValue !== null && a.currentValue !== undefined ? ` · now ${formatPrice(a.currentValue)}` : ""}
-                  </span>
+                  {a.detail && (
+                    <span className="mono" style={{ fontSize: "var(--text-2xs)", color: "var(--text-faint)" }}>
+                      {a.detail}
+                    </span>
+                  )}
                 </div>
               ))}
               {alertHistory.length === 0 && (
                 <div style={{ padding: "14px 10px", fontSize: "var(--text-md)", color: "var(--text-faint)", lineHeight: 1.5 }}>
-                  No alerts have fired since the app started. Active alerts are
-                  listed on each session's dashboard.
+                  Nothing has fired since the app started.
                 </div>
               )}
             </div>

@@ -145,8 +145,8 @@ const api = {
   // Agent navigation — the agent navigates the UI to the surface it's working on
   // so the user sees what the agent sees (e.g. switches to Research before taking
   // a screenshot of the chart).
-  onAgentNavigate: (callback: (nav: { surface: string; focusPlanId?: number }) => void) => {
-    const handler = (_event: any, nav: { surface: string; focusPlanId?: number }) => callback(nav);
+  onAgentNavigate: (callback: (nav: { surface: string; conversation: number | "general"; focusPlanId?: number }) => void) => {
+    const handler = (_event: any, nav: { surface: string; conversation: number | "general"; focusPlanId?: number }) => callback(nav);
     ipcRenderer.on("agent:navigate", handler);
     return () => ipcRenderer.removeListener("agent:navigate", handler);
   },

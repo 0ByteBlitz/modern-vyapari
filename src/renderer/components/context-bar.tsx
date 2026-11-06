@@ -42,7 +42,9 @@ const INTERVAL_LABEL: Record<number, string> = { 1: "1m", 5: "5m", 15: "15m", 30
  *  stream can have stopped, so while anything is watched the worst watched
  *  stream decides. A failing REST check can make it worse, never better. */
 function binanceFeed(res: Result<FeedHealth>, rest: { ok: boolean; ms: number } | null): Feed {
-  const name = "Binance";
+  /* Named by purpose first: "Binance live" read as a live exchange account,
+     when this is only the price data plans and charts run on. */
+  const name = "Prices · Binance";
   const restNote = rest ? (rest.ok ? `history round trip ${seconds(rest.ms)}` : "history requests failing") : "";
   if (isError(res)) return { name, tone: "down", value: "error", detail: "stream state unreadable" };
   /* Named always, since after a failure either may be a fallback host. */
@@ -81,18 +83,18 @@ export function ContextBar({ title, subtitle }: { title: string; subtitle?: stri
   /* The venue's name comes from the active adapter, not a literal. This bar
      reports *execution* health, so labelling it "RevX" when the venue is
      something else would be a status line about a system that isn't running. */
-  const [venueName, setVenueName] = useState("Venue");
+  const [venueName, setVenueName] = useState("Orders");
   /* The simulated venue has no connection, so it has no latency to show. */
   const [simulatedVenue, setSimulatedVenue] = useState(false);
-  const [binanceChip, setBinanceChip] = useState<Feed>({ name: "Binance", tone: "idle", value: "…" });
-  const [venueChip, setVenueChip] = useState<Feed>({ name: "Venue", tone: "idle", value: "…" });
+  const [binanceChip, setBinanceChip] = useState<Feed>({ name: "Prices · Binance", tone: "idle", value: "…" });
+  const [venueChip, setVenueChip] = useState<Feed>({ name: "Orders", tone: "idle", value: "…" });
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       const info = await api.getVenueInfo();
       if (!cancelled && !isError(info)) {
-        setVenueName(info.active.displayName);
+        setVenueName(`Orders · ${info.active.displayName}`);
         setSimulatedVenue(info.active.id === "simulated");
       }
     })();
@@ -137,7 +139,7 @@ export function ContextBar({ title, subtitle }: { title: string; subtitle?: stri
 
     const poll = async () => {
       if (simulatedVenue) {
-        setVenueChip({ name: "Venue", tone: "idle", value: "simulated", simulated: true });
+        setVenueChip({ name: "Orders", tone: "idle", value: "simulated", simulated: true, detail: "no exchange connected; fills are simulated" });
         return;
       }
       // Measured by an actual round trip, not assumed.

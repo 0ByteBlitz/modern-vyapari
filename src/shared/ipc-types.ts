@@ -410,6 +410,10 @@ export type ActivityScope = "events" | "all" | "agent";
 /** Where the agent's turn landed, sent once per turn (`agent:navigate`). */
 export interface AgentNavigation {
   surface: string;
+  /** The conversation whose turn asked for it. The renderer moves only when
+   *  that conversation is the one on screen — a session's agent never moves a
+   *  screen showing Home or another session. */
+  conversation: number | "general";
   /** Open this plan on the Plans surface — the one the turn drafted. */
   focusPlanId?: number;
 }

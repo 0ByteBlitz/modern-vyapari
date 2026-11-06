@@ -3900,16 +3900,33 @@ ol.md-list li { list-style: decimal; }
 .plan-state-invalidated { color: var(--down); }
 .plan-state-cancelled { color: var(--text-faint); }
 
-/* The owner's mark beside "Signed by you · <time>". Indigo: their signature. */
+/* "Signed by you · <time>" — the record of the signature is its timestamp. */
 .signed-by {
-  display: flex;
-  align-items: center;
-  gap: 10px;
   font-size: var(--text-xs);
   color: var(--muted-foreground);
 }
-.signed-by-long { gap: 14px; padding-top: 14px; }
-.signature-mark { color: var(--accent); flex-shrink: 0; display: block; }
+.signed-by-long { display: block; padding-top: 14px; }
+
+/* A plan's terms on its card: label, value — scannable, one per line. */
+.plans-terms {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 16px;
+  margin: 2px 0 0;
+  font-size: var(--text-xs);
+}
+.plans-terms dt { color: var(--muted-foreground); }
+.plans-terms dd { margin: 0; font-family: var(--font-mono); color: var(--foreground); }
+.plans-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+}
+.plans-card-foot .plans-actions { margin-top: 0; }
 
 .plans-thesis {
   margin: 0;

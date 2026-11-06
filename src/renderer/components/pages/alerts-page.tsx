@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { BellOff, Trash2, Volume2 } from "lucide-react";
-import { api, isError, type Session, type AlertRecord, type FeedHealth } from "@/lib/api";
+import { api, isError, type Session, type AlertRecord, type FeedHealth, type StoredPlanView } from "@/lib/api";
+import { intentText } from "@/lib/plan-text";
 import { testAlertSound } from "@/lib/alert-sound";
 import { describeThreshold } from "@shared/levels";
 import { RefreshButton } from "@/components/refresh-button";
@@ -19,6 +20,24 @@ export function AlertsPage({ activeSession }: { activeSession: Session | null })
   useEffect(() => {
     void loadAlerts();
   }, [loadAlerts]);
+
+  /* What armed plans are watching, shown here because this is where an owner
+     looks for "what is watching the market for me". Read from the plans, not
+     copied into alert rows: one condition evaluated by two engines is how they
+     come to disagree. The plan monitor fires these; the toast and the bell
+     report them like an alert. */
+  const [watched, setWatched] = useState<StoredPlanView[]>([]);
+  const loadWatched = useCallback(async () => {
+    if (!activeSession) return setWatched([]);
+    const res = await api.listPlans(activeSession.id, ["planned", "triggered"]);
+    setWatched(isError(res) ? [] : res);
+  }, [activeSession?.id]);
+  useEffect(() => {
+    void loadWatched();
+    return api.onDataUpdated((d) => {
+      if (d.kind === "plan") void loadWatched();
+    });
+  }, [loadWatched]);
 
   /* Real-time update listener when agent manages alerts */
   useEffect(() => {
@@ -83,6 +102,29 @@ export function AlertsPage({ activeSession }: { activeSession: Session | null })
         </div>
         <StreamCard />
       </div>
+
+      {watched.length > 0 && (
+        <div className="panel" style={{ padding: "12px 18px", display: "flex", flexDirection: "column", gap: 8 }}>
+          <span className="label-micro">Watched by armed plans</span>
+          {watched.map((p) => (
+            <div key={p.rowId} style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: "var(--text-sm)" }}>
+              <span className="mono">
+                {p.slug} <span style={{ color: "var(--text-faint)" }}>· every {p.evalInterval} bar</span>
+              </span>
+              {p.state === "planned" &&
+                p.branches.map((b) => (
+                  <span key={b.id} style={{ color: "var(--muted-foreground)", fontSize: "var(--text-xs)" }}>
+                    Trigger{p.branches.length > 1 ? ` (${b.label})` : ""}: {intentText(b.triggerIntent)}
+                  </span>
+                ))}
+              <span style={{ color: "var(--muted-foreground)", fontSize: "var(--text-xs)" }}>
+                Invalidation: {intentText(p.invalidationIntent)}
+              </span>
+            </div>
+          ))}
+          <span style={{ color: "var(--text-faint)", fontSize: "var(--text-xs)" }}>Change these on Plans.</span>
+        </div>
+      )}
 
       <div className="pill-tabs" role="tablist" aria-label="Alert filter">
         {tabs.map((t) => (

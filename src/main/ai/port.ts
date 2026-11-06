@@ -93,6 +93,9 @@ export interface CompletionRequest {
   model: string;
   system: string;
   prompt: string;
+  /** Length of the visible answer. An adapter whose models reason before
+   *  answering adds its own room for that on top — the caller asks for a
+   *  short answer, not for a cap that reasoning can spend first. */
   maxTokens: number;
 }
 
@@ -100,6 +103,9 @@ export interface CompletionResult {
   /** Text blocks in order; callers join them as they need. */
   textParts: string[];
   usage: TokenUsage;
+  /** Why the model stopped, as the provider reports it — so an empty reply
+   *  can say why it was empty instead of vanishing. */
+  stopReason?: string | null;
 }
 
 /* ── The agent loop: one model step at a time ───────────────────────── */

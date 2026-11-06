@@ -16,9 +16,9 @@
  * visible at the moment of approval. Approving a thesis and approving a
  * geometry are different acts, and this is where they are made the same one.
  */
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { Plus, Trash2, ShieldCheck, AlertTriangle, Activity, X, Pencil } from "lucide-react";
-import { formatLevel, type PriceLevel } from "@shared/levels";
+import { levelText, entryText, intentText, expiryText } from "@/lib/plan-text";
 import { PlanStateBadge, SignedBy } from "@/components/plan-badges";
 import { PlanDetail, PlanWatchNote } from "@/components/plan-detail";
 import { CalibrationPanel } from "@/components/calibration-panel";
@@ -30,7 +30,6 @@ import {
   type StoredPlanView,
   type PlanInputView,
   type LevelDraftView,
-  type ConditionIntentView,
   type ArmResultView,
   type PlanDryRun,
   type LevelReferenceView,
@@ -81,26 +80,9 @@ const emptyBranch = (n: number): BranchDraft => ({
 
 const INTERVALS = ["15m", "1h", "4h", "1d"] as const;
 
-/** A level for display. "not set" for a level nobody chose yet. */
-function levelText(level: LevelDraftView | undefined): string {
-  const kind = (level as { kind?: unknown } | undefined)?.kind;
-  return kind === "static" || kind === "derived" ? formatLevel(level as PriceLevel) : "not set";
-}
-
-const OP_TEXT: Record<ConditionIntentView["operator"], string> = {
-  crosses_above: "crosses above",
-  crosses_below: "crosses below",
-  above: "is above",
-  below: "is below",
-};
-
-function intentText(intent: ConditionIntentView | null | undefined): string {
-  if (!intent) return "not set";
-  const v = typeof intent.value === "number" ? String(intent.value) : levelText(intent.value);
-  return `price ${OP_TEXT[intent.operator]} ${v}`;
-}
-
 export function PlansPage({ session, focus }: Props) {
+  /* Budgets are in the pair's quote currency — "200" alone left it to guess. */
+  const quote = session.pair.split("-")[1] ?? "";
   const [plans, setPlans] = useState<StoredPlanView[]>([]);
   const [refs, setRefs] = useState<LevelReferenceView[]>([]);
   const [authoring, setAuthoring] = useState(false);
@@ -697,20 +679,35 @@ export function PlansPage({ session, focus }: Props) {
             <PlanStateBadge state={p.state} />
           </div>
           <p className="plans-thesis">{p.thesis}</p>
-          <div className="plans-meta">
-            <span>{p.branches.length} branch{p.branches.length === 1 ? "" : "es"}</span>
-            <span>{p.assumptions.length} assumption{p.assumptions.length === 1 ? "" : "s"}</span>
-            {p.risk.maxQuote > 0 ? (
-              <span>budget {p.risk.maxQuote}</span>
-            ) : (
-              <span className="plans-warn">no budget</span>
-            )}
-            <span>expires {new Date(p.expiresAt).toLocaleDateString()}</span>
-            {!p.ocoExclusive && <span className="plans-warn">OCO off</span>}
-          </div>
+          {/* The terms that execute, as they will execute — the same wording
+              as the arming confirmation (lib/plan-text). Counts of branches
+              and assumptions said nothing a reader could act on. */}
+          <dl className="plans-terms">
+            {p.branches.map((b) => (
+              <Fragment key={b.id}>
+                <dt>{p.branches.length > 1 ? b.label : "Trigger"}</dt>
+                <dd>
+                  {intentText(b.triggerIntent)} → entry {entryText(b.entry)}, stop {levelText(b.stop)}, target{" "}
+                  {b.targets.map(levelText).join(", ") || "not set"}
+                </dd>
+              </Fragment>
+            ))}
+            <dt>Invalidation</dt>
+            <dd>{intentText(p.invalidationIntent)}</dd>
+            <dt>Budget</dt>
+            <dd className={p.risk.maxQuote > 0 ? "" : "plans-warn"}>
+              {p.risk.maxQuote > 0 ? `${p.risk.maxQuote} ${quote}` : "not set"}
+            </dd>
+            <dt>Checked</dt>
+            <dd>
+              every {p.evalInterval} bar
+              {p.branches.length > 1 && !p.ocoExclusive ? " · more than one branch can fire" : ""}
+            </dd>
+            <dt>Expires</dt>
+            <dd>{expiryText(p.expiresAt)}</dd>
+          </dl>
           {p.outcomeReason && <p className="plans-outcome">{p.outcomeReason}</p>}
           <PlanWatchNote plan={p} />
-          {p.state !== "draft" && p.armedAt !== null && <SignedBy armedAt={p.armedAt} />}
 
           {p.state === "draft" && p.missingBeforeArming.length > 0 && (
             <div className="plans-arm-fail">
@@ -742,14 +739,19 @@ export function PlansPage({ session, focus }: Props) {
             </div>
           )}
 
-          {p.state === "planned" && (
-            <div className="plans-actions" onClick={(e) => e.stopPropagation()}>
-              <button className="plans-ghost" onClick={() => setRevisingPlanId(p.rowId)}>
-                <Pencil size={13} /> Revise
-              </button>
-              <button className="plans-ghost" onClick={() => setEndingPlanId(p.rowId)}>
-                <X size={13} /> End plan
-              </button>
+          {p.state !== "draft" && (p.armedAt !== null || p.state === "planned") && (
+            <div className="plans-card-foot">
+              {p.armedAt !== null ? <SignedBy armedAt={p.armedAt} /> : <span />}
+              {p.state === "planned" && (
+                <div className="plans-actions" onClick={(e) => e.stopPropagation()}>
+                  <button className="plans-ghost" onClick={() => setRevisingPlanId(p.rowId)}>
+                    <Pencil size={13} /> Revise
+                  </button>
+                  <button className="plans-ghost" onClick={() => setEndingPlanId(p.rowId)}>
+                    <X size={13} /> End plan
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -781,14 +783,14 @@ export function PlansPage({ session, focus }: Props) {
             <div className="plans-arm-ok" onClick={(e) => e.stopPropagation()}>
               <strong>Arm with these terms?</strong>
               <ul>
-                <li>Budget: {p.risk.maxQuote > 0 ? p.risk.maxQuote : "not set"}</li>
-                <li>Expires: {new Date(p.expiresAt).toLocaleString()}</li>
+                <li>Budget: {p.risk.maxQuote > 0 ? `${p.risk.maxQuote} ${quote}` : "not set"}</li>
+                <li>Expires: {expiryText(p.expiresAt)}</li>
                 <li>Checked every {p.evalInterval} bar</li>
                 <li>Invalidation: {intentText(p.invalidationIntent)}</li>
                 <li>{p.ocoExclusive ? "The first branch to fire cancels the others" : "More than one branch can fire"}</li>
                 {p.branches.map((b) => (
                   <li key={b.id}>
-                    {b.label}: when {intentText(b.triggerIntent)}, enter {levelText(b.entry)}, stop{" "}
+                    {b.label}: when {intentText(b.triggerIntent)}, enter {entryText(b.entry)}, stop{" "}
                     {levelText(b.stop)}, target {b.targets.map(levelText).join(", ") || "not set"},{" "}
                     {b.budgetSharePct}% of budget
                   </li>

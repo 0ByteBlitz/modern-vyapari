@@ -5,7 +5,7 @@ import { getAnalysisCandles } from "../data/analysis-candles";
 import { getBasisStats } from "../data/basis-monitor";
 import * as strategyService from "../strategy/strategy-service";
 import { validateSpec } from "../strategy/strategy-spec";
-import type { StrategySpec } from "../strategy/strategy-spec";
+import type { StrategySpec, EvalInterval } from "../strategy/strategy-spec";
 import * as backtestService from "../backtest/backtest-service";
 import { alertEngine } from "../insights/alert-engine";
 import * as planService from "../plans/plan-service";
@@ -18,6 +18,9 @@ import type { PriceLevel } from "../../shared/levels";
 import type { Condition } from "../strategy/strategy-spec";
 import { createLogger } from "../logger";
 import { agentActor } from "./tool-audit";
+
+/** Bar sizes a plan can be checked on — `EvalInterval`, as a list for the tool schemas. */
+const EVAL_INTERVALS: EvalInterval[] = ["1m", "5m", "15m", "30m", "1h", "4h", "1d"];
 
 const log = createLogger("tools");
 
@@ -257,6 +260,13 @@ export const PLAN_TOOLS = [
           description: "Whether the thesis dies below or above that price.",
         },
         expires_in_days: { type: "number", description: "Hard expiry. Under 180 — further out is a forecast, not a plan." },
+        eval_interval: {
+          type: "string",
+          enum: EVAL_INTERVALS,
+          description:
+            "How often the plan is checked: one decision per closed bar of this size. Use the timeframe the " +
+            "owner's conditions are written in — a 1m close trigger checked on 4h bars never fires. Defaults to 4h.",
+        },
         risk_budget_quote: {
           type: "number",
           description: "Most this plan may risk, in quote currency. Ask the owner — there is no default, and a draft without one cannot arm.",
@@ -308,6 +318,7 @@ export const PLAN_TOOLS = [
         invalidation_price: { type: "number", description: "Price at which the THESIS is wrong — not the stop." },
         invalidation_direction: { type: "string", enum: ["below", "above"] },
         expires_in_days: { type: "number", description: "Hard expiry, counted from now. Under 180." },
+        eval_interval: { type: "string", enum: EVAL_INTERVALS, description: "How often the plan is checked." },
         risk_budget_quote: { type: "number", description: "Most this plan may risk, in quote currency." },
         branches: {
           type: "array",
@@ -738,6 +749,9 @@ function toolListPlans(sessionId: number, input: Record<string, unknown>): unkno
       thesis: p.thesis,
       assumption_count: p.assumptions.length,
       expires_at: p.expiresAt,
+      /* Readable, and relative: a model given only ms epoch reported the raw number. */
+      expires_local: new Date(p.expiresAt).toLocaleString(),
+      minutes_until_expiry: Math.round((p.expiresAt - Date.now()) / 60_000),
       expired: p.expiresAt <= Date.now(),
       risk_budget_quote: p.risk?.maxQuote ?? null,
       eval_interval: p.evalInterval,
@@ -774,6 +788,9 @@ function toolGetPlan(sessionId: number, input: Record<string, unknown>): unknown
        wrong, invalidation is where the THESIS is. It can fire in profit. */
     thesis_invalidation: describeThreshold(triggerValueOf(plan.invalidation)),
     expires_at: plan.expiresAt,
+    /* Readable, and relative: a model given only ms epoch reported the raw number. */
+    expires_local: new Date(plan.expiresAt).toLocaleString(),
+    minutes_until_expiry: Math.round((plan.expiresAt - Date.now()) / 60_000),
     expired: plan.expiresAt <= Date.now(),
     risk_budget_quote: plan.risk?.maxQuote ?? null,
     oco_exclusive: plan.ocoExclusive,
@@ -928,6 +945,14 @@ function parseDraftBranches(rawBranches: DraftBranchInput[]): planService.PlanIn
   });
 }
 
+/** A bar size the monitor knows, or null. An unknown value is refused rather
+ *  than coerced: the check interval is a term the owner signs. */
+function parseEvalInterval(v: unknown): EvalInterval | null {
+  if (v === undefined || v === null) return null;
+  if (typeof v === "string" && (EVAL_INTERVALS as string[]).includes(v)) return v as EvalInterval;
+  throw new Error(`eval_interval must be one of ${EVAL_INTERVALS.join(", ")}.`);
+}
+
 /**
  * Save a plan as a DRAFT. Never armed — that is the owner's signature.
  *
@@ -997,7 +1022,8 @@ function toolDraftPlan(sessionId: number, input: Record<string, unknown>): unkno
   if (rawBranches.length > 1 && rawBranches.some((b) => typeof b.budget_share_pct !== "number")) {
     defaults.push("branch budget shares split evenly");
   }
-  defaults.push("checked every 4h bar");
+  const evalInterval = parseEvalInterval(input.eval_interval);
+  if (evalInterval === null) defaults.push("checked every 4h bar");
 
   const res = planService.createPlan({
     sessionId,
@@ -1013,7 +1039,7 @@ function toolDraftPlan(sessionId: number, input: Record<string, unknown>): unkno
     expiresAt: Date.now() + expiresInDays * DAY_MS,
     risk: { maxQuote: riskBudget },
     ocoExclusive: true,
-    evalInterval: "4h",
+    evalInterval: evalInterval ?? "4h",
     branches,
   } as never);
 
@@ -1094,6 +1120,11 @@ function toolUpdateDraft(sessionId: number, input: Record<string, unknown>): unk
   if (days !== null) {
     next.expiresAt = Date.now() + days * DAY_MS;
     changed.push("expiry");
+  }
+  const interval = parseEvalInterval(input.eval_interval);
+  if (interval !== null) {
+    next.evalInterval = interval;
+    changed.push("check interval");
   }
   const budget = num(input.risk_budget_quote);
   if (budget !== null) {

@@ -116,7 +116,9 @@ export interface PlanBranch {
   /** What must happen for this branch to fire. Evaluated by the same
    *  `evaluateConditionGroup` as strategies and alerts — one evaluator. */
   trigger: ConditionGroup;
-  /** Intended entry. */
+  /** Intended entry. An empty object `{}` means **market**: the position
+   *  opens at the close of the bar that triggered, which is where every plan
+   *  fill happens anyway (`openPlanPosition`). See `isMarketEntry`. */
   entry: PriceLevel;
   /** Where the TRADE is wrong. Distinct from the plan's thesis invalidation. */
   stop: PriceLevel;
@@ -124,6 +126,29 @@ export interface PlanBranch {
   targets: PriceLevel[];
   /** Share of the plan's risk budget this branch may consume, 0–100. */
   budgetSharePct: number;
+}
+
+/** A level that names a price: a static price or a derived level. */
+export function isPriceLevel(lv: unknown): boolean {
+  const l = lv as { kind?: unknown; price?: unknown } | null | undefined;
+  if (!l || typeof l !== "object") return false;
+  if (l.kind === "static") return typeof l.price === "number" && Number.isFinite(l.price);
+  return l.kind === "derived";
+}
+
+/**
+ * An entry with no level — the form's empty entry field and the agent's
+ * omitted `entry_price` both store `{}` — is a **market** entry: fill at the
+ * close of the bar that triggered.
+ *
+ * Named here because it was implicit. The gate accepted `{}` (an object is
+ * truthy), the screen said "not set", and the engine read anything that was
+ * not static as a derived level and threw on the first real trigger — every
+ * bar, without recording that the branch had fired (2026-11-06).
+ */
+export function isMarketEntry(lv: unknown): boolean {
+  if (lv === undefined || lv === null) return true;
+  return typeof lv === "object" && (lv as { kind?: unknown }).kind === undefined;
 }
 
 export interface PlanRiskBudget {
@@ -254,9 +279,12 @@ export function validatePlan(plan: TradePlan, now: number = Date.now()): PlanVal
     else ids.add(b.id);
 
     if (groupIsEmpty(b?.trigger)) errors.push(`${where}: add a trigger.`);
-    if (!b?.entry) errors.push(`${where}: add an entry.`);
-    if (!b?.stop) errors.push(`${where}: add a stop.`);
-    if (!Array.isArray(b?.targets) || b.targets.length === 0) {
+    /* Shape, not truthiness: `{}` is truthy, and an empty stop passed this
+       check and would have opened a position with no stop at all. An empty
+       entry is allowed — it is a market entry (`isMarketEntry`). */
+    if (!isMarketEntry(b?.entry) && !isPriceLevel(b?.entry)) errors.push(`${where}: the entry is not a price or a level.`);
+    if (!isPriceLevel(b?.stop)) errors.push(`${where}: add a stop.`);
+    if (!Array.isArray(b?.targets) || b.targets.length === 0 || !b.targets.every(isPriceLevel)) {
       errors.push(`${where}: add a target.`);
     }
 

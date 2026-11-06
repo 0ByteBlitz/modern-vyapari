@@ -39,7 +39,7 @@ import type { ArchiveStepEvent, CandleRepairProgress, LockStatus } from "../../s
 export interface OutboundMap {
   /** Move the owner to where the agent's turn landed, once per turn;
    *  `focusPlanId` opens that plan on the Plans surface. */
-  "agent:navigate": { surface: string; focusPlanId?: number };
+  "agent:navigate": { surface: string; conversation: ChatConversation; focusPlanId?: number };
   /** What the agent is doing ("Drafting a plan"), or null when idle. */
   "agent:acting": string | null;
   /** Something an agent tool wrote is now stale on screen. */

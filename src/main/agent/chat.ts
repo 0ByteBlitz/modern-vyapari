@@ -374,10 +374,10 @@ Charts tab (in-app charting surface):
  * landed. `focusPlanId` opens that plan on the Plans surface. Fires an IPC
  * event the renderer's App component listens for.
  */
-function navigateAgent(surface: string, focusPlanId?: number): void {
+function navigateAgent(surface: string, conversation: ChatConversation, focusPlanId?: number): void {
   const { mainWindow } = require("../main");
   if (mainWindow && !mainWindow.isDestroyed()) {
-    emitTo(mainWindow.webContents, "agent:navigate", { surface, focusPlanId });
+    emitTo(mainWindow.webContents, "agent:navigate", { surface, conversation, focusPlanId });
   }
 }
 
@@ -566,6 +566,14 @@ async function dispatchTool(name: string, input: Record<string, unknown>, sessio
     await waitForRender(400); // Give the chart a moment to paint after navigation
 
     const view = getResearchView();
+    /* No chart on screen — navigation is refused while this conversation is
+       not the one showing. A full-window capture would then be Home or
+       another page, read back as if it were the chart. */
+    if (!view) {
+      return {
+        error: "The Charts tab is not on screen. Use read_research_chart for the numbers, or ask the owner to open the Charts tab.",
+      };
+    }
     /* A session's agent must not describe another session's chart as its own
        (same defect as read_research_chart). The general agent has no pair, so
        whatever is on screen is fair for it. */
@@ -882,7 +890,7 @@ async function runChatTurn(
           const targetSurface = TOOL_SURFACE_MAP[toolUse.name];
           const reachable = Boolean(targetSurface && surfaceKeepsConversation(targetSurface, general));
           if (reachable && SCREEN_TOOLS.has(toolUse.name) && shownSurface !== targetSurface) {
-            navigateAgent(targetSurface!);
+            navigateAgent(targetSurface!, conversation);
             shownSurface = targetSurface!;
             // Let the page paint before the tool reads it.
             await waitForRender(800);
@@ -1029,6 +1037,6 @@ async function runChatTurn(
      plan it drafted, opened — unless the owner is already looking there. */
   const end = landing as { surface: string; weight: number; planId?: number } | null;
   if (end && (end.surface !== shownSurface || end.planId !== undefined)) {
-    navigateAgent(end.surface, end.planId);
+    navigateAgent(end.surface, conversation, end.planId);
   }
 }

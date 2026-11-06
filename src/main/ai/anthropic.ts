@@ -23,6 +23,9 @@ import type {
   ModelPrice,
 } from "./port";
 
+/** Room for a model to reason before a one-shot answer (`complete`). */
+const COMPLETION_THINKING_HEADROOM = 8000;
+
 /**
  * Anthropic's published prices, USD per million tokens.
  *
@@ -170,12 +173,18 @@ export const anthropicProvider: AiProvider = {
     const anthropic = await newClient();
     const res = await anthropic.messages.create({
       model: req.model,
-      max_tokens: req.maxTokens,
+      /* Current models think by default, and thinking counts against
+         max_tokens. At the reviews' 400–500 every reply ended at max_tokens
+         with no text — billed, empty, and retried on every launch
+         (2026-11-06). Turning thinking off is a 400 on some models (Opus 5.5,
+         Sonnet 5.5) and the review model is the owner's choice, so give it
+         headroom instead. Stays well under the non-streaming timeout range. */
+      max_tokens: req.maxTokens + COMPLETION_THINKING_HEADROOM,
       system: req.system,
       messages: [{ role: "user", content: req.prompt }],
     });
     const textParts = res.content.flatMap((b) => (b.type === "text" ? [b.text] : []));
-    return { textParts, usage: res.usage };
+    return { textParts, usage: res.usage, stopReason: res.stop_reason };
   },
 
   createConversation(history: AiMessage[]): AgentConversation {

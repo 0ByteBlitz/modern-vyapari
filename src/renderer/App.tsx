@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
-import { api, isError, type SetupStatus, type Session, type PaperStats, type AlertEvent, errorText } from "@/lib/api";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { api, isError, type SetupStatus, type Session, type PaperStats, errorText } from "@/lib/api";
 import { Titlebar } from "@/components/titlebar";
-import { AppToolbar, type RiskChip, type TradingMode } from "@/components/app-toolbar";
+import { AppToolbar, type BellEntry, type RiskChip, type TradingMode } from "@/components/app-toolbar";
 import { ContextBar } from "@/components/context-bar";
 import { SessionRail, isSessionSurface, type Surface } from "@/components/session-rail";
 import { LockScreen } from "@/components/lock-screen";
@@ -21,7 +21,7 @@ import { AlertsPage } from "@/components/pages/alerts-page";
 import { ChatDrawer } from "@/components/chat-drawer";
 import { AgentMascot } from "@/components/agent-mascot";
 import { AlertToastHost } from "@/components/alert-toast";
-import { formatUsd, formatPct } from "@/lib/format";
+import { formatUsd, formatPct, formatPrice } from "@/lib/format";
 import { ModeContext } from "@/lib/mode";
 import type { AppMode, HelloAvailability, LockStatus } from "@/lib/api";
 
@@ -124,14 +124,33 @@ function Shell({ lockNotice }: { lockNotice: Exclude<HelloAvailability, "availab
      reading something else was simply gone. In-memory by design — alerts are
      already persisted in the DB; this is the "since you've been looking away"
      list, not an archive. */
-  const [alertHistory, setAlertHistory] = useState<AlertEvent[]>([]);
+  const [alertHistory, setAlertHistory] = useState<BellEntry[]>([]);
   const [unreadAlerts, setUnreadAlerts] = useState(0);
 
   useEffect(() => {
-    return api.onAlertTriggered((event) => {
-      setAlertHistory((prev) => [event, ...prev].slice(0, 30));
+    let seq = 0;
+    const push = (entry: Omit<BellEntry, "key">) => {
+      setAlertHistory((prev) => [{ ...entry, key: `${entry.kind}-${entry.at}-${++seq}` }, ...prev].slice(0, 30));
       setUnreadAlerts((n) => n + 1);
-    });
+    };
+    const offAlert = api.onAlertTriggered((e) =>
+      push({
+        kind: "alert",
+        title: e.label,
+        detail: e.symbol + (e.currentValue !== null && e.currentValue !== undefined ? ` · now ${formatPrice(e.currentValue)}` : ""),
+        at: e.triggeredAt,
+      })
+    );
+    /* Plan events (triggered, invalidated, expired) and the engine's own
+       warnings (a silent feed, an alert it could not check). The body's last
+       line is the reason — a plan's thesis comes first. */
+    const offPlan = api.onNotifyEvent((e) =>
+      push({ kind: e.kind.startsWith("plan_") ? "plan" : "engine", title: e.title, detail: e.body.split("\n").filter(Boolean).pop() ?? "", at: e.at })
+    );
+    return () => {
+      offAlert();
+      offPlan();
+    };
   }, []);
 
   /* What the agent is doing, named by main per tool ("Drafting a plan"). Not
@@ -141,16 +160,33 @@ function Shell({ lockNotice }: { lockNotice: Exclude<HelloAvailability, "availab
      plan is focused twice. */
   const [agentFocusPlan, setAgentFocusPlan] = useState<{ planId: number; key: number } | null>(null);
 
+  /* What is on screen, for the agent-navigation listener below, which is
+     registered once and would otherwise read the first render's values. */
+  const screenRef = useRef<{ session: Session | null; surface: Surface }>({ session: null, surface: "home" });
+  screenRef.current = { session: activeSession, surface };
+
   /* Agent-driven navigation: main moves the UI at most once per turn, to where
      the turn's work landed — Plans with the drafted plan open, for instance —
-     plus before a tool that reads the screen itself (a chart screenshot). */
+     plus before a tool that reads the screen itself (a chart screenshot).
+
+     Only the conversation on screen may move it. A session's agent moves the
+     screen only while that session is open on one of its own surfaces; the
+     general agent only while no session surface is showing. Without this, a
+     reply that outlived a session switch — or a turn for a session that is not
+     open at all — dropped the owner onto a session page with no session behind
+     it, or onto another session's Plans with a foreign plan "focused". */
   useEffect(() => {
-    const offNav = api.onAgentNavigate(({ surface: s, focusPlanId }) => {
+    const offNav = api.onAgentNavigate(({ surface: s, conversation, focusPlanId }) => {
       const valid: Surface[] = [
         "dashboard", "orders", "plans", "journal", "research", "alerts",
         "portfolio", "markets", "approvals", "settings", "browser",
       ];
       if (!valid.includes(s as Surface)) return;
+      const { session, surface: shown } = screenRef.current;
+      const onSessionSurface = session !== null && isSessionSurface(shown);
+      const onScreen =
+        conversation === "general" ? !onSessionSurface : onSessionSurface && session.id === conversation;
+      if (!onScreen) return;
       setSurface(s as Surface);
       if (focusPlanId !== undefined) setAgentFocusPlan({ planId: focusPlanId, key: Date.now() });
     });
