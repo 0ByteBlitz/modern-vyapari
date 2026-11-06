@@ -17,6 +17,45 @@ visited monthly.
 
 ---
 
+## 2026-11-06 · Stress test off the happy path — J3 first, then J1, J5
+
+**Attempted:** the plan journey against adversarial cases in the running app on the live stream, simulated mode, 1m plans on BTC, ETH and SOL: several plans on one pair (OCO, and a non-OCO plan whose branches both fire), entry refused past the target, invalidation and expiry with a position open, expiry while armed, budgets above the paper cash and of 0.01, a crash and restart mid-position, the kill switch and a paused session across three sessions, a 24-plan same-bar burst, agent drafts with contradictory terms and no invalidation, a request to arm, and two conversations at once.
+
+**Fixed the same day** (defects):
+
+- **Invalidation or expiry with a position open left the position unmanaged — J3.** The plan went terminal, dropped out of the watch list, and its position stayed open with nothing checking its stop or target. The plan's own exit now runs first: the position closes at the bar's close, with slippage, as `exit_signal`.
+- **A plan that fired and then expired never ended — J3.** `triggered → expired` is not a legal transition; the refusal was ignored, so the plan stayed *triggered* and logged "expired" on every bar. It now ends *closed* (calibration reads *expired* as "never fired").
+- **Expiry was judged a bar late — J3.** The monitor used the candle's timestamp, which is its open. A 4h plan could trigger up to four hours after its expiry. It now judges each bar at its close; the dry run matches.
+- **A non-OCO plan could spend more than its budget — J2.** Two branches at 60% both fired: 120% of a budget shown as the maximum. Shares now total 100% or less for every plan.
+- **A budget larger than the paper cash armed silently and drained the account — J2.** One plan took all 9,489 and every later plan was refused for want of cash. Arming now warns, with the balance. The refusal itself read "Needs 0.00 but the paper account holds 0.00"; small amounts now keep their digits.
+- **The kill switch reset itself on restart — J3.** It lived in memory, so a crash re-enabled entries for every armed plan in every session. It now persists until the owner resets it.
+- **Home said nothing while the kill switch was on — J3.** It read "armed — the engine is watching it" while every trigger was refused. *Needs your attention* now leads with the kill switch, and names a paused session whose armed plans cannot enter; a paused session's card says *paused*.
+- **Surfaces lagged the engine by up to a minute — J3, J5.** Home, the session overview, Portfolio and Orders only polled (60/15/30/20 s); Home's armed count was seen 41 s stale. They now reload on `data:updated`, a burst coalesced into one reload. Home also waited on the 0.3–0.5 s ticker fetch before showing any engine state; the two now load apart.
+- **The agent told the owner refused plans held positions — J1.** `list_plans` said "a triggered branch opens a paper position" and carried no position facts, so plans whose entries the kill switch refused were reported as "in a paper position, managed by the engine". Each branch now says whether its position is open, closed, or was refused.
+- **A *Triggered* pill on a plan whose entry was refused** (open item 3 below). It now reads *Fired · no entry*, in the quiet outline of the finished states.
+- **Searching a hyphenated word failed — J5, J1.** `st-oco` reached SQLite's FTS5 as syntax ("no such column"), in the Journal search and in the agent's memory tool. Words are now quoted.
+- **A plan stop gapped through filled at the stop.** After a restart or a feed hole, a bar that opened below the stop filled at a price the market never offered. A plan's stop now fills at the open in that case (strategies keep the backtester's rule: their stop can ratchet inside a bar).
+- **Bars missed in an outage were never checked against open positions — J3.** When a feed hole refills, the missing bars are now replayed against each open plan position's stop and target, oldest first. (Verified that the refill runs after a crash; no stop happened to be crossed during the test outages, so a replayed exit was not observed live.)
+- **A crash left its last bar cut short in the cache, kept as final — J3.** Seen live: a BTC 1m bar stopped at the crash with a fifth of its volume, and a restart within one and a half bars never refilled it, so the end of that bar was never checked against a stop. The engine now drops the newest cached bar when it seeds a stream; the gap is measured from the last bar it can trust, and the refill rewrites it.
+
+**Measured** (24 plans across three sessions, one bar): about 15–20 ms from close to recorded trigger and simulated entry per plan; one `data:updated` per stream; Binance delivered the three pairs' closes 0, 0.47 and 0.87 s apart; event to toast in the DOM 3–8 ms; IPC reads 1–3 ms, `portfolioSummary` 80–95 ms.
+
+**Open:**
+
+**1 · Bars missed while the app was down get no plan decision — J3.** Protection is replayed, decisions are not: a trigger, invalidation or expiry that would have fired on a missed bar waits for the next live close. Bars cut short by crashes before this fix stay in the cache (BTC-USD 1m 17:22 UTC on 6 Nov) until *Repair candle history* is run.
+
+**2 · A burst of triggers is a burst of Windows notifications — J3.** 24 plans firing on one bar showed 24 desktop toasts within a second.
+
+**3 · A refused entry uses up the trigger — J3.** After the kill switch is reset, or a paused session resumed, a plan that fired meanwhile stays fired and cannot enter. Correct by design (the signature covered that bar), but nothing says so at the time.
+
+**4 · A take-profit can book a loss — J2.** A target closer than the round-trip fee (0.5%) closed as `take_profit` with a negative P&L, twice. Arming does not warn.
+
+**5 · Budgets of 0.01 arm.** There is no minimum; a live venue would refuse the order.
+
+**6 · *Needs your attention* clips to one row** with its own scrollbar once it holds two items.
+
+---
+
 ## 2026-11-06 · Prototype journey, end to end on the live stream — J1, J2, J3, J5
 
 **Attempted:** research → draft → arm → monitor → position → close → review in the running app, simulated mode.
@@ -29,7 +68,7 @@ visited monthly.
 
 **2 · The agent's tool calls read as raw markers in the chat — J1.** A tool call shows as a bare chip between paragraphs, with no sense of what it is doing or found. The owner asked for calmer, more legible tool progress.
 
-**3 · A triggered plan whose entry was refused stays *Triggered* in Active — J3.** No position exists and nothing more can happen until expiry, but the solid *Triggered* pill reads as "in a trade".
+**3 · A triggered plan whose entry was refused stays *Triggered* in Active — J3.** No position exists and nothing more can happen until expiry, but the solid *Triggered* pill reads as "in a trade". **Resolved 2026-11-06:** the pill reads *Fired · no entry*.
 
 ---
 

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
+import { useLiveReload } from "@/lib/use-live-reload";
 import { api, isError, type Session, type OrderRecord, type PaperStats } from "@/lib/api";
 import { formatPrice, formatQty, formatUsd, formatPct } from "@/lib/format";
 import { useAppMode } from "@/lib/mode";
@@ -45,11 +46,7 @@ export function OrdersPage({ activeSession }: { activeSession: Session | null })
     if (!isError(s)) setStats(s);
   }, [activeSession?.id]);
 
-  useEffect(() => {
-    void load();
-    const id = setInterval(() => void load(), 20_000);
-    return () => clearInterval(id);
-  }, [load]);
+  useLiveReload(load, 20_000);
 
   if (!activeSession) {
     return (

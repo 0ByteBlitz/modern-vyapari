@@ -48,6 +48,10 @@ Research → agent draft and critique → review → arm → monitor → simulat
 - **An installed build accepted `--remote-debugging-port`**, which exposes every bridge method to local programs. It now refuses to start with a debugging switch; dev runs keep it.
 - **Stale or unclear state on screen:** the rail read *0 armed* after arming (plan writes now broadcast); the arming screen said *enter not set* for a market entry; expiry showed a date with no time; the agent saw expiry as raw epoch; plan events vanished from the bell after 15 s; Alerts did not show what armed plans watch; *Binance live* read as an exchange connection (now *Prices · Binance* / *Orders*); the drawn signature mark is gone.
 
+### Off the happy path (6 Nov)
+
+The same journey stress-tested against adversarial cases across three sessions (FRICTION, 6 Nov). Closed: a position left unmanaged when its plan was invalidated or expired; a fired plan that could never expire; expiry judged a bar late; non-OCO budgets over 100%; a budget above the paper cash arming silently; a kill switch that reset on restart and that Home never mentioned; surfaces up to a minute behind the engine; the agent reporting refused entries as positions; FTS search failing on hyphens; plan stops filling at the level through a gap; outage bars never checked against open positions.
+
 ### Since going public (31 Oct)
 
 CI on Windows, Linux and macOS · Electron 43 → 45.2.1 (Chromium 156) · credential

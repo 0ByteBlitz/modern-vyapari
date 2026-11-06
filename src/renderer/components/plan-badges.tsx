@@ -8,7 +8,26 @@ import { PLAN_STATE_LABEL, type PlanState } from "@shared/ipc-types";
  * the solid indigo pill. Finished states are quiet outlines; invalidated is
  * coral because the thesis was proved wrong.
  */
-export function PlanStateBadge({ state }: { state: PlanState }) {
+export function PlanStateBadge({
+  state,
+  branches,
+}: {
+  state: PlanState;
+  branches?: ReadonlyArray<{ status?: string; positionId?: number | null }>;
+}) {
+  /* Fired, opened nothing, and nothing left to fire: the entry was refused
+     (kill switch, paused session, price past the stop or target, no cash). The
+     solid pill read as "in a trade" for a plan that can no longer do anything
+     but expire. Quiet outline, like the finished states. */
+  if (
+    state === "triggered" &&
+    branches &&
+    branches.length > 0 &&
+    !branches.some((b) => b.status === "pending") &&
+    branches.filter((b) => b.status === "triggered").every((b) => b.positionId == null)
+  ) {
+    return <span className="plan-state">Fired · no entry</span>;
+  }
   return (
     <span className={`plan-state plan-state-${state}`}>
       {state === "planned" && <ArmedRing />}

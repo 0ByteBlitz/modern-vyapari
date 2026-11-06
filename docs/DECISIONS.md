@@ -971,3 +971,15 @@ block of `src/renderer/index.css`; what changed and why:
 
 Token names were kept (`--caution`, `--ai`, `--accent`…) so components follow
 the new values without edits; only values changed.
+
+## 2026-11-06 · What a plan's end does to its position, its budget, and the kill switch
+
+Decided while stress-testing the plan journey (FRICTION, 6 Nov), each because the alternative was an unmanaged or overstated state.
+
+- **Invalidation and expiry exit the position.** A disproved thesis or a passed horizon is the plan's own signed exit, so an open position closes at that bar's close with slippage, recorded as `exit_signal` (a decision the system made, reviewed normally). Leaving it open would mean a terminal plan holding a position nothing watches; keeping its stop and target alive past the plan's end would contradict a *hard* expiry.
+- **A plan that fired and then expires ends `closed`, not `expired`.** Calibration reads `expired` as "never fired". `triggered → expired` stays illegal.
+- **A bar is judged at its close.** Candles are stamped at their open; expiry, triggers and `triggered_at` all use the close.
+- **The budget caps the whole plan, OCO or not.** Branch shares total 100% or less. A budget above the paper cash arms with a warning, not a refusal: cash moves as positions close.
+- **The kill switch persists until the owner resets it.** Stored in `settings` (`kill_switch`) and restored before the engine starts. Still blocks entries only; exits always run.
+- **A plan stop gapped through fills at the open.** Plan stops never move, so a bar that opened below one did not offer the stop price. Strategy stops (frozen path) keep the backtester's fill at the level, because a ratchet inside the bar can lift the stop past an open that was never below it.
+- **Outage bars are replayed against open plan positions** when a feed hole refills, oldest first — a venue-side stop would have acted in them.
