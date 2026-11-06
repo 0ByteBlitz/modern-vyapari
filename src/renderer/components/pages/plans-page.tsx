@@ -108,6 +108,11 @@ export function PlansPage({ session, focus }: Props) {
   const [editingId, setEditingId] = useState<number | null>(null);
   /** The plan whose terms are on screen waiting for the owner to sign. */
   const [confirming, setConfirming] = useState<number | null>(null);
+  /* An armed plan can't be edited or deleted (DECISIONS: the plan that fires
+     must be the plan that was signed, and the record must survive). Ending it
+     — invalidating it — is the documented way out, but nothing offered it, so
+     an armed plan could only expire. */
+  const [ending, setEnding] = useState<number | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [armResult, setArmResult] = useState<{ planId: number; res: ArmResultView } | null>(null);
   /* The structural check, run on demand rather than automatically: it replays
@@ -338,6 +343,18 @@ export function PlansPage({ session, focus }: Props) {
       return;
     }
     setDryRun({ planId, res });
+  }
+
+  async function endPlan(planId: number) {
+    setProblem(null);
+    const res = await api.transitionPlan(planId, "invalidated", "Ended by you before it triggered.");
+    setEnding(null);
+    if (isError(res)) {
+      setProblem(errorText(res));
+      return;
+    }
+    if (!res.ok) setProblem(res.reason ?? "That plan cannot be ended.");
+    await load();
   }
 
   async function discard(planId: number) {
@@ -709,6 +726,32 @@ export function PlansPage({ session, focus }: Props) {
               <button className="plans-ghost" onClick={() => void discard(p.rowId)}>
                 Discard
               </button>
+            </div>
+          )}
+
+          {p.state === "planned" && ending !== p.rowId && (
+            <div className="plans-actions" onClick={(e) => e.stopPropagation()}>
+              <button className="plans-ghost" onClick={() => setEnding(p.rowId)}>
+                End plan
+              </button>
+            </div>
+          )}
+
+          {p.state === "planned" && ending === p.rowId && (
+            <div className="plans-arm-fail" onClick={(e) => e.stopPropagation()}>
+              <strong>End this plan?</strong>
+              <p>
+                It stops being watched and can't trigger. It stays in your track record as invalidated.
+                Signed terms can't be edited — to change them, end this plan and write a new one.
+              </p>
+              <div className="plans-actions">
+                <button className="plans-ghost plans-danger" onClick={() => void endPlan(p.rowId)}>
+                  End plan
+                </button>
+                <button className="plans-ghost" onClick={() => setEnding(null)}>
+                  Keep it armed
+                </button>
+              </div>
             </div>
           )}
 

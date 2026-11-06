@@ -959,3 +959,19 @@ block of `src/renderer/index.css`; what changed and why:
 
 Token names were kept (`--caution`, `--ai`, `--accent`…) so components follow
 the new values without edits; only values changed.
+
+## An armed plan could only expire (2026-11-06)
+
+The rule above — *an armed plan cannot be edited or deleted; re-authoring means
+invalidating it and writing a new one* — held, but only its first half was
+reachable. The backend has always allowed `planned → invalidated` over
+`plans:transition`, and nothing in the renderer called it, so the owner had no
+way to stand a plan down: it ran until it triggered or expired. Plans now offer
+**End plan** on an armed plan, behind a confirmation, recorded as invalidated
+with the reason "Ended by you before it triggered." Editing and deleting stay
+impossible. A triggered plan (one holding a position) is not offered this; what
+ending it should do to the open position is a separate decision.
+
+The same report found agent-set alerts sitting at a plan's trigger price, which
+read as part of the plan. They are not: alerts are not linked to plans and only
+notify. The Alerts page now says so.

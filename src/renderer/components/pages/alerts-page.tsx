@@ -58,6 +58,12 @@ export function AlertsPage({ activeSession }: { activeSession: Session | null })
         <div>
           <h1 className="surface-title">Alert rules · {pair}</h1>
           <p className="surface-sub">Checked against the Binance stream and the indicator engine.</p>
+          {/* An alert near a plan's trigger looks like part of the plan, so
+              removing it reads as weakening the plan. It isn't: plans run on
+              their own signed terms and alerts are not linked to them. */}
+          <p className="surface-sub">
+            Alerts only notify. An armed plan runs on its own signed terms, so removing an alert never changes a plan.
+          </p>
         </div>
         <div className="surface-actions">
           <button onClick={() => testAlertSound()} className="btn" title="Play the alert chime">

@@ -3821,6 +3821,10 @@ ol.md-list li { list-style: decimal; }
 }
 
 .plans-problem,
+/* Ending an armed plan: destructive, so coral, but an outline, not a fill. */
+.plans-danger { color: var(--down); border-color: rgba(255, 122, 112, 0.45); }
+.plans-danger:hover { background: rgba(255, 122, 112, 0.08); border-color: var(--down); }
+
 .plans-arm-fail {
   margin: 8px 0;
   padding: 8px;
