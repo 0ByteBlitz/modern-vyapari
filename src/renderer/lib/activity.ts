@@ -234,6 +234,13 @@ export function describeActivity(ev: ActivityEvent): DescribedActivity {
     case "app_unlocked":
     case "lock_settings_changed":
       return { tag: "chore", tone: "chore", chore: true, text: ev.action.replace(/_/g, " ") };
+    case "app_unlock_failed":
+      return {
+        tag: "lock",
+        tone: "warning",
+        chore: false,
+        text: str(d.detail) === "Canceled" ? "unlock cancelled at the Windows Hello prompt" : "unlock attempt failed",
+      };
     case "app_locked":
       return {
         tag: "chore",
