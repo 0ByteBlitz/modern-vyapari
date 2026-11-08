@@ -642,7 +642,13 @@ export function armPlan(rowId: number, now: number = Date.now()): ArmResult {
   if (!canTransitionPlan(plan.state, "planned")) {
     return {
       ok: false,
-      errors: [`A ${plan.state} plan cannot be armed.`],
+      /* Owner-facing: the state names ("planned", "triggered") are the DB's, not
+         the owner's. A repeat arm of a running plan is the common case. */
+      errors: [
+        plan.state === "planned" || plan.state === "triggered"
+          ? "This plan is already armed, so it cannot be armed again."
+          : "A finished plan cannot be armed. Start a new plan instead.",
+      ],
       warnings: [],
       resolved: [],
     };

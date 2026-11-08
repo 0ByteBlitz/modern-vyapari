@@ -106,18 +106,28 @@ export function PortfolioPage({ onOpenSession }: { onOpenSession: (s: { id: numb
       {/* Real account holdings, valued from the venue's tickers — execution-side
           truth, deliberately kept separate from the simulated figures above so the
           two can never be mistaken for each other. */}
-      <section className="panel">
-        <div className="panel-header">
-          <span className="label-micro">Exchange account · real holdings</span>
-          {/* Amber: real money, the one thing on this page that is not paper. */}
-          <span className="ml-auto" style={{ fontSize: "var(--text-xs)", color: "var(--caution)" }}>
-            not simulated — this is your actual balance
-          </span>
-        </div>
-        <div className="panel-body">
-          <BalancesCard />
-        </div>
-      </section>
+      {/* Only in live mode. In simulated mode `venue()` is the paper adapter, whose
+          balances are an empty list by definition — rendered here it read
+          "US$0.00 · No assets" under "this is your actual balance", a statement
+          about real money that nothing had checked. */}
+      {mode === "live" ? (
+        <section className="panel">
+          <div className="panel-header">
+            <span className="label-micro">Exchange account · real holdings</span>
+            {/* Amber: real money, the one thing on this page that is not paper. */}
+            <span className="ml-auto" style={{ fontSize: "var(--text-xs)", color: "var(--caution)" }}>
+              not simulated — this is your actual balance
+            </span>
+          </div>
+          <div className="panel-body">
+            <BalancesCard />
+          </div>
+        </section>
+      ) : (
+        <p style={{ fontSize: "var(--text-xs)", color: "var(--text-faint)" }}>
+          Exchange holdings aren't read in simulated mode.
+        </p>
+      )}
 
       <section className="panel">
         <div className="panel-header">
