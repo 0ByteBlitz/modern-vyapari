@@ -17,7 +17,7 @@ The runtime promise is still open: today, plans are watched only while the app
 is running. Do not imply background or cloud continuity until it is designed
 and verified.
 
-**This file began as a five-week sprint plan to a personal launch on 30 August
+**This file began as a five-week sprint plan to a launch on 30 August
 2026.** Development paused after 9 August with Sprint 4 (live execution) not
 started, and the project went public as open source on 31 October. The sprint
 sections below are kept as the plan of record — their reasoning still governs —
@@ -216,10 +216,10 @@ left is adapters, the choice, and removing the defaults.
 - **J-4 `onDrift: reconfirm` queue · N-2 lesson recall · N-3 backup (L-3; proposal P-3) · N-4 read-only MCP client.**
 - **Telegram inbound commands** — the remote kill switch from `PLAN.md` §7.1 (`/pause`, allowlisted to one chat).
 
-**Proposals awaiting an owner decision** (3 November 2026) — issues the owner
-logged that change what the app *is*, not just how it works. Each states the
-problem, the journey, the options and a recommendation; **no code until the
-owner answers its questions**, and the answer goes into `DECISIONS.md`. In
+**Open design proposals** (3 November 2026) — changes to what the app *is*,
+not just how it works. Each states the problem, the journey, the options and a
+recommendation; **no code until its open questions are decided**, and the
+answer goes into `DECISIONS.md`. In
 flight elsewhere, so not proposed here: the agent's audit trail, editing a
 draft, reviews on the dashboard, Research → Charts, and the enforced Windows
 Hello lock with its Security section in Settings.
@@ -251,22 +251,22 @@ Hello lock with its Security section in Settings.
   allowed only in simulated mode with a visible *simulated only* tag.
   *Recommend:* (a) now — the honest refusal costs a prompt line — and (b)
   when V-3 adds the first venue that can short, so the field arrives with a
-  call site that branches on it. (c) only after Sprint 4. *Owner decides:*
+  call site that branches on it. (c) only after Sprint 4. *Open questions:*
   are shorts wanted on paper before any live venue can carry them? Which
   instrument first — margin spot or perps? Is leverage ever in scope, or is
   the risk budget always unlevered notional?
 
 - **P-2 The research browser** (J1). *Problem:* the Browser page is a
   general-purpose browser with a persistent cookie jar
-  (`persist:research-browser`, `browser/embedded-browser.ts` ~24), so the
-  owner's logins live there. The agent can read, screenshot and drive it
+  (`persist:research-browser`, `browser/embedded-browser.ts` ~24), so a
+  user's logins live there. The agent can read, screenshot and drive it
   (`read_browser_page`, `screenshot_browser`, `navigate_browser`,
   `agent/chat.ts` ~453), so a logged-in page's content reaches the AI
   provider, and any page can put text in front of a model that holds write
   tools. It is exempt from the app's navigation lockdown (`isResearchBrowserWebContents`, ~189; `main.ts`
   ~21); it is a single tab and opens popups in place. Its header comment said
-  the app never reads it — false since the owner's 2026-07-19 decision
-  (`DESIGN-NOTES.md`, *Owner-accepted risk*); corrected in this PR. The agent
+  the app never reads it — false since the 2026-07-19 decision
+  (`DESIGN-NOTES.md`, *Accepted risk*). The agent
   already reads the web through `browser/agent-fetch.ts`: in-memory cookies,
   text only, nothing it can click. *Options:* **(a)** remove the page and its
   three tools; links open in the system browser (`shell.openExternal`,
@@ -275,10 +275,10 @@ Hello lock with its Security section in Settings.
   a non-persistent partition. *Recommend:* (a). The agent's reading needs are
   met by `fetch_url`; the owner's browsing is better served by their own
   browser, with its updates, password manager and extensions; and the app
-  sheds an exemption from its own hardening and a ToS risk on the owner's
-  TradingView account. *Owner decides:* is there a page you read *only* inside
-  the app (and why)? Do you rely on the agent seeing what you see, which (a)
-  and (b) end — would pasting a URL into chat do?
+  sheds an exemption from its own hardening and a ToS risk on users'
+  TradingView accounts. *Open questions:* is any page read *only* inside
+  the app, and why? Does anyone rely on the agent seeing what the owner sees,
+  which (a) and (b) end — or would pasting a URL into chat do?
 
 - **P-3 Backup, export and recovery — instead of accounts** (J0, J5; L-3,
   N-3). *Problem:* there are no accounts by design; everything — plans,
@@ -301,7 +301,7 @@ Hello lock with its Security section in Settings.
   the plan count, so *last good backup* on screen is measured, not assumed.
   Secrets are excluded unless the owner ticks them in and sets a passphrase;
   the passphrase is never stored. Once this exists, migrating the Revolut X
-  key to the new store is safe. *Owner decides:* include secrets in exports
+  key to the new store is safe. *Open questions:* include secrets in exports
   at all, or always re-enter keys on a new machine? Backup folder default
   (Documents, or must the owner pick)? How many to keep? Does simulated mode's
   database get backed up too?
@@ -335,7 +335,7 @@ Hello lock with its Security section in Settings.
      typed confirmation and re-verification, offering an export first.
   7. **Tamper-evident audit log** — each row carries a hash of the previous;
      Diagnostics shows *chain intact* or the first broken row.
-  *Owner decides:* is OS disk encryption an acceptable answer for the DB?
+  *Open questions:* is OS disk encryption an acceptable answer for the DB?
   Which actions need re-verification? Retention defaults? Is the audit chain
   worth it before live trading exists?
 
@@ -361,8 +361,8 @@ Hello lock with its Security section in Settings.
      life; slippage, paper now and venue fills once live.
   5. **Usage analytics** — local only, opt-in, never sent anywhere; the app
      has no server to send them to, and this proposal does not add one.
-  *Recommend:* 4 (follow-through first), then 1, then 3; skip 2. *Owner
-  decides:* what belongs in the profile? Should the agent mention the profile
+  *Recommend:* 4 (follow-through first), then 1, then 3; skip 2. *Open
+  questions:* what belongs in the profile? Should the agent mention the profile
   when a draft breaks it (*this is a 1m plan; you said you trade 4h*)?
 
 - **P-6 Known debt: money as numbers** (J3, J6). The hard rule says money is
@@ -378,7 +378,7 @@ Hello lock with its Security section in Settings.
   (compare, add, multiply, round to a venue's step), adopted first at the
   boundary where a quantity becomes an order (S4-1), then in the risk engine
   and plan budgets; indicator maths stays float, since its output is a level,
-  not an amount. *Owner decides:* a zero-dependency helper, or a decimal
+  not an amount. *Open questions:* a zero-dependency helper, or a decimal
   library (and which zero-dep alternative it beat)?
 
 **Maintainer-led, with safety review: Sprint 4** (S4-1…S4-6) — real order
@@ -390,8 +390,8 @@ issue before writing code; the hard rules in `AGENTS.md` are the acceptance bar.
 ## Original plan (29 July 2026)
 
 
-**Launch = the day this becomes the tool the owner actually trades with, daily.**
-Single user, personal money, but held to institutional standards of correctness:
+**Launch = the day the app is fit to trade with, daily.**
+Held to institutional standards of correctness:
 every number measured, every control real, every claim falsifiable.
 
 Written 2026-07-29. Five working weeks.
@@ -412,7 +412,7 @@ Vague launch definitions are how a date gets hit with something unusable. So:
 
 **In scope for 30 August — the app must be able to:**
 
-**The product is one sentence (owner decision, 2026-07-30): the owner authors a
+**The product is one sentence (decided 2026-07-30): the owner authors a
 thesis; the agent monitors it and acts on it.** Everything below serves that.
 It is deliberately *not* "the machine discovers strategies" — see the deferred
 table and §2 for what that decision removed.
@@ -429,7 +429,7 @@ table and §2 for what that decision removed.
 4. Run those plans **in paper** continuously and unattended, with a review agent
    and an accumulating calibration record — the owner's own hit rate by thesis
    type.
-5. Run in **two modes, chosen at launch** — simulated or live (owner decision,
+5. Run in **two modes, chosen at launch** — simulated or live (decided
    2026-08-05). Simulated needs no credentials and has no route to a real order;
    live places real orders on Revolut X, every position carrying a venue-side
    stop, every fill reconciled against the venue. **There is no promotion
@@ -443,12 +443,12 @@ table and §2 for what that decision removed.
 | Footprint / delta-at-price | Needs `@aggTrade` plus trade-level storage — a different tool with a different storage bill (plan §17.8). Bar CVD covers the actual use. |
 | Theming, light mode, locale (§16) | Scheduled after the surfaces settle, deliberately. |
 | Multi-venue, notifications outside the app | Scope creep against a single-user tool. |
-| **The strategy path — authoring specs, backtesting them, the promotion ladder, auto-strategies armed to paper and promoted to live** | **Owner decision, 2026-07-30; removed from every surface 2026-08-05.** The freeze was not enough — Workbench, the agent's `create_strategy`/`run_backtest` tools and the dashboard panel all survived it, so the app kept presenting two answers to the same question and both the owner and the agent kept reaching for the wrong one. A soft guard (the prompt) against a hard affordance (the tool) loses. The surfaces are gone; the engine code stays, shared and frozen. The product is "I plan the trade, the agent acts on it". The strategy machinery was accreted around a different product — one that discovers and validates its own edge — and it is not the one being built. Measurement backed the call: 90 backtests across the top-15 coins found exactly one spec clearing the gate, at +0.03% out-of-sample, meaning a bot gated on validated edge would simply never act. **Frozen, not deleted** — the fill model, condition evaluator, level resolver, paper engine and risk engine are all shared with the plan path, and ripping the lifecycle out before launch would be churn with real regression risk. The lifecycle states, promotion ladder, backtest-vs-paper divergence card and `create_strategy` stay in the code, unused, until after launch. |
-| Charting UX parity with TradingView | **Owner decision, 2026-07-30.** This is not another charting tool. Research exists so the *engine* can resolve the same levels the trader looks at, and so the agent can reason about them — not to win on crosshairs, drawing ergonomics and shortcuts. TradingView remains a legitimate analysis surface; the agent already reads it (`read_browser_page` / `screenshot_browser`). Rendering *correctness* is still in scope — a profile drawn over the price axis is a defect. Charting *comfort* is not. |
+| **The strategy path — authoring specs, backtesting them, the promotion ladder, auto-strategies armed to paper and promoted to live** | **Decided 2026-07-30; removed from every surface 2026-08-05.** The freeze was not enough — Workbench, the agent's `create_strategy`/`run_backtest` tools and the dashboard panel all survived it, so the app kept presenting two answers to the same question and both users and the agent kept reaching for the wrong one. A soft guard (the prompt) against a hard affordance (the tool) loses. The surfaces are gone; the engine code stays, shared and frozen. The product is "I plan the trade, the agent acts on it". The strategy machinery was accreted around a different product — one that discovers and validates its own edge — and it is not the one being built. Measurement backed the call: 90 backtests across the top-15 coins found exactly one spec clearing the gate, at +0.03% out-of-sample, meaning a bot gated on validated edge would simply never act. **Frozen, not deleted** — the fill model, condition evaluator, level resolver, paper engine and risk engine are all shared with the plan path, and ripping the lifecycle out before launch would be churn with real regression risk. The lifecycle states, promotion ladder, backtest-vs-paper divergence card and `create_strategy` stay in the code, unused, until after launch. |
+| Charting UX parity with TradingView | **Decided 2026-07-30.** This is not another charting tool. Research exists so the *engine* can resolve the same levels the trader looks at, and so the agent can reason about them — not to win on crosshairs, drawing ergonomics and shortcuts. TradingView remains a legitimate analysis surface; the agent already reads it (`read_browser_page` / `screenshot_browser`). Rendering *correctness* is still in scope — a profile drawn over the price axis is a defect. Charting *comfort* is not. |
 
 **The launch state is therefore: a complete decision-and-execution-assist
 terminal, trading real money under human signature — and the signature is given
-at ARMING, not at the fill** (owner decision, 2026-08-09).
+at ARMING, not at the fill** (decided 2026-08-09).
 
 That decision resolves a contradiction these documents carried for a week. §1
 said "under human signature" and S4-4 said "sign each intent", while J3 — the
@@ -635,7 +635,7 @@ longer in scope. Retitled 2026-07-30.)*
 - [ ] **S1-6 Daily-use log.** Use the app for a full trading day. Write friction
       down; do not fix it yet. *(Log started 2026-07-30: `docs/FRICTION.md`.
       First entry — Research is not yet the surface analysis actually happens
-      on; the owner used TradingView instead.)*
+      on; analysis happened in TradingView instead.)*
 
 **Exit:** the paper engine has executed and reviewed at least one position.
 Profile + CVD visible on Research. Resolver tested for point-in-time correctness.
@@ -764,8 +764,8 @@ Goal: a thesis can be written down, armed, and mechanically monitored.
 
       **Wired watch-only, 2026-08-01.** Until this, `plan-monitor.ts` was
       imported by **nothing but its own test** — every armed plan in the
-      database read "armed" and no code path evaluated it. The owner found it
-      the only way it could be found: they armed a plan and went looking for
+      database read "armed" and no code path evaluated it. It was found
+      the only way it could be: by arming a plan and looking for
       what it was doing.
 
       The wire splits along the roadmap's own risk line — **watching protects
@@ -821,8 +821,7 @@ Goal: a thesis can be written down, armed, and mechanically monitored.
       database, per the v15 lesson.
 - [x] **J-3 Render an armed plan — two renderings, one source of truth.**
       *(From JOURNEYS.md J2, 2026-08-01.)* **The numeric half is done the same
-      day:** the session dashboard's candle chart was deleted (owner decision —
-      Home answers "what is this pair doing" before it is asked and Research
+      day:** the session dashboard's candle chart was deleted (Home answers "what is this pair doing" before it is asked and Research
       answers it properly, so it was a worse Research among status panels) and
       replaced by `plan-watch-panel.tsx`, which shows armed plans as
       **distances**: gap to each trigger, stop and target, time to expiry, which
@@ -832,9 +831,8 @@ Goal: a thesis can be written down, armed, and mechanically monitored.
       feed, never the venue quote, since that is the feed the levels resolved
       from.
 
-      **Geometric half done the same day**, after the owner opened the bookmark
-      panel and asked the right question: *"shouldn't it list active plans, and
-      when I click, add drawings based on the plan?"* It listed only
+      **Geometric half done the same day**, after the bookmark panel was opened
+      looking for plans, expecting a click on one to draw it. It listed only
       **references** — the authoring layer, drawing → meaning — which is showing
       the ingredients above the thing they are for. The panel now leads with
       armed plans; toggling one draws its trigger, entry, stop, targets and
@@ -849,10 +847,10 @@ Goal: a thesis can be written down, armed, and mechanically monitored.
       Indicators are removed on hide **only if the overlay switched them on**,
       never one the trader enabled themselves. Derived levels draw at
       `resolvedAtArm` — main's number — labelled `at arm`; that is the chart
-      rendering a committed value, not computing its own. The owner's expected entry point is *"select an armed plan,
+      rendering a committed value, not computing its own. The expected entry point is *"select an armed plan,
       see its levels laid over the chart with alerts"* — the reverse of the
       built gesture (draw → promote → reference → author). Both directions are
-      legitimate; only the one the owner did **not** reach for exists, and its
+      legitimate; only the one **not** reached for exists, and its
       absence blocked 25 checklist items. **Constraint: the chart renders
       main's resolved values, never its own** — a renderer that computed a
       derived level would repeat the fake-CVD mistake exactly. Static levels
@@ -930,8 +928,8 @@ keeping score of the owner's own assumptions.
       `get_calibration`, carrying the honesty rules in the payload — a model
       left alone with counts and a null rate will helpfully compute the
       percentage itself.
-- [x] **J-1 Agent plan tools.** **Done 2026-08-05, both halves.** Awareness first — and it was
-      reordered on the owner's prompting, correctly. The agent had sixteen tools
+- [x] **J-1 Agent plan tools.** **Done 2026-08-05, both halves.** Awareness first, deliberately
+      ordered before write tools. The agent had sixteen tools
       and **not one could observe a plan**; `buildSessionContext` injected the
       pair, trade stats, journal and lessons but nothing about what was armed.
       That is why "paper trade the armed plan" produced an answer about
@@ -980,7 +978,7 @@ keeping score of the owner's own assumptions.
       Assuming a position is protected when it is not is the most expensive
       thing it could get wrong.
 - [x] **N-1 Reach the owner when they are away — Telegram + outbox.**
-      *(Owner decision, 2026-08-05, after checking the notification-infrastructure
+      *(Decided 2026-08-05, after checking the notification-infrastructure
       category.)* **Outbox done**: schema **v17** `notifications`, written in the
       **same transaction** as the state change it describes, with a `dedupe_key`
       derived from the event rather than the clock. That makes the two failures
@@ -1032,8 +1030,8 @@ keeping score of the owner's own assumptions.
       `fetch_url` already lives under — same rules, never a trigger source. Do
       this when a specific source is named, not speculatively.
 - [x] **A plan resolves into the journal, and finished plans get their own
-      tab.** *(Owner request, 2026-08-05.)* The ask was "how do I delete an
-      expired plan, and can the agent do it?" — the answer to the second half is
+      tab.** *(2026-08-05.)* The question was whether an expired plan can be
+      deleted, and whether the agent can do it — the answer to the second half is
       **no, and to the first half mostly no**. Expired plans *are* the
       calibration record: an expired-unfired plan is the **denominator** of the
       trigger rate, so deleting the ones that never fired makes the rate count
@@ -1067,7 +1065,7 @@ keeping score of the owner's own assumptions.
 - [ ] **S2-5 Base-rate check v1.** "You assume X; historically it held N of M
       times on this pair." Calibration, not validation.
 - [ ] **S2-6 Fix the Sprint-1 friction list.**
-- [~] **S2-8 Fix the core, accepting the sprint cost.** *(Owner decision,
+- [~] **S2-8 Fix the core, accepting the sprint cost.** *(Decided
       2026-07-31, reversing the recommendation to defer this.)* The observation
       that prompted it: the app has a strong **domain** layer and a weak
       **application** one — features held together at the edges rather than by a
@@ -1125,7 +1123,7 @@ keeping score of the owner's own assumptions.
             calls the model. Measured today: four `setInterval` sites, no shared
             owner, nothing enumerable, nothing persisted, no budget anywhere.
       - [x] **S2-7(b)** — the typed outbound channel. *(Done 2026-07-31 — see S2-7.)*
-- [~] **S2-9 Integrations become a layer.** *(Owner decision, 2026-07-31.)*
+- [~] **S2-9 Integrations become a layer.** *(Decided 2026-07-31.)*
       **Status 2026-10-31:** venue half done; feed half mostly done — symbol
       mapping has one home and the feed's identity is one constant
       (`integrations/feed/symbols.ts`, `FEED_SCOPE_SQL`), taking the
@@ -1349,7 +1347,7 @@ justified only if they show measurable value over a bounded review.
 | **Basis risk** — validated on Binance, executed on Revolut X | Real fills worse than modelled | Basis monitor measures spread; depth still unmeasured. Start at minimum size. |
 | Revolut X caps limit orders at 1,000/day | A busy strategy silently stops | Count orders per day; refuse at 90% with a visible warning |
 | Repeated theses go unnoticed | The same bet re-filed as a "one-shot" forever, dodging any accumulation of evidence | Repeat-thesis detection: "you've filed this 6 times." **The old wording ended "…that's a strategy, backtest it", which no longer means anything with the strategy path frozen.** It should instead surface the calibration record for that tag — you have filed this six times, here is how the previous five resolved. |
-| Solo developer, five weeks, no slack | Everything slips together | Launch week is a hard freeze; the gate in §4 is the arbiter, not the calendar |
+| Five-week schedule, no slack | Everything slips together | Launch week is a hard freeze; the gate in §4 is the arbiter, not the calendar |
 | Silent-failure class recurring | Wrong numbers trusted | Every field a decision depends on needs something that would notice if it went missing (§13) |
 
 ---
@@ -1358,19 +1356,18 @@ justified only if they show measurable value over a bounded review.
 
 - **Commit per sprint item**, not per week. The single 12k-line commit that
   opened this roadmap must not happen again.
-- **Claude runs commands and verifies its own work** (CLAUDE.md, owner decision
-  2026-07-30 — this reverses the original "owner runs all commands" agreement).
-  The carve-outs are money, credentials, destructive local state, and anything
-  that leaves the machine. Since the owner is no longer double-checking every
-  build, an unverified claim now goes straight into the record — run the suite,
-  read the output, report what it said.
+- **Coding agents run commands and verify their own work** (`AGENTS.md`,
+  since 2026-07-30). The carve-outs are money, credentials, destructive local
+  state, and anything that leaves the machine. Nobody re-checks every build
+  after the fact, so an unverified claim goes straight into the record — run
+  the suite, read the output, report what it said.
 - **`npm test` and `npm run typecheck` green before every commit.** The suite is
   1.6s and touches no network; there is no excuse.
 - **A stub must fail loudly.** Never return plausible success — see
   `exchange/revolutx-exchange.ts` for what that nearly cost.
 - **Update `CLAUDE.md` in the same change as the behaviour.** Documentation
   written later is documentation written wrong.
-- **Every doc reflects the journeys and the end goal** (owner decision,
+- **Every doc reflects the journeys and the end goal** (decided
   2026-08-01). New items name the journey they serve and the step they land on;
   descriptions are written to the **moment of truth** — what the owner
   experiences when it works or fails — before the mechanism. An item serving no

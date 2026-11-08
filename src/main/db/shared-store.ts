@@ -1,5 +1,5 @@
 /**
- * The one thing both modes open (owner decision, 2026-08-05).
+ * The one thing both modes open (decided 2026-08-05).
  *
  * **Lessons cross modes; the calibration record does not.** What the owner
  * learned about how a range reclaim behaves is market knowledge and transfers

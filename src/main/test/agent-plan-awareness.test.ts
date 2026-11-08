@@ -3,7 +3,7 @@
  *
  * Before this, the agent had sixteen tools and **not one of them could observe
  * a plan**. `buildSessionContext` injected the pair, trade stats, journal and
- * lessons — nothing about what was armed. So when the owner asked it to "paper
+ * lessons — nothing about what was armed. So when asked to "paper
  * trade the armed plan", it was not merely missing vocabulary: it could not see
  * that the plan existed, and answered about strategies, the one thing it could
  * observe.

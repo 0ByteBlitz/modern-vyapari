@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { api, isError, errorText } from "@/lib/api";
 
 /**
- * Market data comes from Binance ONLY (owner decision, 2026-07-26).
+ * Market data comes from Binance ONLY (decided 2026-07-26).
  *
  * Revolut X is an execution venue, not a data source. It contributes exactly
  * one thing here: which pairs can actually be traded. So instead of polling

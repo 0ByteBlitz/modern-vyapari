@@ -69,7 +69,7 @@ export function DetailSection({ title, note, children }: { title: string; note?:
 /**
  * One level, labelled by the **role it plays**, not by what it is made of.
  *
- * This is the distinction the owner asked for: a price on its own says nothing
+ * This is the distinction that matters: a price on its own says nothing
  * about whether crossing it opens a trade, closes one for a loss, takes profit,
  * or kills the thesis. Those four have opposite meanings and identical
  * formatting, so the role carries the colour and the label, and the source

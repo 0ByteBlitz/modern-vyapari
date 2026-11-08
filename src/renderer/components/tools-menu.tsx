@@ -5,9 +5,8 @@ import { api, isError, type AgentToolInfo } from "@/lib/api";
 /**
  * What the agent is allowed to do, as a menu.
  *
- * The owner asked for this after the app disabled web search behind their back
- * and made them resend: *"why not have a menu which shows tools and check them
- * off and on?"* The capabilities were a hardcoded array in `chat.ts` —
+ * Added after the app disabled web search silently and a message had to be
+ * resent: every tool is shown and can be switched on or off. The capabilities were a hardcoded array in `chat.ts` —
  * invisible, and editable only in source.
  *
  * **No switch here can cause harm.** The catalogue contains no order tool, no

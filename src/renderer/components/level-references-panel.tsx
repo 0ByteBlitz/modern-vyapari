@@ -3,8 +3,8 @@
  *
  * **Plans come first, because that is what the owner opens this panel looking
  * for.** It listed only references at first — the *authoring* layer, drawing →
- * meaning — and the owner's reaction was the right one: "shouldn't it list
- * active plans, and when I click, add drawings based on the plan?" Showing the
+ * meaning — when what was wanted was the plan, drawn on the chart with one
+ * click. Showing the
  * ingredients above the thing they were for is backwards.
  *
  * So: armed plans at the top, each toggling its levels onto the chart; the

@@ -4,8 +4,8 @@ import type { StoredPlanView, LevelDraftView } from "@/lib/api";
 /**
  * Draw an armed plan's levels on the Research chart (roadmap J-3, geometric half).
  *
- * The owner opened the bookmark panel expecting to pick an armed plan and see
- * it laid over the chart. This is that: entry, stop, targets and the thesis
+ * The bookmark panel is opened expecting to pick an armed plan and see it
+ * laid over the chart. This is that: entry, stop, targets and the thesis
  * invalidation, each drawn as a locked price line **labelled by the role it
  * plays** — the five format identically and mean opposite things.
  *

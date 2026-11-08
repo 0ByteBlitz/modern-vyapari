@@ -1,8 +1,8 @@
 /**
  * What the agent is allowed to do, and who decides.
  *
- * The owner asked for this after hitting the web-search fallback: *"why not
- * have a menu which shows tools and check them off and on?"* Right question.
+ * Added after the web-search fallback switched a tool off silently: a menu
+ * that shows every tool and lets each be switched on or off.
  * The agent's capabilities were a hardcoded array in `chat.ts` — invisible from
  * the app, and adjustable only by editing source.
  *

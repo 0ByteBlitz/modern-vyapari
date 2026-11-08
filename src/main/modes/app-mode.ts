@@ -3,8 +3,8 @@
  *
  * ## Why the app, and not the plan
  *
- * Proposed as a per-plan flag; the owner improved on it (2026-08-05) and the
- * improvement is structural. A per-plan flag means the app holds a **mixture**
+ * A per-plan flag was considered first; app-level mode (2026-08-05) is the
+ * structural answer. A per-plan flag means the app holds a **mixture**
  * at all times, and every list, aggregate, badge, export and notification has
  * to carry the distinction correctly for ever — the ambiguous-state failure the
  * design rules already forbid, enforced in fifty places instead of one.
@@ -31,7 +31,7 @@
  *
  * ## What crosses, and what must not
  *
- * **Lessons cross modes; the calibration record does not** (owner decision).
+ * **Lessons cross modes; the calibration record does not.**
  * What the owner learned about how a range reclaim behaves is market knowledge
  * and transfers. A *hit rate* must never blend simulated fills with real ones —
  * simulated fills are optimistic by construction, so a blended record flatters

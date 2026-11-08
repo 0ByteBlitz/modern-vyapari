@@ -2,15 +2,15 @@
 
 Electron app · simulated-first trading plans · human review before arming · deterministic monitoring
 
-> **Public readers:** this was written as a single-user plan. "Owner" means the
-> person using the app; current status is the top of `docs/ROADMAP.md`.
+> **Public readers:** "Owner" means the person using the app; current status is
+> the top of `docs/ROADMAP.md`.
 >
 > **Read this before the rest of the file.** This is the original architecture
 > plan (July 2026) and it is still the reference for how the system is built —
 > the risk engine, the security model, the data-feed roles, the session model
 > and **§17, the scenario-plan design**, all remain current.
 >
-> **Two parts of it are frozen and must not be built on** (owner decision,
+> **Two parts of it are frozen and must not be built on** (decided
 > 2026-07-30; see `docs/ROADMAP.md` §1 and §5):
 >
 > - **§6 Strategy Lifecycle** — spec authoring, backtesting, the
@@ -237,7 +237,7 @@ Autonomous trading is done by **compiled strategy specs, not live AI judgment**.
 
 ## 9. Market Data, Insights Layer & TradingView
 
-**Principle: own the insights stack; rent nothing in the money path.** The bot builds its own analysis layer from public market data. TradingView remains your personal research surface (its ToS §3 prohibits automated/non-display use of its data — originally the reason the bot never read TV programmatically; see §9c for the owner's since-amended decision on that point for chat-only reads).
+**Principle: own the insights stack; rent nothing in the money path.** The bot builds its own analysis layer from public market data. TradingView remains the user's own research surface (its ToS §3 prohibits automated/non-display use of its data — originally the reason the bot never read TV programmatically; see §9c for the since-amended decision on that point for chat-only reads).
 
 **a) Data layer (machine ground truth).**
 
@@ -257,8 +257,8 @@ Autonomous trading is done by **compiled strategy specs, not live AI judgment**.
 
 **c) TradingView (human research surface).**
 
-- **Embedded browser tab** (delivered — `src/main/browser/embedded-browser.ts`), logged into your paid account: full indicator suite, drawings, saved layouts, community ideas.
-- **Amended (owner decision, see CLAUDE.md security posture notes):** originally spec'd as strictly display-only with the bot never navigating or capturing it (TV ToS §3). That's been intentionally relaxed — the chat agent can now call `read_browser_page` (page text) and `screenshot_browser` (image, vision-readable) against whatever's open in the embedded browser, including TradingView, when the user asks it to look. This is a knowing ToS-risk tradeoff, not an oversight. The manual snapshot-paste flow below still works and remains ToS-safest if you'd rather not rely on the automated path for TV specifically.
+- **Embedded browser tab** (delivered — `src/main/browser/embedded-browser.ts`), signed in to the user's own account: full indicator suite, drawings, saved layouts, community ideas.
+- **Amended (2026-07-19; see DESIGN-NOTES.md, security posture):** originally spec'd as strictly display-only with the bot never navigating or capturing it (TV ToS §3). That's been intentionally relaxed — the chat agent can now call `read_browser_page` (page text) and `screenshot_browser` (image, vision-readable) against whatever's open in the embedded browser, including TradingView, when the user asks it to look. This is a knowing ToS-risk tradeoff, not an oversight. The manual snapshot-paste flow below still works and remains ToS-safest if you'd rather not rely on the automated path for TV specifically.
 - **Manual snapshot → chat (still available):** when you want Claude's read on a TV chart, you can take the snapshot (TV's Snapshot button embeds the ToS-required attribution) and paste it into the session chat instead of using `screenshot_browser`. Claude analyzes structure/patterns/confluence and journals the observation. Pixel reads are approximate either way, so **chart reads (manual or automated) inform thinking; the insights engine's numbers fire triggers** — this distinction is unchanged and still enforced (see design rule below).
 - **Optional bolt-on (deferred):** TV webhook alerts (paid plan + 2FA, listener behind a Cloudflare Tunnel with shared-secret payloads) are the officially sanctioned way to push a Pine Script condition into the bot, if a community script ever proves irreplaceable. Usually porting the Pine logic into a local indicator is cleaner — and backtestable.
 
@@ -328,7 +328,7 @@ Realistic total to Phase 4: **~2–3 months** of part-time work. Resist compress
 - **Overfitting:** the biggest real risk isn't a bug — it's a beautifully backtested strategy that memorized the past. Walk-forward validation and minimum-trade-count gates are the defense.
 - **Claude API cost:** with model tiering and code-based strategy evaluation, expect roughly USD 10–50/month depending on chat volume; without tiering, easily 10× that.
 - **Vision imprecision:** Claude reading a pasted chart snapshot estimates values from pixels — fine for structure and confluence, unreliable for exact levels. The "snapshots think, numbers fire" rule (§9) exists because a vision misread that reaches execution is a silent money bug.
-- **TV ToS compliance:** The original plan prohibited automated scraping/navigation of TV to strictly comply with ToS §3. This has been explicitly relaxed by owner decision: the agent can now call `screenshot_browser` or `navigate_browser`. If you prefer maximum safety, you can bypass the embedded TV entirely and use the newly built feature to copy-paste screenshots from your own external browser straight into the bot's chat.
+- **TV ToS compliance:** The original plan prohibited automated scraping/navigation of TV to strictly comply with ToS §3. This has been explicitly relaxed (2026-07-19): the agent can now call `screenshot_browser` or `navigate_browser`. For maximum safety, a user can bypass the embedded TV entirely and paste screenshots from an external browser straight into the chat.
 - **If the TV webhook bolt-on is ever added:** confirm tier includes webhooks + enable 2FA; webhooks fire once with no retry, so they can never be the only exit mechanism.
 
 ---
@@ -414,7 +414,7 @@ Scheduled deliberately *after* Stage A/B: a theme system built before the surfac
 
 For that, statistical validation is not *unavailable*, it is **inapplicable**. Backtesting a single-shot plan over 30 days yields a 1–2 trade sample, and a 2-trade sample presented as a backtest is worse than no backtest — it launders a guess into a metric. The current gate therefore pushes the owner to either fake a spec until it produces enough trades to pass, or trade the thesis manually outside the app. The second is the worst outcome available: the app then has no record of the reasoning, and the journal/lessons loop goes blind exactly when it would be most useful.
 
-**Resolution: a second artifact with a different gate.** Don't loosen the backtest gate; add `trade_plans` alongside `strategies`. A separate table, not a `type` flag, because `backtested` is meaningless for half the rows otherwise (owner decision, 2026-07-29).
+**Resolution: a second artifact with a different gate.** Don't loosen the backtest gate; add `trade_plans` alongside `strategies`. A separate table, not a `type` flag, because `backtested` is meaningless for half the rows otherwise (2026-07-29).
 
 ### 17.2 What replaces the backtest: falsifiability, not nothing
 
@@ -495,7 +495,7 @@ Same principle already enforced for candles and settled for KLineChart: **one de
 
 Second, smaller, and the shared extension point for everything below: **`Condition.value` must accept a `PriceLevel`**, not only a number/array, so "price crosses VAH" or "close above Kijun" is expressible.
 
-### 17.8 Required tooling (non-negotiable, owner 2026-07-29)
+### 17.8 Required tooling (non-negotiable, 2026-07-29)
 
 Three tiers, because these are not the same kind of object:
 
