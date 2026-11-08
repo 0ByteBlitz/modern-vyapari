@@ -21,8 +21,8 @@
 
 The prototype focuses on self-directed crypto traders who want help turning an idea into a
 plan, examining its assumptions and weaknesses, and reviewing it before arming. **You make
-the decision. The agent researches and drafts; deterministic code monitors the terms you
-signed.**
+the decision. The agent researches, drafts and monitors the plan; deterministic code
+executes the terms you signed.**
 
 It does not promise an investment edge or profitable plans. Its job is to help you make a
 clear decision and see what happened to it.
