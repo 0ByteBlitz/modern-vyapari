@@ -10,8 +10,8 @@ import { emitTo } from "../events/outbound";
  * (`read_browser_page`, `screenshot_browser`), and `navigate` lets the agent
  * load a URL here (`navigate_browser`). It is exempt from main.ts's navigation
  * lockdown, and popups open in this one view. That overrides the original
- * display-only rule (TradingView ToS §3, docs/PLAN.md §9) by owner decision;
- * see docs/DESIGN-NOTES.md, *Owner-accepted risk*, and ROADMAP P-2.
+ * display-only rule (TradingView ToS §3, docs/PLAN.md §9) by a 2026-07-19
+ * decision; see docs/DESIGN-NOTES.md, *Accepted risk*, and ROADMAP P-2.
  *
  * Privacy posture ("privacy-focused, lightweight browser" — not a full
  * ad-blocker, just sensible defaults with zero new dependencies):
@@ -207,9 +207,9 @@ const READ_TEXT_MAX_CHARS = 8000;
 const SCREENSHOT_MAX_WIDTH = 1280;
 
 /**
- * Agent-facing read of whatever page is currently open (owner decision:
- * overrides the original "TradingView is display-only, never automate it"
- * rule — see CLAUDE.md security posture notes for the accepted-risk record).
+ * Agent-facing read of whatever page is currently open (a 2026-07-19
+ * decision that overrides the original "TradingView is display-only, never
+ * automate it" rule — see docs/DESIGN-NOTES.md, *Accepted risk*).
  * Returns visible page text, truncated to keep tool results a reasonable
  * size. This is untrusted web content by nature — callers should treat it
  * as data, not instructions.
@@ -228,7 +228,7 @@ export async function readPageText(): Promise<{ url: string; title: string; text
 }
 
 /** Agent-facing screenshot of whatever page is currently visible — same
- *  owner-accepted override as readPageText above. Downscaled to keep the
+ *  accepted override as readPageText above. Downscaled to keep the
  *  image payload reasonable for the vision API. */
 export async function capturePageScreenshot(): Promise<{ url: string; title: string; base64: string; mediaType: "image/png" } | null> {
   if (!view || view.webContents.isDestroyed()) return null;

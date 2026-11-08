@@ -66,7 +66,7 @@ visited monthly.
 
 **1 · Windows notifications show "Electron", not the app — J3.** Seen in the unpackaged dev run; not yet checked on an installed build.
 
-**2 · The agent's tool calls read as raw markers in the chat — J1.** A tool call shows as a bare chip between paragraphs, with no sense of what it is doing or found. The owner asked for calmer, more legible tool progress.
+**2 · The agent's tool calls read as raw markers in the chat — J1.** A tool call shows as a bare chip between paragraphs, with no sense of what it is doing or found. Wanted: calmer, more legible tool progress.
 
 **3 · A triggered plan whose entry was refused stays *Triggered* in Active — J3.** No position exists and nothing more can happen until expiry, but the solid *Triggered* pill reads as "in a trade". **Resolved 2026-11-06:** the pill reads *Fired · no entry*.
 
@@ -125,9 +125,9 @@ error banner outliving its form) were fixed immediately per the wrong-number
 rule. These four are friction and are not fixed:
 
 **1 · The plan/chart gesture is inverted — J2, and it blocked ~25 checks.**
-The owner's note: *"I couldn't find how to draw, and shouldn't the plan be like
-a template and automatically added to the chart with alert if I click on
-bookmark and select the armed plan?"* What exists is draw ink → promote ink →
+Drawing could not be found, and the plan was expected to work like a template:
+pick the armed plan from the bookmark panel and see it on the chart with its
+alerts. What exists is draw ink → promote ink →
 author a plan referencing it. What was reached for is select an armed plan → see
 its levels on the chart. Both are legitimate; only the un-reached-for one is
 built. **This is the entry that matters** — it is not a rough edge, it is a
@@ -138,14 +138,13 @@ bookmark panel leads with armed plans, and toggling one draws its levels on the
 chart, labelled by role.
 
 **2 · The feed chip could not be found at all — J0/J7. Closed same day.**
-§1.1–1.3 were ticked with *"Where is this? Confusing where to test this?"*
-against all three. Verified by reading the code rather than by asking again:
+§1.1–1.3 were all ticked as *could not find it*. Verified by reading the code rather than by asking again:
 the rename **works** — the venue chip renders the adapter's `displayName`
 ("Revolut X") and the `venueName` dependency is present, so the "reads Venue
 forever" failure mode is not occurring. The checklist itself was wrong about
 the other chip, which reads "Binance", not "Binance Spot".
 
-The real finding was the one in the margin: **a status indicator nobody can
+The real finding was that note itself: **a status indicator nobody can
 locate is not reporting status.** It was `--text-xs` in `--muted-foreground`,
 no background, right-aligned in a 34px band — the quietest element on screen,
 for a component whose stated purpose is that a feed going quiet is noticed
@@ -156,9 +155,8 @@ that makes an unreadable value a defect makes an unfindable status indicator
 one, and neither shows up in a test that only asks "is it rendered".
 
 **3 · Credentials is a status readout where an Integrations surface is expected
-— J7. Closed 2026-08-01**, after the owner raised it a second time: *"the
-settings page still shows credentials old way, there is no way of wanted
-integrations feature."* The venue had been a port with a registry and declared
+— J7. Closed 2026-08-01**, after it was raised a second time: Settings still
+showed credentials the old way, with no integrations surface. The venue had been a port with a registry and declared
 capabilities since S2-9; Settings still showed one venue's key status and
 nothing about the venue.
 
@@ -173,10 +171,9 @@ shown as present before it is verified is how a position ends up unprotected.
 for anything that writes a private key the venue already knows.
 
 **4 · The session dashboard chart — J0. Resolved by deleting it, same day.**
-Two observations: it *"does not update properly if I change the time from the
-header"*, and it *"looks messy"*. The owner's follow-up question was the better
-one: *"do we even need a chart on session dashboard when there is a massive
-chart in the research area?"*
+Two observations: it did not update when the interval changed in the header,
+and it looked messy. The better follow-up question: does the session dashboard
+need a chart at all, when Research has a far larger one?
 
 No. It was Phase 0 furniture from when the dashboard was the app's main surface
 and the question was "what is this pair doing" — a question **Home** now answers
@@ -207,8 +204,8 @@ Sprint 3, because the paper engine has still never executed a position.
 
 **Attempted:** discretionary analysis of ARB-USD 4H on the Research surface.
 
-**What happened:** the owner fell back to TradingView and shared the result with
-the agent instead. Research is usable enough to look at a chart, not usable
+**What happened:** the analysis fell back to TradingView, and the result was
+shared with the agent instead. Research is usable enough to look at a chart, not usable
 enough to think on. This is the single most important entry in this file so far,
 because Research is the surface the roadmap assumes the day is spent on — if the
 real workflow is "analyse in TradingView, paste to the agent", then the
@@ -227,7 +224,7 @@ used, and that assumption needs testing before more is built on it.
 - **Large dead space to the right of the last candle** at default zoom, which
   compresses the price action into roughly half the pane.
 
-**Resolved, same day — owner decision: the goal is not to create another charting
+**Resolved, same day — decision: the goal is not to create another charting
 tool.** So this entry does *not* become a charting-UX workstream. TradingView
 stays a legitimate analysis surface; the agent can already read it
 (`read_browser_page` / `screenshot_browser`), which is exactly why the ToS risk

@@ -1,9 +1,9 @@
 # Journeys — what the app is for, end to end
 
-**Written 2026-08-01, after the first UI test run.** Owner input on the seven
-product goals; agency model, spine and agent-tool scope decided the same day.
+**Written 2026-08-01, after the first UI test run.** The seven product goals,
+agency model, spine and agent-tool scope were decided the same day.
 
-**Updated 2026-08-05** for two owner decisions that changed the product's
+**Updated 2026-08-05** for two decisions that changed the product's
 shape: **one object — the trading plan** (strategies, the Workbench, the
 promotion ladder and backtesting are gone from every surface), and
 **simulated/live as app modes** rather than a per-plan flag. How anything runs
@@ -27,13 +27,11 @@ below has its own step table; this is the summary.
 
 A surface checklist tests **surfaces** — does this page load, does this
 button refuse. The first run of it passed §0 through §2 and then stopped dead at
-§3, and the reason is written in the owner's own margin note:
+§3: the tester could not find how to draw, and expected an armed plan to work
+like a template — pick it from the bookmark panel and see it on the chart, with
+its alerts.
 
-> *"I couldn't find how to draw, and shouldn't the plan be like a template and
-> automatically added to the chart with alert if I click on bookmark and select
-> the armed plan?"*
-
-That is not a bug report. It is a **journey** report: the owner's path is *"I see
+That is not a bug report. It is a **journey** report: the expected path is *"I see
 a level on the chart, it becomes part of my plan"*, and what was built is *draw
 ink → promote ink → separately author a plan that references the ink*. Three
 steps where one was expected. Every surface in that path works. The seam between
@@ -50,18 +48,17 @@ infrastructure with a named dependant, or it is not wanted.
 
 ## The spine
 
-**J3 — the plan executes without me.** (Owner decision, 2026-08-01.)
+**J3 — the plan executes without me.** (Decided 2026-08-01.)
 
-The owner named the actual problem: *"I have problem of not sticking to my
-plan."* The app's answer is not to discipline the trader — it is to **remove the
+The problem the app solves is not sticking to a plan. The app's answer is not to discipline the trader — it is to **remove the
 trader from the moment of temptation** by making the plan the thing that acts.
 
-**Which is only possible if the signature is given in advance.** Owner decision,
+**Which is only possible if the signature is given in advance.** Decided
 2026-08-09: **arming is the signature.** A trigger executes terms already
 signed — this branch, this entry, this stop, this budget, this expiry — rather
 than asking at the moment J3 exists to remove the owner from. Requiring approval
-per fill would put them back at 3am in front of the decision they said they
-cannot make well. See ROADMAP §1.
+per fill would put the owner back at 3am in front of the very decision the
+plan was written to take out of their hands. See ROADMAP §1.
 
 Everything else serves that:
 
@@ -75,7 +72,7 @@ explains them.
 
 ## The agency model — where the agent stops
 
-**Owner decision, 2026-08-01: the agent drafts, the owner signs, code executes.**
+**Decided 2026-08-01: the agent drafts, the owner signs, code executes.**
 
 This is the existing hard rule (`AGENTS.md`: *AI proposes, code executes*)
 restated as a product position rather than a safety constraint, and it settles
@@ -94,15 +91,15 @@ plans can never reach `live_auto`, and why `PlanState` has no such member to
 forget about.
 
 **The agent authors the conditions; the engine judges the moment** (2026-08-05).
-The owner asked for the agent to "look at the market and enter if it thinks it is
-favourable". The intent is right — a stale trigger should not fire mechanically
+A natural request is for the agent to look at the market and enter if it judges
+the moment favourable. The intent is right — a stale trigger should not fire mechanically
 into a changed market — but an AI call at the moment of entry is unreviewable and
 untestable, and it is the one thing the hard rule forbids. So the judgment moves
 earlier: what the agent would have looked at becomes **conditions written into the
 plan**, plus a confirmation window after the trigger. Deterministic, reproducible,
 and still the agent's thinking. See `docs/ARCHITECTURE.md`.
 
-**Agent tool scope (owner decision, 2026-08-01): draft-only write tools.** The
+**Agent tool scope (decided 2026-08-01): draft-only write tools.** The
 agent gets `create_level_reference`, `draft_plan` and `update_draft` (which edits
 a plan only while it is a draft). It does not get an arming tool, and there must
 never be a `set_venue` tool.
@@ -129,9 +126,8 @@ what needs them — without opening a session.
 **State:** the healthiest journey after J7. What it lacks is plan-shaped
 content, which arrives with J3.
 
-**Changed 2026-08-01:** the session dashboard's candle chart was **deleted**, on
-the owner's question *"do we even need a chart on session dashboard when there
-is a massive chart in the research area?"* It was Phase 0 furniture answering a
+**Changed 2026-08-01:** the session dashboard's candle chart was **deleted**:
+it duplicated the far larger chart in Research. It was Phase 0 furniture answering a
 question Home now answers first and Research answers properly — a chart you
 could not draw on, anchor from, or promote a level out of. What replaced it is
 the numeric half of J-3: **armed plans as distances.** "Trigger 1.4% away,
@@ -199,8 +195,8 @@ gatekeeps is bureaucracy; a gate that teaches is the product.
    saves a thesis as a draft and reports what arming will still require. It can
    never arm — that stays the owner's signature, and the guard is the tool not
    existing rather than a check that could be forgotten.
-2. ~~**The owner's expected entry point is inverted.**~~ **Closed 2026-08-01.**
-   The Research panel led with *references* — the authoring layer — so the owner
+2. ~~**The expected entry point is inverted.**~~ **Closed 2026-08-01.**
+   The Research panel led with *references* — the authoring layer — so a user
    opened it looking for plans and found ingredients. It now leads with armed
    plans, and toggling one lays its levels over the chart, labelled by role.
    Both gestures now exist: draw → promote → author, and select → see.
@@ -249,8 +245,8 @@ levels were worth at the moment it fired.*
 | **The plan says what the engine is doing with it** — watched, paused for missing bars, or watched with entries refused (session paused, kill switch) | ✅ read from the running engine, 2026-11-03 — no longer inferred from the session |
 | **A silent price feed is seen while it is silent, not only when it returns** — no tick for 90 s shows on the plan, 5 min notifies once, an open-but-silent socket is reconnected | ✅ 2026-11-03 |
 
-**Found by walking this journey, 2026-08-01:** the owner armed a plan, went
-looking for what it was doing, and found nothing. `plan-monitor.ts` was imported
+**Found by walking this journey, 2026-08-01:** a plan was armed, and looking
+for what it was doing found nothing. `plan-monitor.ts` was imported
 by **nothing but its own test** — every armed plan read "armed" and no code path
 evaluated it. Two further defects were invisible underneath that, because an
 unreachable monitor cannot fail visibly: price conditions compiled without a
@@ -322,8 +318,8 @@ the setup you approved"* — and says so.
 | **The agent proposes an amendment; the owner applies or invalidates** | ❌ |
 
 **The seam.** Drift handling today is mechanical and silent-by-default: the plan
-stops trading and a line goes in the log. The owner's goal — *"agent feedback on
-plans and improvise existing plan based on market structure"* — needs the
+stops trading and a line goes in the log. The goal — agent feedback on plans,
+and amendments as market structure changes — needs the
 reconfirm queue as its surface and an agent critique as its content.
 
 **The constraint that shapes it:** an amendment is a **new commitment**, so it
@@ -432,7 +428,7 @@ Five gaps, in order of leverage:
    points at the frozen path.
 2. **`review.ts` cannot review a plan-owned position.** It lands the moment
    S3-3's applying half does, and it is the "record says why" half of the spine.
-3. **Plans are not rendered on the chart.** The owner's expected entry point to
+3. **Plans are not rendered on the chart.** The expected entry point to
    J2 is the reverse of the one built, and it blocked 25 checklist items behind
    one flyout.
 4. **`onDrift: reconfirm` still has no operator queue** — owed since S1-5, and

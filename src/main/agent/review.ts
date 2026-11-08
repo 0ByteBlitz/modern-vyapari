@@ -802,7 +802,7 @@ function calibrationSummary(): unknown {
  *    Evidence about how ARB behaves does not stop being true because a session
  *    was wound down.
  *  • Storing per session meant lessons could not cross modes at all, and the
- *    owner's decision is that they must — starting live with an empty memory
+ *    rule is that they must — starting live with an empty memory
  *    would discard everything simulation taught. A hit *rate* still must not
  *    cross; that stays in the mode's own database.
  *

@@ -1,7 +1,7 @@
 /**
  * The single source of candle data for ANALYSIS.
  *
- * Feed roles (owner decision, 2026-07-26):
+ * Feed roles (decided 2026-07-26):
  *   • Binance  → analysis. Charts, indicators, backtests, paper fills, strategy
  *                triggers. One feed means a chart can never disagree with the
  *                engine that traded on it.

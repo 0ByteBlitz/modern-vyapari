@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { describeActivity, ACTIVITY_TONE_COLOR } from "@/lib/activity";
 import { Fingerprint, Loader2 } from "lucide-react";
 import { api, isError, type ActivityEvent, errorText } from "@/lib/api";
@@ -33,22 +33,32 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
     })();
   }, []);
 
-  const prompt = useCallback(async () => {
-    setState("prompting");
-    setDetail("");
-    const res = await api.requestWindowsHello("Unlock Modern Vyapari");
-    if (isError(res)) {
+  /* `disabled` comes from state, which lands after the click: fast repeated
+     clicks each started a Windows Hello prompt, and the owner had to answer
+     them one after another. The ref allows one at a time. */
+  const prompting = useRef(false);
+  async function prompt() {
+    if (prompting.current) return;
+    prompting.current = true;
+    try {
+      setState("prompting");
+      setDetail("");
+      const res = await api.requestWindowsHello("Unlock Modern Vyapari");
+      if (isError(res)) {
+        setState("failed");
+        setDetail(errorText(res));
+        return;
+      }
+      if (res.verified) {
+        onUnlock();
+        return;
+      }
       setState("failed");
-      setDetail(errorText(res));
-      return;
+      setDetail(res.detail === "Canceled" ? "Cancelled — try again when you're ready." : "Verification failed.");
+    } finally {
+      prompting.current = false;
     }
-    if (res.verified) {
-      onUnlock();
-      return;
-    }
-    setState("failed");
-    setDetail(res.detail === "Canceled" ? "Cancelled — try again when you're ready." : "Verification failed.");
-  }, [onUnlock]);
+  }
 
   // No auto-trigger: let the user see the lock screen (and the "while you
   // were away" activity feed) before they choose to authenticate. The Unlock

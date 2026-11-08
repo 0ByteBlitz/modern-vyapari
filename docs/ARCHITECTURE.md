@@ -1,9 +1,9 @@
 # Architecture — current state, and the integration seam
 
-**Written 2026-07-31**, after an owner observation that the app "does not have
-infrastructure or core backends that could handle the features it has — features
-glued by frontend, without a strong system design behind them", and a follow-up
-decision that integrations (venue and data feed) must become swappable.
+**Written 2026-07-31**, after the observation that the app lacked the core
+backend its features needed — features glued together by the frontend, without
+a system design behind them — and a
+follow-up decision that integrations (venue and data feed) must become swappable.
 
 This document exists so the next changes are made in the right place. It is a
 *measurement* of the codebase, not an aspiration. Where it states a number, that
@@ -91,7 +91,7 @@ logic is isolated and tested. What is absent is the structure that carries it.
 exists yet — Sprint 4 has not started, so there is little order-path code to
 re-point. **This is the cheapest it will ever be to fix.**
 
-### Binance — deep. This is the real problem, and the owner identified it correctly.
+### Binance — deep. This is the real problem.
 
 - **12 main modules** touch Binance.
 - **6 hardcoded API URLs** — the spot ones now live in one place,
@@ -133,8 +133,8 @@ scope.
 
 ### The constraint that survives any refactor
 
-> **One feed per purpose, never mixed inside one computation** (CLAUDE.md, owner
-> decision 2026-07-26). Analysis comes from the analysis feed; execution truth
+> **One feed per purpose, never mixed inside one computation** (AGENTS.md,
+> decided 2026-07-26). Analysis comes from the analysis feed; execution truth
 > comes from the venue. A pluggable architecture must make this *easier* to
 > enforce, not harder. If an adapter layer lets a caller accidentally blend two
 > sources, the abstraction is wrong regardless of how clean it looks.
@@ -192,7 +192,7 @@ Four rules for that layer, each earned from a bug this project already paid for:
 
 ### Where the agentic angle actually lands
 
-The owner's point — the app is agentic, so it should favour exchanges with good
+The selection point — the app is agentic, so it should favour exchanges with good
 AI support — is a **selection criterion and an adapter option**, not a change to
 the execution path. Concretely:
 
@@ -242,7 +242,7 @@ Until the layer above exists, new code should at minimum:
 
 **Roughly a working week**, and it lands squarely on the serial chain
 `references → plans → live` that §2 of the roadmap names as the binding
-constraint. The owner has accepted that cost explicitly (2026-07-31). The
+constraint. That cost was accepted explicitly (2026-07-31). The
 sequencing consequence is worth stating plainly: **Sprint 4 (live execution)
 starts a week later**, and §4's launch gate — not the calendar — decides whether
 real money trades on 30 August.
@@ -418,7 +418,7 @@ Revolut X client directly.
 - **The feed half carries genuine risk of silently changing numbers.** That is
   why section 7 puts the `source =` collapse last, alone, with a before/after test.
 
-**The decision (owner, 2026-07-31) is to proceed.** The reasoning that makes it
+**The decision (2026-07-31) is to proceed.** The reasoning that makes it
 defensible is the first "for" and the third "against" together: doing it now is
 cheap and doing it later is not, provided the feed work is sequenced last and
 treated as the dangerous half.
@@ -566,9 +566,8 @@ be closable.
 architecture, and a design for unbuilt work did not need a file of its own.*
 
 **Written 2026-08-05.** Design for ROADMAP **S2-8's** "single runtime owner", and
-the answer to the owner's question: *"lot of functionalities may have to have
-background tasks running, since agent needs awareness most of the time. How
-would we design a system?"*
+the answer to a design question: many features need background work, because
+the agent needs awareness most of the time — so how should that system be built?
 
 Design agreed, **not yet built**. Nothing in this document describes current
 behaviour except where it says so.
@@ -578,8 +577,8 @@ behaviour except where it says so.
 ## The journey this serves
 
 **J3 — the plan executes without me**, the spine. Everything here exists because
-the owner's stated problem is not sticking to their plan, and the app's answer
-is to keep working when they are not watching.
+the problem the app solves is not sticking to a plan, and its answer is to keep
+working when the owner is not watching.
 
 Its moment of truth is unchanged: **the plan did exactly what was written, and
 the record says why.** A runtime that acts but cannot say why has only done half
@@ -591,8 +590,8 @@ of it.
 
 **You cannot put the agent in a loop.** A model running continuously is
 expensive, non-reproducible and unreviewable — and it is the same failure the
-owner already named on the strategy path: motion that costs tokens and produces
-nothing. *"Awareness most of the time"* has to be assembled from something
+strategy path already showed: motion that costs tokens and produces
+nothing. Awareness most of the time has to be assembled from something
 cheaper than constant inference.
 
 It is also forbidden where it matters. **No AI call may ever be in the
@@ -628,8 +627,8 @@ it is what lets the app be continuously *aware* without being continuously
 
 ## Where the agent's judgment actually goes
 
-The owner's flow said the agent should *"look at the market situation, and enter
-if it thinks the market at that point is favourable."* The intent is right — a
+One proposed flow had the agent look at the market when a trigger fires and enter
+only if it judges the moment favourable. The intent is right — a
 stale trigger should not fire mechanically into a market that has changed — but
 an AI call at the moment of entry is the one thing that cannot happen.
 
@@ -663,7 +662,7 @@ Each of these is a rule with a specific failure behind it.
 
 | Rule | The failure it prevents |
 |---|---|
-| **Budgeted and cooled down** — one invalidation explanation per plan per day, not per bar | A choppy market alone empties the account. This is the owner's "wasting tokens" complaint arriving through a new door. |
+| **Budgeted and cooled down** — one invalidation explanation per plan per day, not per bar | A choppy market alone empties the account. This is the strategy path's token waste arriving through a new door. |
 | **Idempotent** — keyed on the event, not the tick | Two reviews of one trade, or a notification sent twice. `paper_positions.reviewed` is the existing pattern. |
 | **Persisted, not in-memory timers** | The app is shut most of the time. A job that lives only in a `setInterval` silently means "only if the app happened to be open when it was due". |
 | **Catch-up on boot** | The window between runs is where the interesting things happened. `reviewPendingPositions()` and the heartbeat gap already work this way. |
@@ -753,7 +752,7 @@ private key the venue already knows to a machine the owner does not control.
 
 Neither should be settled by inference:
 
-1. **Email / out-of-app notification.** The owner's flow depends on being told
+1. **Email / out-of-app notification.** The away-flow depends on the owner being told
    when they are away, and this is the only piece that **leaves the machine** —
    so it needs a credential and an explicit go-ahead. Currently parked in
    ROADMAP §5; if the flow above is the product, it moves into scope.

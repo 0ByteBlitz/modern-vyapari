@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { OctagonX, ShieldCheck, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 import { api, isError, type OrderRecord, type Session } from "@/lib/api";
 
@@ -41,7 +41,12 @@ export function ApprovalsPage({ activeSession }: { activeSession?: Session | nul
     return () => clearInterval(timer);
   }, [loadData]);
 
+  /* The state-driven `disabled` lands after the click; ten fast clicks all got
+     through before it. The ref closes that window. */
+  const toggling = useRef(false);
   const handleToggleKillSwitch = async () => {
+    if (toggling.current) return;
+    toggling.current = true;
     setConfirming(false);
     setLoading(true);
     if (killActive) {
@@ -58,6 +63,7 @@ export function ApprovalsPage({ activeSession }: { activeSession?: Session | nul
       }
     }
     setLoading(false);
+    toggling.current = false;
   };
 
   const handleApprove = async (orderId: number) => {

@@ -5,9 +5,9 @@ was built with one rule above the others: **every number measured, every control
 real, every claim falsifiable** — and most of the rules in `AGENTS.md` exist
 because something went wrong without them. These files explain *why*.
 
-Several were written as a single-user design diary before the project went public
-(31 October 2026), so they speak of "the owner" and of a launch date that has
-passed. Each file opens with its current status.
+"Owner" means the person using the app (see the glossary below). Several files
+predate the public release (31 October 2026) and mention a launch date that has
+passed; each opens with its current status.
 
 ## Which file, for what
 

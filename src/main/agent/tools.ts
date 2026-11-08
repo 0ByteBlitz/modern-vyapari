@@ -146,7 +146,7 @@ export const SESSION_TOOLS = [
  * Plan tools — READ ONLY, and that is the whole design.
  *
  * The agent could not see a plan at all before these existed: sixteen tools,
- * none of which touched `trade_plans`. So when the owner asked it to "paper
+ * none of which touched `trade_plans`. So when asked to "paper
  * trade the armed plan" it was not merely missing the vocabulary — it could not
  * observe that the plan existed. It answered about the product it could see.
  *
