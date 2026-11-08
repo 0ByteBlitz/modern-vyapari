@@ -26,8 +26,12 @@ export function registerSafety(): void {
 ipcMain.handle("killSwitch:trip", (_e, reason?: string) =>
     safe(() => {
       const { killSwitch } = require("../risk/kill-switch");
+      /* Audited only when the state changes. A repeat trip is a no-op in the
+         switch, and logging it anyway filled the audit log and every activity
+         feed with copies. */
+      const wasActive = killSwitch.isTripped();
       killSwitch.trip(reason);
-      auditLog("kill_switch_tripped", { reason: killSwitch.getReason() });
+      if (!wasActive) auditLog("kill_switch_tripped", { reason: killSwitch.getReason() });
       return { active: true, reason: killSwitch.getReason() };
     }, "killSwitch:trip")
   );
@@ -35,8 +39,9 @@ ipcMain.handle("killSwitch:trip", (_e, reason?: string) =>
 ipcMain.handle("killSwitch:reset", () =>
     safe(() => {
       const { killSwitch } = require("../risk/kill-switch");
+      const wasActive = killSwitch.isTripped();
       killSwitch.reset();
-      auditLog("kill_switch_reset", {});
+      if (wasActive) auditLog("kill_switch_reset", {});
       return { active: false, reason: "" };
     }, "killSwitch:reset")
   );
