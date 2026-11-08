@@ -42,7 +42,7 @@ Risk limits are shown for reference and can't be changed; everything else can be
 later in Settings. Every key is encrypted with your OS keychain before it touches disk.
 
 <p align="center">
-  <img src="docs/images/onboarding.png" width="820" alt="Onboarding: the AI provider comes first; the trading venue is marked optional in simulated mode" />
+  <img src="docs/images/onboarding.png" width="820" alt="Onboarding welcome: draft with the agent, review and sign, let code follow the plan, with the eight setup steps across the top" />
 </p>
 
 **2. Home, and the assistant.** The app opens on Home with no session selected: simulated
