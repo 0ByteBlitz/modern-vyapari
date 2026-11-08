@@ -12,7 +12,7 @@
 
 [![CI](https://github.com/0ByteBlitz/modern-vyapari/actions/workflows/ci.yml/badge.svg)](https://github.com/0ByteBlitz/modern-vyapari/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-![Status: alpha, paper only](https://img.shields.io/badge/status-alpha%20%C2%B7%20paper%20only-orange)
+![Status: alpha, simulated only](https://img.shields.io/badge/status-alpha%20%C2%B7%20simulated%20only-orange)
 ![Electron + TypeScript](https://img.shields.io/badge/Electron-TypeScript-2b2e3a)
 
 </div>
@@ -22,28 +22,28 @@
 The prototype focuses on self-directed crypto traders who want help turning an idea into a
 plan, examining its assumptions and weaknesses, and reviewing it before arming. **You make
 the decision. The agent researches and drafts; deterministic code monitors the terms you
-signed. Evidence-grounded plan critique is still being developed.**
+signed.**
 
 It does not promise an investment edge or profitable plans. Its job is to help you make a
 clear decision and see what happened to it.
 
 > ⚠️ **Alpha. Nothing in this app can place a real order yet.** Live execution is not built;
-> all positions today are simulated (paper). See [Status](#status) and the [Disclaimer](#disclaimer).
+> all positions today are simulated. See [Status](#status) and the [Disclaimer](#disclaimer).
 
 ## A quick tour
 
 *Screenshots are from simulated mode with demo plans, taken offline — which is why the market
 panels are empty.*
 
-**1. First launch.** Connect an AI provider and you're in. An exchange account is optional
-while you trade in simulated mode. Every key is encrypted with your OS keychain before it
-touches disk.
+**1. First launch.** A short setup: an AI provider, an exchange account (optional in
+simulated mode), risk limits, appearance, screen lock and notifications. You can change any
+of it later in Settings. Every key is encrypted with your OS keychain before it touches disk.
 
 <p align="center">
   <img src="docs/images/onboarding.png" width="820" alt="Onboarding: the AI provider comes first; the trading venue is marked optional in simulated mode" />
 </p>
 
-**2. Home, and the assistant.** The app opens on Home with no session selected: paper
+**2. Home, and the assistant.** The app opens on Home with no session selected: simulated
 performance, *while you were away*, and your sessions, each badged *armed*, *in position* or
 *idle*. The assistant is available for general questions and can take you into a session.
 
@@ -76,8 +76,7 @@ it has no tool that can place, size or price an order.
 </p>
 
 **6. The runtime limit is explicit.** Plans are watched only while the app is running. Closing
-the app tells you what will stop being monitored. Background or cloud operation is not yet
-part of the product promise.
+the app tells you what will stop being monitored.
 
 <p align="center">
   <img src="docs/images/quit-dialog.png" width="480" alt="Quit dialog: while the app is closed, 1 armed plan can't trigger. Cancel is the default." />
@@ -94,11 +93,14 @@ flowchart LR
     A[AI agent] -. research, levels, drafts .-> P
     U -- review and arm --> P
     P --> M[Plan monitor<br/>every closed bar]
-    M -- trigger --> R[Risk engine<br/>pure code, 8 gates]
-    R --> E[Execution engine<br/>pure code]
-    E --> V[(Venue / paper)]
-    A -. "no tool exists" .-x R
+    M -- trigger --> S[Simulated fills<br/>pure code, kill switch]
+    S --> X[(Simulated position<br/>stop and target intrabar)]
+    A -. "no tool exists" .-x S
 ```
+
+Today a trigger opens a **simulated** position; the kill switch blocks new entries. The live
+path — an 8-gate risk engine, an execution engine and venue-side protective orders — is
+designed but not built (see [Status](#status)).
 
 ### One object: the trading plan
 
@@ -130,17 +132,26 @@ execution terms. Arming does not make a plan correct or profitable.
 - **Level references** — named price levels (static or derived) the engine resolves every
   bar, point-in-time, so a chart and the engine never disagree.
 - **Plan authoring + falsifiability gate** — refusals tell you exactly what's missing.
-- **Plan monitor and paper execution** — each armed plan is evaluated every closed bar for
-  expiry, invalidation, drift and triggers. A trigger opens a paper position with the branch's
-  stop and target, managed intrabar, and the close is reviewed.
+- **Plan monitor and simulated execution** — each armed plan is evaluated every closed bar for
+  expiry, invalidation, drift and triggers. A trigger opens a simulated position with the
+  branch's stop and target, managed intrabar, and the close is reviewed. An armed plan can be
+  ended or revised.
+- **Alerts** — price and indicator alerts, set up through the agent; the Alerts page lists
+  them alongside the levels your armed plans watch.
+- **Journal, Portfolio and Markets** — post-trade reviews and notes per session, simulated
+  performance across sessions, and a market overview.
+- **Feed health** — the header shows when the price feed goes quiet, so a stopped feed never
+  looks live.
 - **One AI partner with scoped context** — general conversation across the app and session
-  context for that pair's plans, journal and memory. It researches and drafts; evidence-based
-  critique is still evolving, and the user always arms. Tool catalogue, cost tracking,
-  post-trade reviews and conditional lessons.
-- **Any AI provider (in progress)** — the agent loop is the app's, behind a provider port.
-  Anthropic is the first adapter; OpenAI, OpenRouter, Gemini and local models (Ollama,
-  LM Studio) are next.
-- **Simulated and live modes** — separate databases, never blended; simulated by default.
+  context for that pair's plans, journal and memory. It researches and drafts, and the user
+  always arms. Tool catalogue, cost tracking with a daily spending limit, post-trade reviews
+  and conditional lessons.
+- **Research browser** — a sandboxed browser inside the app. The agent can open, read and
+  screenshot the page shown there, and what it reads is sent to your AI provider.
+- **AI provider port** — the agent loop is the app's own, behind a provider port. Anthropic
+  is the only adapter today; OpenAI-compatible and local adapters are open for contributions.
+- **Simulated mode** — its own database, never blended with live. Live mode stays off until
+  a venue can place orders.
 - **Kill switch** — blocks new entries, never blocks exits.
 - **Honest quitting** — closing the app says which armed plans and open positions stop being
   watched, with a native fallback so the window can always close.
@@ -155,9 +166,10 @@ execution terms. Arming does not make a plan correct or profitable.
 |---|---|
 | Sessions, research charting, level references | ✅ Working |
 | Assistant in general and session contexts | ✅ Working |
-| Plan authoring, arming, monitoring, paper execution | ✅ Working (proven on seeded bars; live-stream verification wanted) |
+| Plan authoring, arming, monitoring, simulated execution | ✅ Working — walked end to end on the live price stream |
+| Agent critique of a plan when structure moves | 🟡 Drift is measured and acted on; the agent's critique is not built |
 | AI providers beyond Anthropic | 🟡 Port built; OpenAI-compatible and local adapters next |
-| Calibration record | 🟡 Recording, few entries |
+| Calibration record | ✅ Built — scores you as a planner across many plans |
 | Live order placement on a venue | ❌ Not built — adapter reports `canPlaceOrders: false` |
 | Venue-side protective orders, startup reconciliation, approvals queue | ❌ Not built |
 | Strategy specs / backtester UI | 🧊 Frozen (engine kept; shared with plans) |
@@ -174,9 +186,13 @@ The roadmap and the reasoning behind every cut are in [`docs/ROADMAP.md`](docs/R
 - An **AI provider key** for the agent — today **[Anthropic](https://console.anthropic.com/)**.
   The provider sits behind a port, so OpenAI, Gemini, OpenRouter and local models (Ollama,
   LM Studio) are adapters away — see [Contributing](#contributing).
-- **No exchange account needed to start.** Simulated mode trades on paper. Connecting
+- **No exchange account needed to start.** Simulated mode needs no exchange. Connecting
   **[Revolut X](https://developer.revolut.com/docs/api/revolut-x-crypto-exchange)** is optional
   until you go live, and the venue sits behind a port too.
+
+**Installers** for Windows, macOS and Linux are on
+[Releases](https://github.com/0ByteBlitz/modern-vyapari/releases) — alpha builds, unsigned,
+and the macOS and Linux ones are untested. To run from source:
 
 ```bash
 git clone https://github.com/0ByteBlitz/modern-vyapari.git
@@ -212,19 +228,18 @@ dependencies) · KLineChart · an AI provider port (Anthropic adapter today)
 
 The venue, the data feed and the AI provider each sit behind a port (`src/main/integrations/`,
 `src/main/ai/`), so **adding an exchange or a model provider is an adapter, not a rewrite.**
-Start with [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 Start with **[`docs/README.md`](docs/README.md)** — a map of the docs and a glossary of the project's terms.
 
 | Doc | What it's for |
 |---|---|
-| [`docs/JOURNEYS.md`](docs/JOURNEYS.md) | The seven end-to-end journeys the app serves — read first |
+| [`docs/JOURNEYS.md`](docs/JOURNEYS.md) | The end-to-end journeys the app serves (J0–J7) — read first |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Layers, the integration seam, what runs in the background |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | What's built, what's next, what's frozen and why |
 | [`docs/DECISIONS.md`](docs/DECISIONS.md) | Why each rule exists — the incident behind it |
 | [`docs/DESIGN-NOTES.md`](docs/DESIGN-NOTES.md) | Subsystem deep-dives (calibration, modes, lessons, security) |
 | [`docs/FRICTION.md`](docs/FRICTION.md) | Known rough edges, honestly listed |
-| [`CLAUDE.md`](CLAUDE.md) | Rules for AI coding agents — and a fast orientation for humans |
+| [`AGENTS.md`](AGENTS.md) | Rules for AI coding agents — and a fast orientation for humans |
 
 ## Contributing
 
@@ -237,12 +252,11 @@ to start:
 - **UI and UX** — the current focus: one vocabulary per state, a motion system, one component
   set. See *Current focus* in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 - **macOS / Linux** — the installers build in CI; run one on a real machine and report back.
-- **Live-stream verification** — arm a paper plan on a USD pair and report what happens.
 - Anything in [`docs/FRICTION.md`](docs/FRICTION.md).
 
-This repo is built with AI coding agents in mind: [`CLAUDE.md`](CLAUDE.md) and
-[`.claude/skills/`](.claude/skills) give Claude Code (and humans) the rules that keep the
-order path safe.
+This repo is built with AI coding agents in mind: [`AGENTS.md`](AGENTS.md) and
+[`.claude/skills/`](.claude/skills) give any coding agent (and humans) the rules that keep
+the order path safe.
 
 **Found a security issue?** Please don't open a public issue — see [`SECURITY.md`](SECURITY.md).
 
