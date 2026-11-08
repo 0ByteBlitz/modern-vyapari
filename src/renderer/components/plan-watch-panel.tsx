@@ -8,7 +8,7 @@ import { formatPrice } from "@/lib/format";
 /**
  * Armed plans, as distances.
  *
- * **This replaced the session dashboard's candle chart** (owner decision,
+ * **This replaced the session dashboard's candle chart** (decided
  * 2026-08-01). That chart was Phase 0 furniture from when the dashboard was the
  * app's main surface and the question was "what is this pair doing" — a question
  * Home now answers before you ask it, and Research answers properly. What it

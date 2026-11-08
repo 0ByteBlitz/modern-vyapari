@@ -62,14 +62,14 @@ plan path and these are still the fastest way in. Do not build on them.
 - [An armed plan is now actually watched (S3-3 watch-only, 2026-08-01)](#an-armed-plan-is-now-actually-watched-s3-3-watch-only-2026-08-01)
 - [Detail views: plans and strategies open the same way (2026-08-01)](#detail-views-plans-and-strategies-open-the-same-way-2026-08-01)
 - [An armed plan on the chart is a view, not ink (J-3 geometric half, 2026-08-01)](#an-armed-plan-on-the-chart-is-a-view-not-ink-j-3-geometric-half-2026-08-01)
-- [Three owner-reported gaps closed (2026-08-01)](#three-owner-reported-gaps-closed-2026-08-01)
+- [Three gaps closed (2026-08-01)](#three-gaps-closed-2026-08-01)
 - [A plan is reviewed against its thesis, not a spec (J-2, 2026-08-01)](#a-plan-is-reviewed-against-its-thesis-not-a-spec-j-2-2026-08-01)
 - [The agent was still selling the frozen product (fixed 2026-08-01)](#the-agent-was-still-selling-the-frozen-product-fixed-2026-08-01)
 - [Web search 400s on models without programmatic tool calling (fixed 2026-08-01)](#web-search-400s-on-models-without-programmatic-tool-calling-fixed-2026-08-01)
 - [The agent can see the product now (J-1 awareness half, 2026-08-05)](#the-agent-can-see-the-product-now-j-1-awareness-half-2026-08-05)
-- [One object: the trading plan (owner decision, 2026-08-05)](#one-object-the-trading-plan-owner-decision-2026-08-05)
+- [One object: the trading plan (2026-08-05)](#one-object-the-trading-plan-2026-08-05)
 - [The first position this app has ever opened (S1-2, 2026-08-05)](#the-first-position-this-app-has-ever-opened-s1-2-2026-08-05)
-- [Simulated and live are app modes, not per-plan flags (owner decision, 2026-08-05)](#simulated-and-live-are-app-modes-not-per-plan-flags-owner-decision-2026-08-05)
+- [Simulated and live are app modes, not per-plan flags (2026-08-05)](#simulated-and-live-are-app-modes-not-per-plan-flags-2026-08-05)
 - [Going public (2026-10-31) — the kill switch that threw, and four more](#going-public-2026-10-31--the-kill-switch-that-threw-and-four-more)
 - [Which session am I in? (2026-10-31) — "idle" plans, a borrowed chat, and a quit box](#which-session-am-i-in-2026-10-31--idle-plans-a-borrowed-chat-and-a-quit-box)
 
@@ -96,7 +96,7 @@ Source of truth: **the token block at the top of `src/renderer/index.css`**, (th
 
 *Shown as **Charts** since 2026-11-03 — it is the chart surface, and "Research" read like the Research browser. The surface id `research` and the tool names `screenshot_research` / `read_research_chart` are unchanged, so stored selections and per-tool settings survive.*
 
-Owner decision: Research is where the time goes, so it needs real charting, not a read-only candle view. **Dependency: `klinecharts` ^10.1.0** (Apache-2.0, zero runtime deps, ~59k gzip).
+Research is where analysis time goes, so it needs real charting, not a read-only candle view. **Dependency: `klinecharts` ^10.1.0** (Apache-2.0, zero runtime deps, ~59k gzip).
 
 **v10 pulls data; our data is pushed** (2026-11-01). v10 dropped `applyNewData`/`updateData` for a `DataLoader` the chart calls whenever the symbol, period or loader changes — and `setSymbol` (which now carries price precision) reloads. `lib/chart-feed.ts` keeps the latest window plus live ticks and serves it on every pull, so a precision change cannot rewind the chart to the last fetch. The chart's period must be the real interval: it drives axis labels and where an overlay lands past the last bar.
 
@@ -171,7 +171,7 @@ The original scale topped out at **12px body / 11px table figures / 9.5px micro 
 
 **Brand.** Logo 18px → **24px** in the titlebar (at 18px it read as a favicon, and that bar is the only place the mark appears in normal use), paired with the tagline as a stacked lockup. Full lockup (Devanagari + romanisation) on the lock screen and onboarding, where there's room.
 
-- Tagline: **जानेर मात्र, किनबेच** — *jaanera matra, kinbech*, "trade only knowingly" (Nepali, owner's choice 2026-07-29). It's the product thesis: the app exists to make you know before you act, which is why strategies must earn their way through backtests and paper trades.
+- Tagline: **जानेर मात्र, किनबेच** — *jaanera matra, kinbech*, "trade only knowingly" (Nepali, chosen 2026-07-29). It's the product thesis: the app exists to make you know before you act, which is why strategies must earn their way through backtests and paper trades.
 - Constants live in `src/renderer/lib/brand.ts` — one definition for every surface that shows identity.
 - `--font-deva` (`Nirmala UI` → `Noto Sans Devanagari` → `Mangal` → sans) gives Devanagari its own stack; the Latin UI font has no glyphs for it and would otherwise fall back to whatever the OS picks.
 - The titlebar tagline hides below 1000px width — it's the first thing to go when the window narrows.
@@ -234,7 +234,7 @@ Read-only by construction: every card is a doorway into a session, no control on
 
 ## Scenario plans & discretionary tooling (design fixed 2026-07-29 — full spec in `docs/PLAN.md` §17)
 
-**The gate assumed the wrong thing.** §6's lifecycle treats *backtested* as the only evidence, which assumes every strategy is a repeating rule. A discretionary trader also plans **one-shot bets on a path** ("above 72k held 4h → long to 78k; rejection → retest 68k; below 66k the thesis is dead"). For those, statistical validation is **inapplicable, not merely unavailable** — a 2-trade sample dressed as a backtest launders a guess into a metric. So: **do not loosen the backtest gate.** A separate `trade_plans` table (owner decision — a `type` flag would make `backtested` meaningless for half the rows) with its own gate.
+**The gate assumed the wrong thing.** §6's lifecycle treats *backtested* as the only evidence, which assumes every strategy is a repeating rule. A discretionary trader also plans **one-shot bets on a path** ("above 72k held 4h → long to 78k; rejection → retest 68k; below 66k the thesis is dead"). For those, statistical validation is **inapplicable, not merely unavailable** — a 2-trade sample dressed as a backtest launders a guess into a metric. So: **do not loosen the backtest gate.** A separate `trade_plans` table (a `type` flag would make `backtested` meaningless for half the rows) with its own gate.
 
 **What replaces the backtest is falsifiability**, and a plan cannot arm without all four: explicit **assumptions**; **invalidation separate from the stop** (a stop is where the *trade* is wrong, invalidation is where the *thesis* is wrong — it can fire while the position is green); a **hard expiry** (a stale conditional firing weeks later into a different market is the worst failure mode of scenario automation); and a **separate, smaller risk allowance** — unvalidated conviction gets less capital. Branches are OCO by default or a triggered plan is silently double-sized. Scenario plans may reach `live_supervised` but **never `live_auto`** — the justification for unattended automation is a validated edge, and there isn't one.
 
@@ -350,7 +350,7 @@ It exists for the question no PnL figure can answer (plan §17.6): **did the tri
 
 ## The renderer describes, main constructs (S2-8, 2026-07-31)
 
-`plans-page.tsx` was assembling `ConditionGroup` JSON by hand — the clearest instance of the "features glued by frontend" problem the owner named. It now sends a **`ConditionIntent`** (`{subject:"price", operator, value}`) and `plans/condition-intent.ts` compiles it.
+`plans-page.tsx` was assembling `ConditionGroup` JSON by hand — the clearest instance of the "features glued by frontend" problem. It now sends a **`ConditionIntent`** (`{subject:"price", operator, value}`) and `plans/condition-intent.ts` compiles it.
 
 - **The risk was never only coupling.** A caller that got the shape slightly wrong produced a group the engine would store and then evaluate as *nothing* — and `validatePlan` reads an empty invalidation as a **missing** one, so a silently-dropped condition surfaced as "this plan has no thesis invalidation" three steps from the mistake. `compileIntent` therefore returns a **refusal with a reason**, never an empty group, and `createPlan` returns a result envelope rather than a plan.
 - **The realistic failure it catches:** the price field left blank, so the renderer sends `Number("")` — `NaN`. Previously stored as a condition that could never trigger while looking armed.
@@ -502,7 +502,7 @@ Fixed by `scripts/prune-orphan-tests.mjs`, wired into the `test` script: it dele
 
 ## An armed plan is now actually watched (S3-3 watch-only, 2026-08-01)
 
-**`plan-monitor.ts` was imported by nothing but its own test.** Every armed plan in the database read "armed" and no code path evaluated its trigger, invalidation, drift or expiry. Found the only way it could be: the owner armed a plan and went looking for what it was doing. A control that does not control, with the state label hiding it — the recurring bug class.
+**`plan-monitor.ts` was imported by nothing but its own test.** Every armed plan in the database read "armed" and no code path evaluated its trigger, invalidation, drift or expiry. Found the only way it could be: by arming a plan and looking for what it was doing. A control that does not control, with the state label hiding it — the recurring bug class.
 
 **The wire splits along the risk line, not the feature line: watching protects you, acting risks something.** Expiry, thesis invalidation and drift are evaluated on every closed bar and genuinely transition the plan. A trigger is **recorded with a null `position_id` and opens nothing**, because S1-2 has never proven the paper engine executes. A fired branch with no position is a real state, not a placeholder, and it is what lets S3-6 measure trigger rate before a single position has existed. `plan-watch.test.ts` asserts that boundary, so wiring entry without deliberately deleting the assertion fails.
 
@@ -514,7 +514,7 @@ Fixed by `scripts/prune-orphan-tests.mjs`, wired into the `test` script: it dele
 
 ## Detail views: plans and strategies open the same way (2026-08-01)
 
-Owner request. `detail-modal.tsx` is the shared shell; `plan-detail.tsx` and `strategy-detail.tsx` are the contents. Opened from the plans list, the dashboard's plan panel and its armed-strategies rows.
+`detail-modal.tsx` is the shared shell; `plan-detail.tsx` and `strategy-detail.tsx` are the contents. Opened from the plans list, the dashboard's plan panel and its armed-strategies rows.
 
 - **The header states the kind** — "Plan" or "Strategy" — rather than implying it through styling. They are different objects with different rules (falsifiability vs. backtests) and a reader must never have to guess which is open.
 - **Levels are labelled by the role they play**, not by what they are made of: trigger, entry, stop, target, invalidation. Those five format identically and mean opposite things, so the role carries the colour and the source ("POC (developing) · at arm") is secondary.
@@ -523,7 +523,7 @@ Owner request. `detail-modal.tsx` is the shared shell; `plan-detail.tsx` and `st
 
 ## An armed plan on the chart is a view, not ink (J-3 geometric half, 2026-08-01)
 
-The Research bookmark panel listed only **references** — the authoring layer, drawing → meaning — and the owner opened it looking for plans: *"shouldn't it list active plans, and when I click, add drawings based on the plan?"* Showing the ingredients above the thing they are for is backwards. The panel now leads with armed plans.
+The Research bookmark panel listed only **references** — the authoring layer, drawing → meaning — and a user opened it looking for plans, expecting a click on one to draw it. Showing the ingredients above the thing they are for is backwards. The panel now leads with armed plans.
 
 - **`renderer/lib/plan-overlay.ts`** draws a plan's trigger, entry, stop, targets and thesis invalidation as locked price lines, **labelled by role** with the same colours the detail views use.
 - **Nothing is persisted to `chart_drawings`.** That answers "does the drawing reset if I turn it off?" — nothing was saved, so there is nothing to reset. Writing them would create a second definition of a level the plan already owns: stale the moment the plan changed, and outliving the plan if it were deleted. Same rule as candles, KLineChart and references — one definition, two consumers.
@@ -532,7 +532,7 @@ The Research bookmark panel listed only **references** — the authoring layer, 
 - **Symbol/interval changes clear the bookkeeping**: the drawings effect calls `chart.removeOverlay()` with no argument, wiping every overlay, so the panel would otherwise report plans as drawn when their lines were gone.
 - Also fixed: the panel sat at `top: 8px`, directly over the chart's own OHLC legend, so its header read as part of the legend.
 
-## Three owner-reported gaps closed (2026-08-01)
+## Three gaps closed (2026-08-01)
 
 **Agent tools are a menu now** (`agent/tool-registry.ts`, `components/tools-menu.tsx`). The capabilities were a hardcoded array in `chat.ts` — invisible from the app and editable only in source, which is why the web-search fallback felt arbitrary. **Every tool is switchable, because nothing in the catalogue can cause harm**: no order tool, no arming tool, no `set_venue` tool, by construction. Two flags mark the switches with a real consequence — billed-per-use, and pulls untrusted outside text into a model holding write tools. A tool the *model* refuses shows as unavailable with the reason, never as an unchecked box. Stored as a **disabled** list, so a tool added later is on by default rather than silently missing for anyone who saved a preference first; read per request, so a toggle applies to the next message rather than the next restart.
 
@@ -574,7 +574,7 @@ The `noWebSearch` degrade path stays as a genuine last resort, and now retries t
 
 **The agent had sixteen tools and not one of them could observe a plan.** `buildSessionContext` injected the pair, trade stats, journal and lessons — nothing about what was armed. That is the real reason "paper trade the armed plan" produced an answer about strategies: not missing vocabulary, **missing sight**. Yesterday's system-prompt fix taught it the words; this gives it eyes.
 
-**Read before write, and the owner was right to reorder it.** Write tools without read tools are worse than neither — an agent that can author a plan but cannot list the ones already armed drafts a duplicate of the plan it cannot see.
+**Read before write.** Write tools without read tools are worse than neither — an agent that can author a plan but cannot list the ones already armed drafts a duplicate of the plan it cannot see.
 
 - **`list_plans` / `get_plan` in `agent/tools.ts`** (new `PLAN_TOOLS` array, wired into `chat.ts` and the tools menu). Session-scoped like every other tool: `get_plan` refuses a plan belonging to another session, because reading across sessions lets an archived pair's context leak into a live conversation.
 - **Read-only, structurally.** There is no `arm_plan`, `create_plan`, `update_plan` or `delete_plan`, and a test asserts the array contains exactly the two readers. A tool that does not exist cannot be reached by a jailbreak, an injected page, or a refactor that forgets a check — the same argument as `PlanState` having no `live_auto` member.
@@ -590,11 +590,11 @@ The `noWebSearch` degrade path stays as a genuine last resort, and now retries t
 - **`get_order_flow`** — CVD and the volume profile. The app has computed both since S1-4 and the agent could see neither, despite §17 existing so a thesis could be written in that vocabulary. Carries the two honesty rules with it: CVD coverage below 100% is *unknown*, not flat; the profile is candle-derived and approximate.
 - **`get_app_capabilities`** — read from the venue adapter, never asserted. The agent had no way to check what the app can actually do and would otherwise answer from assumption; assuming a position is protected when it is not is the most expensive thing it could get wrong.
 
-## One object: the trading plan (owner decision, 2026-08-05)
+## One object: the trading plan (2026-08-05)
 
-**The scope cut froze the strategy path in July; it never left the screen.** Workbench sat in the rail, the agent held `create_strategy` / `run_backtest`, the dashboard showed "Armed strategies", and the prompt carried the `DRAFT → … → LIVE_AUTO` ladder with a note saying not to use it. So the app still presented **two answers to the same question**, and both the owner and the agent kept reaching for the wrong one. The owner's words: *"telling the agent to build a strategy is asking a horse to win the race without a rider, and it keeps on just wasting tokens and backtesting generic strategies."*
+**The scope cut froze the strategy path in July; it never left the screen.** Workbench sat in the rail, the agent held `create_strategy` / `run_backtest`, the dashboard showed "Armed strategies", and the prompt carried the `DRAFT → … → LIVE_AUTO` ladder with a note saying not to use it. So the app still presented **two answers to the same question**, and both users and the agent kept reaching for the wrong one. Asking the agent to build a strategy only spent tokens backtesting generic strategies with no thesis behind them.
 
-That is correct and the measurement already said so — 90 backtests, one clearing the gate at +0.03%. The agent draws from that same distribution; the tokens buy a re-derivation of a known-negative result. **A soft guard (the prompt) against a hard affordance (the tool) loses.**
+The measurement already said so — 90 backtests, one clearing the gate at +0.03%. The agent draws from that same distribution; the tokens buy a re-derivation of a known-negative result. **A soft guard (the prompt) against a hard affordance (the tool) loses.**
 
 **Deleted from every surface:** the Workbench page, `strategy-detail.tsx`, `paper-comparison-card.tsx`, the "Armed strategies" dashboard panel, the rail entry and its badge (now counts *watched plans*), the `workbench` surface id, and the agent's `create_strategy` / `run_backtest` / `list_strategies` tools plus their implementations and registry entries. The system prompt now states there is one object and that proposing a generic indicator strategy is a **known-negative action**, with the measurement, so the model can explain the rule rather than treat it as arbitrary.
 
@@ -658,9 +658,9 @@ panel keep showing "planned" after a trigger.
 **Still unproven:** all of this has run against seeded bars, never the live
 stream. The remaining question is a real armed plan on a real feed.
 
-## Simulated and live are app modes, not per-plan flags (owner decision, 2026-08-05)
+## Simulated and live are app modes, not per-plan flags (2026-08-05)
 
-Proposed as per-plan; the owner improved on it and the improvement is real. A per-plan flag means the app holds a **mixture** at all times, and every list, aggregate, badge and notification has to carry the distinction correctly forever — the ambiguous-state failure the design rules already forbid, enforced in fifty places instead of one.
+A per-plan flag was considered first; app-level mode is better. A per-plan flag means the app holds a **mixture** at all times, and every list, aggregate, badge and notification has to carry the distinction correctly forever — the ambiguous-state failure the design rules already forbid, enforced in fifty places instead of one.
 
 **App-level mode makes it structural.** In simulated mode the venue registry returns a paper adapter: `canPlaceOrders: false`, no credentials needed, no signing path — there is physically no route to a real order. Same class of guarantee as `PlanState` having no `live_auto` member: an absence, not a defence.
 
@@ -668,7 +668,7 @@ Design decided, **not yet built**:
 
 - **Two database files, not a `mode` column.** A column is the `source = 'binance'` problem again — 18 predicates, and the one you forget blends silently rather than failing. Separate files make cross-mode contamination unwriteable.
 - **Simulated is the default and needs no credentials.** Live requires explicit entry, credentials, Windows Hello, and an unmissable mode marker in the titlebar and toolbar.
-- **Lessons cross modes; the calibration record does not** (owner decision). What you learned about how a range reclaim behaves is market knowledge and transfers. A hit rate must never blend simulated fills with real ones — simulated fills are optimistic by construction, and a blended record flatters the owner with nothing that would notice. So distilled lessons live in a small shared store both modes open; sessions, plans, positions and the calibration record stay inside their own mode's database.
+- **Lessons cross modes; the calibration record does not.** What you learned about how a range reclaim behaves is market knowledge and transfers. A hit rate must never blend simulated fills with real ones — simulated fills are optimistic by construction, and a blended record flatters the owner with nothing that would notice. So distilled lessons live in a small shared store both modes open; sessions, plans, positions and the calibration record stay inside their own mode's database.
 - **No promotion ladder.** Each plan is armed simulated or real — one decision at arm time. Simulation exists so a broken monitor is found without cost, not as a probation period.
 
 ---

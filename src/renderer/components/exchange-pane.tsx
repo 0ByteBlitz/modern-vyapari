@@ -16,8 +16,8 @@ import { VenueKeysPanel } from "@/components/credentials-panels";
  * Settings used to show **Credentials**: one venue's key status, and nothing
  * about the venue itself. That was true when Revolut X was referred to by name
  * from wherever it was needed; it stopped being true when S2-9 put venues
- * behind a port with a registry and declared capabilities. The owner said so
- * plainly: *"there is no way of wanted integrations feature."*
+ * behind a port with a registry and declared capabilities, and Settings had no
+ * integrations surface to show it.
  *
  * What an integration page owes the reader is **what is connected, what it can
  * actually do, and how to change it** — in that order. The capability rows are

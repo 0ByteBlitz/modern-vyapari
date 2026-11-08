@@ -666,7 +666,7 @@ export function getDb(): DatabaseSync {
 /**
  * Run `fn` inside a transaction, committing on return and rolling back on throw.
  *
- * **Why this exists (owner decision, 2026-07-31: fix the core).** Until now the
+ * **Why this exists (decided 2026-07-31: fix the core).** Until now the
  * only transactions in the process were in migrations. Every multi-row write
  * elsewhere — a plan and its branches, a position close and the cash it moves,
  * an archive wind-down — was a sequence of independent statements, so a failure

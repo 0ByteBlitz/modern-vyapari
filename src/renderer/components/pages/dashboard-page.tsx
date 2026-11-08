@@ -37,14 +37,14 @@ import { readReview } from "@/lib/review-entry";
  * to the session, keeping the app-wide events that change what its plans can
  * do.
  *
- * **The candle chart was removed on 2026-08-01** (owner decision) and replaced
+ * **The candle chart was removed on 2026-08-01** and replaced
  * by `PlanWatchPanel`. Rationale in that file; the short version is that Home
  * answers "what is this pair doing" before you ask, Research answers it
  * properly, and what a session dashboard actually needs to say is how far price
  * is from the levels an armed plan cares about.
  *
- * **The strategy panels were deleted on 2026-08-05** (owner decision: one
- * object, the trading plan). "Armed strategies" and the paper-vs-backtest card
+ * **The strategy panels were deleted on 2026-08-05** (one object: the
+ * trading plan). "Armed strategies" and the paper-vs-backtest card
  * are gone, along with the Workbench surface. The engine code stays frozen and
  * shared; what was removed is the *second object on screen*, which is what made
  * the product read as two competing answers to the same question.
