@@ -35,9 +35,11 @@ clear decision and see what happened to it.
 *Screenshots are from simulated mode with demo plans, taken offline — which is why the market
 panels are empty.*
 
-**1. First launch.** A short setup: an AI provider, an exchange account (optional in
-simulated mode), risk limits, appearance, screen lock and notifications. You can change any
-of it later in Settings. Every key is encrypted with your OS keychain before it touches disk.
+**1. First launch.** Setup takes eight steps: a welcome, your AI provider, an exchange
+account, the risk limits in force, appearance, screen lock (Windows Hello, on Windows),
+Telegram notifications, then a review. In simulated mode only the AI provider is required.
+Risk limits are shown for reference and can't be changed; everything else can be changed
+later in Settings. Every key is encrypted with your OS keychain before it touches disk.
 
 <p align="center">
   <img src="docs/images/onboarding.png" width="820" alt="Onboarding: the AI provider comes first; the trading venue is marked optional in simulated mode" />
