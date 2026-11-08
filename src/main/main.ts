@@ -282,7 +282,12 @@ app.whenReady().then(() => {
   });
 });
 
-app.on("before-quit", () => {
+/* will-quit, not before-quit. before-quit fires before the quit guard has
+   asked, and a quit it then holds left the app running with the scheduler
+   stopped — alerts no longer evaluated while every screen still read live.
+   will-quit fires only once every window has closed and the quit is going
+   ahead. */
+app.on("will-quit", () => {
   // Tear down the agent's offscreen fetch window if one is alive.
   const { disposeAgentFetch } = require("./browser/agent-fetch");
   disposeAgentFetch();
