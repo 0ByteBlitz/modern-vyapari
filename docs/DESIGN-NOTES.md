@@ -190,3 +190,75 @@ Only the first was intentional.
   sessions became $9,850, the true −$150.
 - **`canFund` is now reachable**, so a plan that fires without the cash is
   audited as a refusal rather than logged and dropped.
+
+## Interface rules for a working surface (2026-11-08)
+
+Every screen in this app is a *working* surface: the owner reads it to decide
+whether a plan is safe to sign, and to tell at a glance what is live, armed or
+stale. Scanning speed and consistency come before expression. These rules are
+taken, as ideas only, from the open-source `pbakaus/impeccable` design skill
+(Apache 2.0). We read it and did not install it, because its installer fetches a
+binary and its hook runs that binary on every edit, and the ideas need neither.
+Where a rule restates one of ours, ours is the authority.
+
+**Numbers**
+- Prices, quantities and P&L use tabular numerals (`tabular-nums`), so columns
+  stay aligned and digits don't shift as values tick.
+- A headline number that changes over time shows its recent history, with the
+  moment it changed marked. A bare number gives no sense of whether it is new.
+- Values come from real data. Anything illustrative is labelled as illustrative,
+  which is the bug class in `AGENTS.md` seen from the design side.
+- Monospace is for code, data and measurements, never for a "technical" look.
+
+**State and colour**
+- Every component is designed in all of its states: loading, error, empty, real
+  content, disabled, and with keyboard focus. A state left undesigned is a state
+  left ambiguous, which `AGENTS.md` ranks above every other preference.
+- Red means critical and amber means degraded. State colours appear only where
+  they carry meaning, so they still mean something when they do appear.
+- Colour has jobs: the shell, state, data series, selection. A grey screen with
+  one accent is the default with nothing done, not restraint.
+- Never rely on colour alone. Live vs. paper and armed vs. idle also differ in
+  words or shape.
+
+**Patterns we refuse**
+- Small all-caps labels ("eyebrows") above headings.
+- A coloured left or right border wider than 1px on cards, lists or alerts.
+- Cards nested inside cards, and pages built from identical icon + heading +
+  text cards.
+- The "hero metric" block: a big number, a small label, a row of supporting
+  stats.
+- Gradient text, glass or blur with no job, emoji or Unicode symbols used as
+  icons (use the one icon set), and modals for tasks that don't need to
+  interrupt.
+- Sparklines, rings or soft rounded boxes standing in for content.
+
+**Controls and copy**
+- Standard controls only: buttons, tabs, inputs, selects, tables with sortable
+  headers. Nothing invented for the look.
+- A control names its action. An error names the problem, then the fix.
+- Contrast is at least 4.5:1 for body text and 3:1 for large text. Secondary
+  text on a coloured surface is tinted from that colour, never plain grey.
+
+**Edge cases to check before calling a surface done**
+- Very large numbers, empty data, a list of 1,000+ items, and very long names.
+- Ten rapid clicks on any control that submits, signs or arms. The control
+  disables while the action is in flight.
+- A failed request says what happened and offers a retry, and the owner's
+  input survives the error.
+- Flex and grid children that hold text get `min-width: 0`, so long values
+  truncate instead of breaking the layout.
+- A component releases its timers and subscriptions, and aborts pending
+  requests, when it unmounts.
+
+**Reviewing a surface.** Score it against Nielsen's ten heuristics (0–4 each)
+and tag each finding P0 (blocks the task) to P3 (polish). Do two passes without
+letting one see the other, one reading the design and one checking the rules
+above mechanically, then compare where they disagree.
+
+**Open against these rules at the time of writing:** `tabular-nums` appears in
+only 2 renderer files; there are about 11 uppercase-with-tracking label patterns
+and 2 thick coloured side borders to review; and the renderer formats with
+`.toFixed` in 42 places. That last one needs checking against "money is a string
+end-to-end": formatting for display is fine, but feeding a formatted float back
+into a decision is not.
