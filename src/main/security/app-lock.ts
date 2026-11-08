@@ -150,16 +150,32 @@ export function lock(reason: "windows" | "idle"): void {
   announce();
 }
 
+/* One Windows Hello prompt at a time. A second request while one is open gets
+   the same answer instead of queueing another OS prompt behind it. */
+let pendingUnlock: Promise<windowsHello.HelloResult> | null = null;
+
 /** Ask Windows Hello; unlock only on a verified answer. */
-export async function unlockWithHello(reason: string): Promise<windowsHello.HelloResult> {
-  await ready;
-  const result = await windowsHello.requestVerification(reason);
-  if (result.verified && locked) {
-    locked = false;
-    auditLog("app_unlocked", {});
-    announce();
-  }
-  return result;
+export function unlockWithHello(reason: string): Promise<windowsHello.HelloResult> {
+  if (pendingUnlock) return pendingUnlock;
+  pendingUnlock = (async () => {
+    try {
+      await ready;
+      const result = await windowsHello.requestVerification(reason);
+      /* Every attempt is recorded, not only the one that worked: a cancelled
+         or failed prompt is exactly what the owner would want to see later. */
+      if (!result.verified) {
+        auditLog("app_unlock_failed", { detail: result.detail ?? "" });
+      } else if (locked) {
+        locked = false;
+        auditLog("app_unlocked", {});
+        announce();
+      }
+      return result;
+    } finally {
+      pendingUnlock = null;
+    }
+  })();
+  return pendingUnlock;
 }
 
 /**
