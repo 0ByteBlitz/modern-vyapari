@@ -16,12 +16,13 @@
  * visible at the moment of approval. Approving a thesis and approving a
  * geometry are different acts, and this is where they are made the same one.
  */
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { Plus, Trash2, ShieldCheck, AlertTriangle, Activity, X, Pencil } from "lucide-react";
 import { levelText, entryText, intentText, expiryText } from "@/lib/plan-text";
 import { PlanStateBadge, SignedBy } from "@/components/plan-badges";
 import { PlanDetail, PlanWatchNote } from "@/components/plan-detail";
 import { CalibrationPanel } from "@/components/calibration-panel";
+import { useAppMode } from "@/lib/mode";
 import {
   api,
   isError,
@@ -83,6 +84,25 @@ const INTERVALS = ["15m", "1h", "4h", "1d"] as const;
 export function PlansPage({ session, focus }: Props) {
   /* Budgets are in the pair's quote currency — "200" alone left it to guess. */
   const quote = session.pair.split("-")[1] ?? "";
+  const mode = useAppMode();
+  /* One action at a time. The disable comes from state, which lands after the
+     click, so ten fast clicks all got through before it: one arm landed and
+     nine refusals were rendered as the outcome — "Not armed" under a plan that
+     was armed. The ref closes that window; the state
+     shows it. */
+  const inFlight = useRef(false);
+  const [busy, setBusy] = useState(false);
+  async function once(action: () => Promise<void>) {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setBusy(true);
+    try {
+      await action();
+    } finally {
+      inFlight.current = false;
+      setBusy(false);
+    }
+  }
   const [plans, setPlans] = useState<StoredPlanView[]>([]);
   const [refs, setRefs] = useState<LevelReferenceView[]>([]);
   const [authoring, setAuthoring] = useState(false);
@@ -309,6 +329,8 @@ export function PlansPage({ session, focus }: Props) {
       return;
     }
     setArmResult({ planId, res });
+    /* The pre-arm check described a draft that no longer exists. */
+    if (res.ok) setDryRun((d) => (d?.planId === planId ? null : d));
     await load();
   }
 
@@ -620,7 +642,7 @@ export function PlansPage({ session, focus }: Props) {
           </div>
 
           <div className="plans-actions">
-            <button className="plans-primary" onClick={() => void save()}>
+            <button className="plans-primary" disabled={busy} onClick={() => void once(save)}>
               {editingId === null ? "Save draft" : "Save changes"}
             </button>
             <button
@@ -730,10 +752,10 @@ export function PlansPage({ session, focus }: Props) {
               </button>
               {/* Before committing: would this fire at all? The gate proves a
                   plan can be wrong; this proves it can happen. */}
-              <button className="plans-ghost" disabled={checking === p.rowId} onClick={() => void check(p.rowId)}>
+              <button className="plans-ghost" disabled={busy || checking === p.rowId} onClick={() => void once(() => check(p.rowId))}>
                 <Activity size={13} /> {checking === p.rowId ? "Checking…" : "Check"}
               </button>
-              <button className="plans-ghost" onClick={() => void discard(p.rowId)}>
+              <button className="plans-ghost" disabled={busy} onClick={() => void once(() => discard(p.rowId))}>
                 Discard
               </button>
             </div>
@@ -760,7 +782,7 @@ export function PlansPage({ session, focus }: Props) {
               <strong>Revise this signed plan?</strong>
               <p>The current plan will stop being monitored and move to Finished. An editable draft with the same terms will open; it must be armed again to run.</p>
               <div className="plans-actions">
-                <button className="plans-primary" onClick={() => void reviseArmed(p.rowId)}>Create draft</button>
+                <button className="plans-primary" disabled={busy} onClick={() => void once(() => reviseArmed(p.rowId))}>Create draft</button>
                 <button className="plans-ghost" onClick={() => setRevisingPlanId(null)}>Keep armed</button>
               </div>
             </div>
@@ -771,7 +793,7 @@ export function PlansPage({ session, focus }: Props) {
               <strong>End this plan?</strong>
               <p>Monitoring will stop. The signed plan will stay in Finished as part of your record.</p>
               <div className="plans-actions">
-                <button className="plans-primary" onClick={() => void endArmed(p.rowId)}>End plan</button>
+                <button className="plans-primary" disabled={busy} onClick={() => void once(() => endArmed(p.rowId))}>End plan</button>
                 <button className="plans-ghost" onClick={() => setEndingPlanId(null)}>Keep armed</button>
               </div>
             </div>
@@ -782,6 +804,12 @@ export function PlansPage({ session, focus }: Props) {
                any the agent defaulted rather than the owner chose. */
             <div className="plans-arm-ok" onClick={(e) => e.stopPropagation()}>
               <strong>Arm with these terms?</strong>
+              {/* The mode is part of what is signed. */}
+              <p>
+                {mode === "live"
+                  ? "Live — a trigger places a real order."
+                  : "Simulated — a trigger opens a simulated position. No real order is placed."}
+              </p>
               <ul>
                 <li>Budget: {p.risk.maxQuote > 0 ? `${p.risk.maxQuote} ${quote}` : "not set"}</li>
                 <li>Expires: {expiryText(p.expiresAt)}</li>
@@ -797,7 +825,7 @@ export function PlansPage({ session, focus }: Props) {
                 ))}
               </ul>
               <div className="plans-actions">
-                <button className="plans-primary" onClick={() => void arm(p.rowId)}>
+                <button className="plans-primary" disabled={busy} onClick={() => void once(() => arm(p.rowId))}>
                   <ShieldCheck size={13} /> Arm
                 </button>
                 <button className="plans-ghost" onClick={() => setConfirming(null)}>
